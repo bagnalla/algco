@@ -1,0 +1,2 @@
+# algco
+Algebraic Coinduction
