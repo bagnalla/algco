@@ -368,3 +368,6 @@ Qed.
 Lemma eqb_refl {A} `{EqType A} (a : A) :
   eqb a a = true.
 Proof. destruct (eqb_spec a a); subst; congruence. Qed.
+
+Definition is_prime (n : nat) : Prop :=
+  1 < n /\ forall m, 1 < m -> n <> m -> n mod m <> O.

@@ -28,12 +28,12 @@ From algco Require Import aCPO axioms misc colist cpo order tactics.
 
 Local Open Scope order_scope.
 
-Fixpoint afilter {A} (f : A -> bool) (l : alist A) : alist A :=
-  match l with
-  | anil => anil
-  | atau l' => atau (afilter f l')
-  | acons a l' => if f a then acons a (afilter f l') else atau (afilter f l')
-  end.
+(* Fixpoint afilter {A} (f : A -> bool) (l : alist A) : alist A := *)
+(*   match l with *)
+(*   | anil => anil *)
+(*   | atau l' => atau (afilter f l') *)
+(*   | acons a l' => if f a then acons a (afilter f l') else atau (afilter f l') *)
+(*   end. *)
 
 CoFixpoint cofilter {A} (f : A -> bool) (l : colist A) : colist A :=
   match l with
@@ -48,7 +48,7 @@ Fixpoint sieve_aux_alist (l : alist nat) : alist nat :=
   match l with
   | anil => anil
   | atau l' => atau (sieve_aux_alist l')
-  | acons n l' => acons n (afilter (fun m => negb (m mod n =? O)) (sieve_aux_alist l'))
+  | acons n l' => acons n (filter (fun m => negb (m mod n =? O)) (sieve_aux_alist l'))
   end.
 
 CoFixpoint sieve_aux (l : colist nat) : colist nat :=
@@ -148,6 +148,7 @@ Proof.
   - rewrite IHn; reflexivity.
   - rewrite IHn; f_equal.
     clear IHn.
+    unfold filter.
     revert n0 l.
     induction n; intros m l; simpl; auto.
     destruct l; simpl; auto.
@@ -185,9 +186,6 @@ Qed.
 (* (** Extracting the sieve. *) *)
 (* From Coq Require Import ExtrOcamlBasic. *)
 (* Extraction "extract/sieve/sieve.ml" sieve. *)
-
-Definition is_prime (n : nat) : Prop :=
-  1 < n /\ forall m, 1 < m -> n <> m -> n mod m <> O.
 
 CoInductive colist_forall {A} (P : A -> Prop) : colist A -> Prop :=
 | colist_forall_nil : colist_forall P conil
@@ -243,18 +241,6 @@ Inductive colist_exists {A} (P : A -> Prop) : colist A -> Prop :=
     colist_exists P l ->
     colist_exists P (cocons a l).
 
-Inductive alist_exists {A} (P : A -> Prop) : alist A -> Prop :=
-| alist_exists_tau : forall l,
-    alist_exists P l ->
-    alist_exists P (atau l)
-| alist_exists_hd : forall a l,
-    P a ->
-    alist_exists P (acons a l)
-| alist_exists_tl : forall a l,
-    ~ P a ->
-    alist_exists P l ->
-    alist_exists P (acons a l).
-
 Lemma alist_exists_colist_exists {A} (P : A -> Prop) (l : colist A) :
   (exists n, alist_exists P (prefix n l)) -> colist_exists P l.
 Proof.
@@ -304,19 +290,6 @@ Proof.
   apply alists_exists_nats; lia.
 Qed.
 
-Lemma alist_exists_afilter {A} (a : A) (l : alist A) (P : A -> bool) :
-  P a = true ->
-  alist_exists (eq a) l ->
-  alist_exists (eq a) (afilter P l).
-Proof.
-  revert a P; induction l; intros x P HPx Hex; inv Hex; simpl.
-  - constructor; auto.
-  - rewrite HPx; constructor; auto.
-  - destruct (P a) eqn:HPa.
-    + apply alist_exists_tl; auto.
-    + constructor; auto.
-Qed.
-
 Lemma prime_exists_sieve_aux (n : nat) (l : colist nat) :
   is_prime n ->
   colist_forall (fun m => 1 < m) l ->
@@ -338,7 +311,7 @@ Proof.
   - constructor; auto.
   - constructor; auto.
   - apply alist_exists_tl; auto.
-    apply alist_exists_afilter; auto.
+    apply alist_exists_filter; auto.
     unfold is_prime in Hn.
     destruct Hn as [Hn Hn'].
     apply Hn' in H1; auto.
@@ -372,14 +345,15 @@ Proof.
   intro Hn; apply prime_exists_sieve_aux_nats; auto; apply is_prime_2_le; auto.
 Qed.
 
-Lemma prefix_cofilter {A} (P : A -> bool) (l : colist A) n :
-  prefix n (cofilter P l) = afilter P (prefix n l).
-Proof.
-  revert l; induction n; intro l; simpl; auto.
-  destruct l; simpl; auto.
-  - rewrite IHn; auto.
-  - destruct (P a); rewrite IHn; auto.
-Qed.
+(* Lemma prefix_cofilter {A} (P : A -> bool) (l : colist A) n : *)
+(*   prefix n (cofilter P l) = filter P (prefix n l). *)
+(* Proof. *)
+(*   unfold filter. *)
+(*   revert l; induction n; intro l; simpl; auto. *)
+(*   destruct l; simpl; auto. *)
+(*   - rewrite IHn; auto. *)
+(*   - destruct (P a); rewrite IHn; auto. *)
+(* Qed. *)
 
 CoInductive alist_increasing_from : nat -> alist nat -> Prop :=
 | alist_increasing_from_nil : forall n, alist_increasing_from n anil
@@ -401,8 +375,9 @@ CoInductive increasing_from : nat -> colist nat -> Prop :=
 
 Lemma alist_forall_afilter {A} (P : A -> Prop) (Q : A -> bool) (l : alist A) :
   alist_forall P l ->
-  alist_forall (fun x => P x /\ Q x = true) (afilter Q l).
+  alist_forall (fun x => P x /\ Q x = true) (filter Q l).
 Proof.
+  unfold filter.
   induction l; intro Hl; inv Hl; simpl.
   - constructor.
   - constructor; auto.
@@ -411,8 +386,9 @@ Qed.
 
 Lemma alist_forall_afilter' {A} (P : A -> Prop) (Q : A -> bool) (l : alist A) :
   alist_forall P l ->
-  alist_forall P (afilter Q l).
+  alist_forall P (filter Q l).
 Proof.
+  unfold filter.
   induction l; intro Hl; inv Hl; simpl.
   - constructor.
   - constructor; auto.
@@ -537,8 +513,9 @@ Qed.
 
 Lemma alist_nodup_afilter {A} (P : A -> bool) (l : alist A) :
   alist_nodup l ->
-  alist_nodup (afilter P l).
+  alist_nodup (filter P l).
 Proof.
+  unfold filter.
   induction l; intro Hl; inv Hl.
   - constructor.
   - constructor; auto.
@@ -595,3 +572,12 @@ Fixpoint remove_taus {A} (l : alist A) : alist A :=
   end.
 
 (* Eval compute in (remove_taus (prefix 100 sieve)). *)
+
+(* #[global] *)
+(*   Instance monotone_afilter {A} (f : A -> bool) : Proper (leq ==> leq) (afilter f). *)
+(* Proof. *)
+(*   intro a; induction a; intros b Hab; inv Hab; simpl. *)
+(*   - constructor. *)
+(*   - constructor; apply IHa; auto. *)
+(*   - destruct (f a); constructor; apply IHa; auto. *)
+(* Qed. *)

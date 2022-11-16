@@ -91,6 +91,7 @@ Qed.
 
 (** Shorthand for referring to the basis of an aCPO. *)
 Definition basis (A : Type) {B : Type} `{aCPO A B} : Type := B.
+#[global] Hint Transparent basis : aCPO.
 
 Section aCPO.
   Context {A B : Type} `{aCPO A B}.
@@ -254,7 +255,7 @@ Section aCPO.
   Qed.
 
   (** The co-version of any monotone basis function is continuous. *)
-  Theorem continuous_co {C} `{dCPO C} (f : basis A -> C) :
+  Theorem continuous_co {C} `{dCPO C} (f : B -> C) :
     monotone f ->
     continuous (co f).
   Proof.

@@ -28,47 +28,28 @@ From algco Require Import aCPO axioms misc colist cpo order sieve sieve2 tactics
 
 Local Open Scope order_scope.
 
-Axiom bad : False.
-
-Lemma sieve_aux_colist_eq (l : colist nat) :
-  colist_eq (sieve.sieve_aux l) (sieve_aux l).
-Proof.
-  unfold sieve_aux, asieve_aux.
-  revert l; cofix CH; intros []; simpl.
-  - rewrite unf_eq. rewrite co_fold_nil'.
-  - rewrite unf_eq; simpl.
-    unfold sieve_aux, asieve_aux.
-    rewrite co_fold_tau; auto with order colist.
-    2: { intro i; apply monotone_compose; auto with order colist aCPO.
-         (* Why doesn't this auto apply? *)
-         apply monotone_co; eauto with colist order. }
-    constructor; apply CH.
-  - destruct bad.
-Qed.
-
-Lemma sieve_aux_leq (l : colist nat) :
-  sieve.sieve_aux l ⊑ sieve_aux l.
-Proof.
-  revert l; cofix CH; intros []; simpl.
-  - rewrite unf_eq; constructor.
-  - rewrite unf_eq; simpl.
-    unfold sieve_aux, asieve_aux.
-    rewrite co_fold_tau; auto with order colist.
-    2: { intro i; apply monotone_compose; auto with order colist aCPO.
-         (* Why doesn't this auto apply? *)
-         apply monotone_co; eauto with colist order. }
-    constructor; apply CH.
-  - destruct bad.
-Qed.
+(** One way to prove things like this is by the uniqueness lemma, but
+that requires doing an ad hoc continuity proof for the non-comorphism
+side which is annoying. *)
 
 Lemma sieve_aux_eq (l : colist nat) :
   sieve.sieve_aux l = sieve_aux l.
-Proof.
-  apply ext; split.
+Proof with eauto with aCPO colist order.
+  unfold sieve_aux, asieve_aux.
+  apply alist_eq_colist_eq; intro i.
+  rewrite <- sieve_aux_prefix.
+  revert l; induction i; intro l; simpl.
+  { constructor. }
+  destruct l; simpl.
+  - rewrite co_fold_nil'; constructor.
+  - rewrite co_fold_tau'...
+    2: { intro; apply monotone_compose... }
+    rewrite IHi; reflexivity.
+  - rewrite co_fold_cons'...
+    2: { intro; apply continuous_compose... }
+    rewrite prefix_cofilter, IHi; reflexivity.
+Qed.
 
 Lemma sieve_eq :
   sieve.sieve = sieve2.sieve.
-Proof.
-  unfold sieve.sieve.
-  unfold sieve.
-  apply ext.
+Proof. apply sieve_aux_eq. Qed.

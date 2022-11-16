@@ -28,47 +28,28 @@ From algco Require Import aCPO axioms misc colist cpo order tactics.
 
 Local Open Scope order_scope.
 
-Definition afilter {A} (f : A -> bool) : alist A -> colist A :=
-  afold conil (@cotau A) (fun a l' => if f a then cocons a l' else cotau l').
-
-(* Fixpoint afilter {A} (f : A -> bool) (l : alist A) : colist A := *)
-(*   match l with *)
-(*   | anil => conil *)
-(*   | atau l' => cotau (afilter f l') *)
-(*   | acons a l' => if f a then cocons a (afilter f l') else cotau (afilter f l') *)
-(*   end. *)
-
-#[global]
-  Instance monotone_afilter {A} (f : A -> bool) : Proper (leq ==> leq) (afilter f).
-Proof.
-  apply monotone_afold; auto with order colist; intro; constructor.
-Qed.
-#[global] Hint Resolve monotone_afilter : colist.
-
-(* #[global] *)
-(*   Instance monotone_afilter {A} (f : A -> bool) : Proper (leq ==> leq) (afilter f). *)
-(* Proof. *)
-(*   intro a; induction a; intros b Hab; inv Hab; simpl. *)
-(*   - constructor. *)
-(*   - constructor; apply IHa; auto. *)
-(*   - destruct (f a); constructor; apply IHa; auto. *)
-(* Qed. *)
-(* #[global] Hint Resolve monotone_afilter : colist. *)
-
-Definition cofilter {A} (f : A -> bool) : colist A -> colist A := co (afilter f).
-
 CoFixpoint nats (n : nat) : colist nat := cocons n (nats (S n)).
+
+Definition asieve_aux' : alist nat -> alist nat :=
+  afold anil (@atau nat) (fun n l' => acons n (filter (fun m => negb (m mod n =? O)) l')).
 
 Definition asieve_aux : alist nat -> colist nat :=
   afold conil (@cotau nat) (fun n l' => cocons n (cofilter (fun m => negb (m mod n =? O)) l')).
 
+Lemma asieve_aux_inj_asieve_aux' (l : alist nat) :
+  asieve_aux l = inj (asieve_aux' l).
+Proof.
+  unfold asieve_aux, asieve_aux'.
+  induction l; simpl; auto.
+  - rewrite IHl; auto.
+  - rewrite IHl, cofilter_inj_filter; auto.
+Qed.
+
 #[global]
   Instance monotone_asieve_aux : Proper (leq ==> leq) asieve_aux.
-Proof.
-  apply monotone_afold; auto with order colist; intro; try solve[constructor].
-  apply continuous_monotone. (* TODO: should be able to automate this... *)
-  apply continuous_compose; auto with colist.
-  apply continuous_co; eauto with colist order.
+Proof with eauto with colist order aCPO.
+  apply monotone_afold...
+  intro; apply continuous_monotone, continuous_compose...
 Qed.
 #[global] Hint Resolve monotone_asieve_aux : colist.
 
@@ -110,103 +91,29 @@ Definition sieve_list (n : nat) : colist nat := asieve_aux (prefix n (nats 2)).
 
 (* Lemma cofilter_comm {A} (P Q : A -> bool) (l : colist A) : *)
 (*   cofilter P (cofilter Q l) = cofilter Q (cofilter P l). *)
-(* Proof. *)
-(*   (* apply ext. *) *)
+(* Proof with eauto with order colist aCPO. *)
 (*   unfold cofilter. *)
-(*   rewrite co_co_ext with (g := co (afilter P)); eauto with order colist. *)
-(*   (* TODO: why won't this prove wcontinuity automatically? *) *)
-(*   2: { apply continuous_wcontinuous, continuous_co, monotone_afilter. } *)
-(*   (* apply ext. *) *)
-(*   (* (* rewrite co_co'. *) (* TODO: why won't this rewrite? *) *) *)
-(*   (* etransitivity. *) *)
-(*   (* apply co_co'; eauto with order colist aCPO. *) *)
-(*   (* TODO: why won't this prove wcontinuity automatically? *) *)
-(*   (* { apply continuous_wcontinuous, continuous_co, monotone_afilter. } *) *)
-(*   symmetry. *)
-(*   etransitivity. *)
-(*   apply co_co'; eauto with order colist aCPO. *)
-(*   (* TODO: why won't this prove wcontinuity automatically? *) *)
-(*   { apply continuous_wcontinuous, continuous_co, monotone_afilter. } *)
-(*   apply Proper_co'; eauto with colist order; try reflexivity. *)
-(*   { apply monotone_compose; eauto with colist order. *)
-(*     apply continuous_monotone. *)
-(*     apply continuous_co; eauto with colist order. } *)
-(*   { apply monotone_compose; eauto with colist order. *)
-(*     apply continuous_monotone. *)
-(*     apply continuous_co; eauto with colist order. } *)
+(*   rewrite co_co_ext with (g := co (afilter P))... *)
+(*   rewrite co_co_ext with (g := co (afilter Q))... *)
+(*   apply Proper_co_ext... *)
 (*   unfold compose; clear l. *)
-(*   apply equ_arrow; intro l. *)
-(*   unfold afilter. *)
+(*   ext l; unfold afilter. *)
 (*   induction l; simpl. *)
-(*   - rewrite 2!co_fold_nil; reflexivity. *)
-(*   - rewrite 2!co_fold_tau; auto with colist order. *)
+(*   - rewrite 2!co_fold_nil'; reflexivity. *)
+(*   - rewrite 2!co_fold_tau'... *)
 (*     rewrite IHl; reflexivity. *)
 (*   - destruct (P a) eqn:HPa. *)
 (*     + destruct (Q a) eqn:HQa. *)
-(*       * rewrite 2!co_fold_cons; auto with order colist; *)
-(*           try solve[intro; constructor]; try solve[constructor]; *)
-(*           try solve[intro; auto with order colist]. *)
+(*       * rewrite 2!co_fold_cons'... *)
 (*         rewrite HPa, HQa, IHl; reflexivity. *)
-(*       * rewrite co_fold_tau, co_fold_cons; auto with order colist; *)
-(*           try solve[intro; constructor]; try solve[constructor]; *)
-(*           try solve[intro; auto with order colist]. *)
+(*       * rewrite co_fold_tau', co_fold_cons'... *)
 (*         rewrite HQa, IHl; reflexivity. *)
 (*     + destruct (Q a) eqn:HQa. *)
-(*       * rewrite co_fold_tau, co_fold_cons; auto with order colist; *)
-(*           try solve[intro; constructor]; try solve[constructor]; *)
-(*           try solve[intro; auto with order colist]. *)
+(*       * rewrite co_fold_tau', co_fold_cons'... *)
 (*         rewrite HPa, IHl; reflexivity. *)
-(*       * rewrite 2!co_fold_tau; auto with order colist; *)
-(*           try solve[intro; constructor]; try solve[constructor]; *)
-(*           try solve[intro; auto with order colist]. *)
+(*       * rewrite 2!co_fold_tau'... *)
 (*         rewrite IHl; reflexivity. *)
 (* Qed. *)
-
-Lemma cofilter_comm {A} (P Q : A -> bool) (l : colist A) :
-  cofilter P (cofilter Q l) = cofilter Q (cofilter P l).
-Proof.
-  unfold cofilter.
-  rewrite co_co_ext with (g := co (afilter P)); eauto with order colist.
-  (* TODO: why won't this prove wcontinuity automatically? *)
-  2: { apply continuous_wcontinuous, continuous_co, monotone_afilter. }
-  rewrite co_co_ext with (g := co (afilter Q)); eauto with order colist.
-  (* TODO: why won't this prove wcontinuity automatically? *)
-  2: { apply continuous_wcontinuous, continuous_co, monotone_afilter. }
-  apply Proper_co_ext; eauto with colist order; try reflexivity.
-  (* TODO: why won't these two subgoals discharge automatically? *)
-  { apply monotone_compose; eauto with colist order.
-    apply continuous_monotone.
-    apply continuous_co; eauto with colist order. }
-  { apply monotone_compose; eauto with colist order.
-    apply continuous_monotone.
-    apply continuous_co; eauto with colist order. }
-  unfold compose; clear l.
-  ext l.
-  unfold afilter.
-  induction l; simpl.
-  - rewrite 2!co_fold_nil'; reflexivity.
-  - rewrite 2!co_fold_tau'; auto with colist order.
-    rewrite IHl; reflexivity.
-  - destruct (P a) eqn:HPa.
-    + destruct (Q a) eqn:HQa.
-      * rewrite 2!co_fold_cons'; auto with order colist;
-          try solve[intro; constructor]; try solve[constructor];
-          try solve[intro; auto with order colist].
-        rewrite HPa, HQa, IHl; reflexivity.
-      * rewrite co_fold_tau', co_fold_cons'; auto with order colist;
-          try solve[intro; constructor]; try solve[constructor];
-          try solve[intro; auto with order colist].
-        rewrite HQa, IHl; reflexivity.
-    + destruct (Q a) eqn:HQa.
-      * rewrite co_fold_tau', co_fold_cons'; auto with order colist;
-          try solve[intro; constructor]; try solve[constructor];
-          try solve[intro; auto with order colist].
-        rewrite HPa, IHl; reflexivity.
-      * rewrite 2!co_fold_tau'; auto with order colist;
-          try solve[intro; constructor]; try solve[constructor];
-          try solve[intro; auto with order colist].
-        rewrite IHl; reflexivity.
-Qed.
 
 (* Lemma cofilter_comm_impl_leq {A} (P Q : A -> bool) (l : colist A) : *)
 (*   (forall a, P a = true -> Q a = true) -> *)
@@ -399,29 +306,26 @@ Qed.
 (*     exists (S n); apply alist_exists_tl; auto. *)
 (* Qed. *)
 
-(* Lemma alists_exists_nats n m k : *)
-(*   m <= n -> *)
-(*   n < m + k -> *)
-(*   alist_exists (eq n) (prefix k (nats m)). *)
-(* Proof. *)
-(*   revert n m; induction k; intros n m H0 H1. *)
-(*   { lia. } *)
-(*   simpl. *)
-(*   destruct (Nat.eqb_spec n m); subst. *)
-(*   - constructor; auto. *)
-(*   - apply alist_exists_tl; auto. *)
-(*     apply IHk; lia. *)
-(* Qed. *)
+Lemma alists_exists_nats n m k :
+  m <= n ->
+  n < m + k ->
+  alist_exists (eq n) (prefix k (nats m)).
+Proof.
+  revert n m; induction k; intros n m H0 H1; simpl.
+  { lia. }
+  destruct (Nat.eqb_spec n m); subst.
+  - constructor; auto.
+  - apply alist_exists_tl; auto; apply IHk; lia.
+Qed.
 
-(* Lemma nats_exists (n m : nat) : *)
-(*   m <= n -> *)
-(*   colist_exists (eq n) (nats m). *)
-(* Proof. *)
-(*   intro Hle. *)
-(*   apply alist_exists_colist_exists. *)
-(*   exists (n - m + 1). *)
-(*   apply alists_exists_nats; lia. *)
-(* Qed. *)
+Lemma nats_exists (n m : nat) :
+  m <= n ->
+  colist_exists (eq n) (nats m).
+Proof with eauto with colist order aCPO.
+  intro Hle.
+  apply co_intro with (n - m + 1)...
+  apply alists_exists_nats; lia.
+Qed.
 
 (* Lemma alist_exists_afilter {A} (a : A) (l : alist A) (P : A -> bool) : *)
 (*   P a = true -> *)
@@ -436,60 +340,86 @@ Qed.
 (*     + constructor; auto. *)
 (* Qed. *)
 
-(* Lemma prime_exists_sieve_aux (n : nat) (l : colist nat) : *)
-(*   is_prime n -> *)
-(*   colist_forall (fun m => 1 < m) l -> *)
-(*   colist_exists (eq n) l -> *)
-(*   colist_exists (eq n) (sieve_aux l). *)
-(* Proof. *)
-(*   intros Hn Hlt Hex. *)
-(*   apply colist_exists_alist_exists in Hex. *)
-(*   destruct Hex as [k Hex]. *)
-(*   apply alist_exists_colist_exists. *)
-(*   exists k. *)
-(*   rewrite <- sieve_aux_prefix. *)
-(*   apply colist_forall_alist_forall with (n := k) in Hlt; auto. *)
-(*   revert Hlt Hex. *)
-(*   generalize (prefix k l) as l'. *)
-(*   clear l k; intro l.   *)
-(*   revert Hn; revert n. *)
-(*   induction l; intros n Hn Hlt Hex; inv Hlt; inv Hex. *)
-(*   - constructor; auto. *)
-(*   - constructor; auto. *)
-(*   - apply alist_exists_tl; auto. *)
-(*     apply alist_exists_afilter; auto. *)
-(*     unfold is_prime in Hn. *)
-(*     destruct Hn as [Hn Hn']. *)
-(*     apply Hn' in H1; auto. *)
-(*     destruct (Nat.eqb_spec (n mod a) O); auto. *)
+(* Lemma kdfgd k l : *)
+(*   prefix k (sieve_aux l) = asieve_aux (prefix k l). *)
+
+(* Lemma prefix_cofilter_filter {A} (i : nat) (f : A -> bool) (l : colist A) : *)
+(*   prefix i (cofilter f l) = filter f (prefix i l). *)
+(* Proof with eauto with aCPO colist order. *)
+(*   unfold cofilter, afilter, filter. *)
+(*   revert f l; induction i; intros f l; simpl; auto. *)
+(*   destruct l; simpl. *)
+(*   - rewrite co_fold_nil'; auto. *)
+(*   - rewrite co_fold_tau'... *)
+(*     rewrite <- IHi; reflexivity. *)
+(*   - rewrite co_fold_cons'... *)
+(*     destruct (f a); rewrite <- IHi; reflexivity. *)
 (* Qed. *)
 
-(* Lemma prime_exists_sieve_aux_nats (n m : nat) : *)
-(*   1 < m -> *)
-(*   m <= n -> *)
-(*   is_prime n -> *)
-(*   colist_exists (eq n) (sieve_aux (nats m)). *)
-(* Proof. *)
-(*   intros Hlt Hle Hn. *)
-(*   apply prime_exists_sieve_aux; auto. *)
-(*   - clear Hle Hn n. *)
-(*     revert Hlt; revert m. *)
-(*     cofix CH; intros n Hn. *)
-(*     rewrite unf_eq; constructor; auto. *)
-(*   - apply nats_exists; auto. *)
-(* Qed. *)
+Lemma prime_exists_sieve_aux (n : nat) (l : colist nat) :
+  is_prime n ->
+  colist_forall (fun m => 1 < m) l ->
+  colist_exists (eq n) l ->
+  colist_exists (eq n) (sieve_aux l).
+Proof with eauto with order colist aCPO.
+  intros Hn Hlt Hex.
+  apply co_elim in Hex...
+  destruct Hex as [k Hex].
+  apply co_intro with k...
+  apply coop_elim with (i := k) in Hlt...
+  revert Hlt Hex.
+  unfold ideal; simpl; unfold flip.
+  revert Hn; revert n l.
+  induction k; simpl; intros n l Hn Hlt Hex.
+  { inv Hex. }
+  unfold sieve_aux, asieve_aux.
+  destruct l; simpl; inv Hex.
+  - rewrite co_fold_tau'...
+    2: { intro; apply monotone_compose... }
+    constructor; auto.
+  - rewrite co_fold_cons'...
+    2: { intro; apply continuous_compose... }
+    constructor; auto.
+  - destruct Hlt.
+    rewrite co_fold_cons'...
+    2: { intro; apply continuous_compose... }
+    apply alist_exists_tl; auto.
+    rewrite prefix_cofilter.
+    apply alist_exists_filter; auto.
+    unfold is_prime in Hn.
+    destruct Hn as [Hn Hn'].
+    apply Hn' in H1; auto.
+    destruct (Nat.eqb_spec (n mod n0) O); auto.
+Qed.
 
-(* Lemma is_prime_2_le n : *)
-(*   is_prime n -> *)
-(*   2 <= n. *)
-(* Proof. intros [H ?]; inv H; auto. Qed. *)
+Lemma prime_exists_sieve_aux_nats (n m : nat) :
+  1 < m ->
+  m <= n ->
+  is_prime n ->
+  colist_exists (eq n) (sieve_aux (nats m)).
+Proof with eauto with colist order aCPO.
+  intros Hlt Hle Hn.
+  apply prime_exists_sieve_aux; auto.
+  - clear Hle Hn n.
+    apply coop_intro...
+    intro i; revert Hlt; revert m.
+    induction i; intros m Hlt; simpl; unfold flip; simpl.
+    { constructor. }
+    constructor; auto; apply IHi; lia.
+  - apply nats_exists; auto.
+Qed.
 
-(* Theorem prime_exists_sieve (n : nat) : *)
-(*   is_prime n -> *)
-(*   colist_exists (eq n) sieve. *)
-(* Proof. *)
-(*   intro Hn; apply prime_exists_sieve_aux_nats; auto; apply is_prime_2_le; auto. *)
-(* Qed. *)
+Lemma is_prime_2_le n :
+  is_prime n ->
+  2 <= n.
+Proof. intros [H ?]; inv H; auto. Qed.
+
+Theorem prime_exists_sieve (n : nat) :
+  is_prime n ->
+  colist_exists (eq n) sieve.
+Proof.
+  intro Hn; apply prime_exists_sieve_aux_nats; auto; apply is_prime_2_le; auto.
+Qed.
 
 (* Lemma prefix_cofilter {A} (P : A -> bool) (l : colist A) n : *)
 (*   prefix n (cofilter P l) = afilter P (prefix n l). *)
@@ -500,14 +430,14 @@ Qed.
 (*   - destruct (P a); rewrite IHn; auto. *)
 (* Qed. *)
 
-(* CoInductive alist_increasing_from : nat -> alist nat -> Prop := *)
-(* | alist_increasing_from_nil : forall n, alist_increasing_from n anil *)
-(* | alist_increasing_from_tau : forall n l, *)
-(*     alist_increasing_from n l -> *)
-(*     alist_increasing_from n (atau l) *)
-(* | alist_increasing_from_cons : forall n l, *)
-(*     alist_increasing_from (S n) l -> *)
-(*     alist_increasing_from n (acons n l). *)
+Inductive alist_increasing_from : nat -> alist nat -> Prop :=
+| alist_increasing_from_nil : forall n, alist_increasing_from n anil
+| alist_increasing_from_tau : forall n l,
+    alist_increasing_from n l ->
+    alist_increasing_from n (atau l)
+| alist_increasing_from_cons : forall n l,
+    alist_increasing_from (S n) l ->
+    alist_increasing_from n (acons n l).
 
 (* CoInductive increasing_from : nat -> colist nat -> Prop := *)
 (* | increasing_from_nil : forall n, increasing_from n conil *)
@@ -548,7 +478,7 @@ Qed.
 (*   1 < n -> *)
 (*   alist_increasing_from n l -> *)
 (*   alist_forall (fun n0 : nat => n <= n0 /\ (forall m : nat, n <= m -> n0 <> m -> n0 mod m <> 0)) *)
-(*     (sieve_aux_alist l). *)
+(*     (asieve_aux l). *)
 (* Proof. *)
 (*   revert n. *)
 (*   induction l; simpl; intros n Hlt Hl; inv Hl. *)
@@ -581,24 +511,86 @@ Qed.
 (*       destruct (Nat.eqb_spec a m); subst; lia. *)
 (* Qed. *)
 
-(* Lemma alist_increasing_from_nats n k : *)
-(*   alist_increasing_from k (prefix n (nats k)). *)
-(* Proof. *)
-(*   revert k; induction n; intro k; simpl. *)
-(*   { constructor. } *)
-(*   constructor; auto. *)
-(* Qed. *)
+(* Lemma kdfg : *)
+(*   alist_forall P (asieve_aux *)
 
-(* Theorem sieve_forall : *)
-(*   colist_forall is_prime sieve. *)
-(* Proof. *)
-(*   apply alist_forall_colist_forall; intro n. *)
-(*   unfold is_prime. *)
-(*   unfold sieve. *)
-(*   rewrite <- sieve_aux_prefix. *)
-(*   apply alist_forall_sieve_aux_alist; try lia. *)
-(*   apply alist_increasing_from_nats. *)
-(* Qed. *)
+Lemma alist_forall_sieve_aux_alist l n :
+  1 < n ->
+  alist_increasing_from n l ->
+  alist_forall (fun n0 : nat => n <= n0 /\ (forall m : nat, n <= m -> n0 <> m -> n0 mod m <> 0))
+    (asieve_aux' l).
+Proof with eauto with colist order aCPO.
+  (* rewrite asieve_aux_inj_asieve_aux'; unfold asieve_aux'. *)
+  (* intros H0 H1. *)
+  (* apply colist_forall_inj; unfold alist_forall. *)
+  (* revert H0 H1. *)
+  unfold alist_forall.
+  revert n.
+  induction l; simpl; intros n Hlt Hl; inv Hl.
+  { constructor. }
+  { unfold id; auto. }
+  split.
+  - split; auto.
+    intros n Hle Hneq.
+    (* a is strictly less than n so can't be a multiple of n. *)
+    intro HC.
+    apply Nat.mod_divides in HC; try lia.
+    destruct HC as [c HC]; subst.
+    destruct c; lia.
+  - assert (Hlt': 1 < S a) by lia.
+    specialize (IHl _ Hlt' H1).
+    eapply alist_forall_impl.
+    2: { apply alist_forall_afilter; apply IHl. }
+    intros n [[H0 H2] H3]; split.
+    + apply Bool.negb_true_iff in H3.
+      apply Nat.eqb_neq in H3.
+      (* H3 implies a <> n which together with H0 implies the goal. *)
+      lia.
+    + intros m Hle Hneq.
+      apply Bool.negb_true_iff in H3.
+      apply Nat.eqb_neq in H3.
+      intro HC.
+      eapply H2.
+      2: { eauto. }
+      2: { auto. }
+      destruct (Nat.eqb_spec a m); subst; lia.
+Qed.
+
+Lemma alist_increasing_from_nats n k :
+  alist_increasing_from k (prefix n (nats k)).
+Proof.
+  revert k; induction n; intro k; simpl.
+  { constructor. }
+  constructor; auto.
+Qed.
+
+Lemma prefix_sieve_aux (i : nat) (l : colist nat) :
+  prefix i (sieve_aux l) = asieve_aux' (prefix i l).
+Proof with eauto with aCPO colist order.
+  unfold sieve_aux, asieve_aux, asieve_aux'.
+  revert l; induction i; intro l; simpl; auto.
+  destruct l; simpl.
+  - rewrite co_fold_nil'; auto.
+  - rewrite co_fold_tau'...
+    2: { intro j; apply monotone_compose... }
+    rewrite IHi; auto.
+  - rewrite co_fold_cons'...
+    2: { intro j; apply continuous_compose... }
+    rewrite prefix_cofilter, IHi; auto.
+Qed.
+
+Theorem sieve_forall :
+  colist_forall is_prime sieve.
+Proof with eauto with colist order aCPO.
+  apply coop_intro...
+  intro n.
+  unfold is_prime.
+  unfold sieve.
+  unfold ideal; simpl; unfold flip.
+  rewrite prefix_sieve_aux.
+  apply alist_forall_sieve_aux_alist; try lia.
+  apply alist_increasing_from_nats.
+Qed.
 
 (* Inductive alist_nodup {A} : alist A -> Prop := *)
 (* | alist_nodup_nil : alist_nodup anil *)

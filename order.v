@@ -273,6 +273,14 @@ Lemma monotone_compose {A B C : Type} `{OType A} `{OType B} `{OType C}
 Proof. intros Hf Hg x y Hleq; apply Hg, Hf; auto. Qed.
 #[global] Hint Resolve monotone_compose : order.
 
+Lemma monotone_compose' {A B C : Type} `{OType A} `{OType B} `{OType C}
+  (f : A -> B) (g : B -> C) :
+  monotone f ->
+  monotone g ->
+  monotone (fun x => g (f x)).
+Proof. intros Hf Hg x y Hleq; apply Hg, Hf; auto. Qed.
+#[global] Hint Resolve monotone_compose' : order.
+
 Lemma monotone_antimonotone_compose {A B C : Type} `{OType A} `{OType B} `{OType C}
   (f : A -> B) (g : B -> C) :
   monotone f ->
@@ -1049,3 +1057,36 @@ Proof.
   - apply Hg; auto.
 Qed.
 #[global] Hint Resolve continuous_ite : order.
+
+Lemma leq_refl {A} `{OType A} (x : A) :
+  x ⊑ x.
+Proof. reflexivity. Qed.
+#[global] Hint Resolve leq_refl : order.
+
+Lemma continuous_disj (P : Prop) :
+  continuous (fun x : Prop => P \/ x).
+Proof.
+  intros ch Hch Q Hsup; unfold compose.
+  split.
+  - intros i [H|H]; auto.
+    destruct Hsup as [Hub Hlub].
+    right; apply (Hub i); auto.
+  - intros R HR [HP|HQ].
+    + apply (HR O); auto.
+    + destruct Hsup as [Hub Hlub]; eapply Hlub; auto.
+      intros i y; eapply HR; right; eauto.
+Qed.
+
+Lemma dec_continuous_conj (P : Prop) :
+  dec_continuous (fun x : Prop => P /\ x).
+Proof.
+  intros ch Hch Q Hinf; unfold compose.
+  split.
+  - intros i [H0 H1]; split; auto; apply Hinf; auto.
+  - intros R HR x; split.
+    + apply (HR O); auto.
+    + destruct Hinf as [Hlb Hglb].
+      eapply Hglb.
+      2: { apply x. }
+      intros i y; apply HR; auto.
+Qed.
