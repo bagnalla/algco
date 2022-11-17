@@ -380,21 +380,6 @@ Proof.
   - specialize (Hch i); rewrite Hchi in Hch; inv Hch; simpl; auto.
 Qed.
 
-(* Lemma cocons_chain_inv {A} (x y : A) (l l' : colist A) (i j : nat) (ch : nat -> colist A) : *)
-(*   chain ch -> *)
-(*   ch i = cocons x l -> *)
-(*   ch j = cocons y l' -> *)
-(*   x = y. *)
-(* Proof. *)
-(*   intros Hch Hi Hj. *)
-(*   destruct (Nat.leb_spec i j). *)
-(*   - eapply chain_leq in H; eauto. *)
-(*     rewrite Hi, Hj in H; inv H; reflexivity. *)
-(*   - apply Nat.lt_le_incl in H. *)
-(*     eapply chain_leq in H; eauto. *)
-(*     rewrite Hi, Hj in H; inv H; reflexivity. *)
-(* Qed. *)
-
 Lemma directed_cotau_cocons {A} (ch : nat -> colist A) i j a l1 l2 :
   directed ch ->
   ch i = cotau l1 ->
@@ -1183,44 +1168,6 @@ Lemma coop_fold_cons' {A B} {o : OType B} `{@ExtType B o} `{@ldCPO B o}
   g a z ⊑ z ->
   coop (afold z f g) (cocons a l) = g a (coop (afold z f g) l).
 Proof. intros Hz Hf Hg Hgz; apply ext, coop_fold_cons; auto. Qed.
-
-(* (** Special case for lifting a monotone alist transformer to a *)
-(*     continuous colist transformer. *) *)
-(* Definition morph {A B} (f : A -> alist B -> alist B) (l : alist A) : colist B := *)
-(*   inj (afold anil (@atau B) f l). *)
-
-(* Lemma co_morph_nil {A B} (f : A -> alist B -> alist B) : *)
-(*   co (morph f) conil = conil. *)
-(* Proof. *)
-(*   apply ext, supremum_sup, supremum_const', equ_arrow; intros []; reflexivity. *)
-(* Qed. *)
-
-(* Lemma co_morph_tau {A B} (f : A -> alist B -> alist B) (l : colist A) : *)
-(*   (forall a, Proper (leq ==> leq) (f a)) -> *)
-(*   co (morph f) (cotau l) = cotau (co (morph f) l). *)
-(* Proof. *)
-(*   intro Hf; apply ext; unfold morph; apply supremum_sup. *)
-(*   apply shift_supremum'' with (f := fun i => cotau (morph f (ideal l i))); auto. *)
-(*   { constructor. } *)
-(*   { apply continuous_cotau. *)
-(*     { apply monotone_directed; eauto with colist order. *)
-(*       - apply monotone_inj. *)
-(*       - apply chain_directed, chain_f_ideal. *)
-(*         apply monotone_afold; auto with colist order. *)
-(*         intros x y Hxy; constructor; auto. } *)
-(*     { apply dsup_spec. *)
-(*       { apply monotone_directed; auto with colist order. *)
-(*         - apply monotone_inj. *)
-(*         - apply chain_directed, chain_f_ideal. *)
-(*           apply monotone_afold; auto with colist order. *)
-(*           intros x y Hxy; constructor; auto. } } } *)
-(*   apply equ_arrow; intro i; reflexivity. *)
-(* Qed. *)
-
-(* Lemma co_morph_cons {A B} (f : A -> alist B -> alist B) (a : A) (l : colist A) : *)
-(*   (forall a, continuous (f a)) -> *)
-(*   co (morph f) (cocons a l) = inj (f a (morph f l)). *)
-(* Proof. *)
 
 (** Left co-fold as a raw CoFixpoint. *)
 CoFixpoint cofold {A B} (g : colist B -> A -> colist B)

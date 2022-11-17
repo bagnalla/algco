@@ -28,13 +28,6 @@ From algco Require Import aCPO axioms misc colist cpo order tactics.
 
 Local Open Scope order_scope.
 
-(* Fixpoint afilter {A} (f : A -> bool) (l : alist A) : alist A := *)
-(*   match l with *)
-(*   | anil => anil *)
-(*   | atau l' => atau (afilter f l') *)
-(*   | acons a l' => if f a then acons a (afilter f l') else atau (afilter f l') *)
-(*   end. *)
-
 CoFixpoint cofilter {A} (f : A -> bool) (l : colist A) : colist A :=
   match l with
   | conil => conil
@@ -345,16 +338,6 @@ Proof.
   intro Hn; apply prime_exists_sieve_aux_nats; auto; apply is_prime_2_le; auto.
 Qed.
 
-(* Lemma prefix_cofilter {A} (P : A -> bool) (l : colist A) n : *)
-(*   prefix n (cofilter P l) = filter P (prefix n l). *)
-(* Proof. *)
-(*   unfold filter. *)
-(*   revert l; induction n; intro l; simpl; auto. *)
-(*   destruct l; simpl; auto. *)
-(*   - rewrite IHn; auto. *)
-(*   - destruct (P a); rewrite IHn; auto. *)
-(* Qed. *)
-
 CoInductive alist_increasing_from : nat -> alist nat -> Prop :=
 | alist_increasing_from_nil : forall n, alist_increasing_from n anil
 | alist_increasing_from_tau : forall n l,
@@ -364,29 +347,9 @@ CoInductive alist_increasing_from : nat -> alist nat -> Prop :=
     alist_increasing_from (S n) l ->
     alist_increasing_from n (acons n l).
 
-CoInductive increasing_from : nat -> colist nat -> Prop :=
-| increasing_from_nil : forall n, increasing_from n conil
-| increasing_from_tau : forall n l,
-    increasing_from n l ->
-    increasing_from n (cotau l)
-| increasing_from_cons : forall n l,
-    increasing_from (S n) l ->
-    increasing_from n (cocons n l).
-
 Lemma alist_forall_afilter {A} (P : A -> Prop) (Q : A -> bool) (l : alist A) :
   alist_forall P l ->
   alist_forall (fun x => P x /\ Q x = true) (filter Q l).
-Proof.
-  unfold filter.
-  induction l; intro Hl; inv Hl; simpl.
-  - constructor.
-  - constructor; auto.
-  - destruct (Q a) eqn:HQa; constructor; auto.
-Qed.
-
-Lemma alist_forall_afilter' {A} (P : A -> Prop) (Q : A -> bool) (l : alist A) :
-  alist_forall P l ->
-  alist_forall P (filter Q l).
 Proof.
   unfold filter.
   induction l; intro Hl; inv Hl; simpl.
@@ -413,26 +376,20 @@ Proof.
   { constructor; auto. }
   constructor.
   - split; auto.
-    intros n Hle Hneq.
+    intros n Hle Hneq; intro HC.
     (* a is strictly less than n so can't be a multiple of n. *)
-    intro HC.
     apply Nat.mod_divides in HC; try lia.
-    destruct HC as [c HC]; subst.
-    destruct c; lia.
+    destruct HC as [c HC]; subst; destruct c; lia.
   - assert (Hlt': 1 < S a) by lia.
     specialize (IHl _ Hlt' H1).
     eapply alist_forall_impl.
     2: { apply alist_forall_afilter; eauto. }
     intros n [[H0 H2] H3]; split.
-    + apply Bool.negb_true_iff in H3.
-      apply Nat.eqb_neq in H3.
+    + apply Bool.negb_true_iff, Nat.eqb_neq in H3; lia.
       (* H3 implies a <> n which together with H0 implies the goal. *)
-      lia.
     + intros m Hle Hneq.
-      apply Bool.negb_true_iff in H3.
-      apply Nat.eqb_neq in H3.
-      intro HC.
-      eapply H2.
+      apply Bool.negb_true_iff, Nat.eqb_neq in H3.
+      intro HC; eapply H2.
       2: { eauto. }
       2: { auto. }
       destruct (Nat.eqb_spec a m); subst; lia.
@@ -455,6 +412,19 @@ Proof.
   rewrite <- sieve_aux_prefix.
   apply alist_forall_sieve_aux_alist; try lia.
   apply alist_increasing_from_nats.
+Qed.
+
+(** The rest is for nodup. *)
+
+Lemma alist_forall_afilter' {A} (P : A -> Prop) (Q : A -> bool) (l : alist A) :
+  alist_forall P l ->
+  alist_forall P (filter Q l).
+Proof.
+  unfold filter.
+  induction l; intro Hl; inv Hl; simpl.
+  - constructor.
+  - constructor; auto.
+  - destruct (Q a) eqn:HQa; constructor; auto.
 Qed.
 
 Inductive alist_nodup {A} : alist A -> Prop :=
@@ -564,12 +534,12 @@ Proof.
   apply colist_nodup_sieve_aux, colist_nodup_nats.
 Qed.
 
-Fixpoint remove_taus {A} (l : alist A) : alist A :=
-  match l with
-  | anil => anil
-  | atau l' => remove_taus l'
-  | acons a l' => acons a (remove_taus l')
-  end.
+(* Fixpoint remove_taus {A} (l : alist A) : alist A := *)
+(*   match l with *)
+(*   | anil => anil *)
+(*   | atau l' => remove_taus l' *)
+(*   | acons a l' => acons a (remove_taus l') *)
+(*   end. *)
 
 (* Eval compute in (remove_taus (prefix 100 sieve)). *)
 
