@@ -5,8 +5,11 @@ axioms.v
 colist.v
 cotree.v
 cpo.v
+eR.v
 misc.v
 order.v
+Q.v
+R.v
 sieve.v
 sieve2.v
 tactics.v
