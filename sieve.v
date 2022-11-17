@@ -180,6 +180,18 @@ Qed.
 (* From Coq Require Import ExtrOcamlBasic. *)
 (* Extraction "extract/sieve/sieve.ml" sieve. *)
 
+Inductive alist_exists {A} (P : A -> Prop) : alist A -> Prop :=
+| alist_exists_tau : forall l,
+    alist_exists P l ->
+    alist_exists P (atau l)
+| alist_exists_hd : forall a l,
+    P a ->
+    alist_exists P (acons a l)
+| alist_exists_tl : forall a l,
+    ~ P a ->
+    alist_exists P l ->
+    alist_exists P (acons a l).
+
 CoInductive colist_forall {A} (P : A -> Prop) : colist A -> Prop :=
 | colist_forall_nil : colist_forall P conil
 | colist_forall_tau : forall l,
@@ -281,6 +293,20 @@ Proof.
   apply alist_exists_colist_exists.
   exists (n - m + 1).
   apply alists_exists_nats; lia.
+Qed.
+
+Lemma alist_exists_filter {A} (a : A) (l : alist A) (P : A -> bool) :
+  P a = true ->
+  alist_exists (eq a) l ->
+  alist_exists (eq a) (filter P l).
+Proof.
+  unfold filter.
+  revert a P; induction l; intros x P HPx Hex; inv Hex; simpl.
+  - constructor; auto.
+  - rewrite HPx; constructor; auto.
+  - destruct (P a) eqn:HPa.
+    + apply alist_exists_tl; auto.
+    + constructor; auto.
 Qed.
 
 Lemma prime_exists_sieve_aux (n : nat) (l : colist nat) :

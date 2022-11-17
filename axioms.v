@@ -5,6 +5,8 @@
   we also use function extensionality and an extensionality axiom for
   cotrees (cotree.v). *)
 
+(** We also use propositional extensionality in order.v. *)
+
 From Coq Require Import
   ClassicalChoice
   IndefiniteDescription

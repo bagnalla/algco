@@ -1178,49 +1178,32 @@ CoFixpoint cofold {A B} (g : colist B -> A -> colist B)
   | cocons x xs => cotau (cofold g (g acc x) xs)
   end.
 
-Inductive alist_exists {A} (P : A -> Prop) : alist A -> Prop :=
-| alist_exists_tau : forall l,
-    alist_exists P l ->
-    alist_exists P (atau l)
-| alist_exists_hd : forall a l,
-    P a ->
-    alist_exists P (acons a l)
-| alist_exists_tl : forall a l,
-    ~ P a ->
-    alist_exists P l ->
-    alist_exists P (acons a l).
-
-#[global]
-  Instance monotone_alist_exists {A} (P : A -> Prop)
-: Proper (leq ==> leq) (alist_exists P).
-Proof.
-  intro a; induction a; intros b Hab Hex; inv Hab; inv Hex.
-  - constructor; apply IHa; auto.
-  - constructor; auto.
-  - apply alist_exists_tl; auto; apply IHa; auto.
-Qed.
-#[global] Hint Resolve monotone_alist_exists : colist.
-
-Definition colist_exists {A} (P : A -> Prop) : colist A -> Prop :=
-  co (alist_exists P).
-
-Definition alist_forall {A} (P : A -> Prop) : alist A -> Prop :=
-  afold True id (fun a x => P a /\ x).
-
-(* Inductive alist_forall {A} (P : A -> Prop) : alist A -> Prop := *)
-(* | alist_forall_nil : alist_forall P anil *)
-(* | alist_forall_tau : forall l, *)
-(*     alist_forall P l -> *)
-(*     alist_forall P (atau l) *)
-(* | alist_forall_cons : forall a l, *)
+(* Inductive alist_exists {A} (P : A -> Prop) : alist A -> Prop := *)
+(* | alist_exists_tau : forall l, *)
+(*     alist_exists P l -> *)
+(*     alist_exists P (atau l) *)
+(* | alist_exists_hd : forall a l, *)
 (*     P a -> *)
-(*     alist_forall P l -> *)
-(*     alist_forall P (acons a l). *)
+(*     alist_exists P (acons a l) *)
+(* | alist_exists_tl : forall a l, *)
+(*     ~ P a -> *)
+(*     alist_exists P l -> *)
+(*     alist_exists P (acons a l). *)
+
+Lemma forall_False_impl {A} (f : A -> Prop) :
+  forall x : A, False ⊑ f x.
+Proof. intros ? []. Qed.
+#[global] Hint Resolve forall_False_impl : colist.
 
 Lemma forall_impl_True {A} (f : A -> Prop) :
   forall x : A, f x ⊑ True.
 Proof. intros ? ?; apply I. Qed.
 #[global] Hint Resolve forall_impl_True : colist.
+
+Lemma forall_monotone_P_disj {A} (P : A -> Prop) :
+  forall a : A, Proper (leq ==> leq) (fun x : Prop => P a \/ x).
+Proof. intros a x y; simpl; unfold impl; intros H0 [H1|H1]; auto. Qed.
+#[global] Hint Resolve forall_monotone_P_disj : colist.
 
 Lemma forall_monotone_P_conj {A} (P : A -> Prop) :
   forall a : A, Proper (leq ==> leq) (fun x : Prop => P a /\ x).
@@ -1232,11 +1215,6 @@ Lemma forall_dec_continuous_P_conj {A} (P : A -> Prop) :
 Proof. intro a; apply dec_continuous_conj. Qed.
 #[global] Hint Resolve forall_dec_continuous_P_conj : colist.
 
-#[global]
-  Instance antimonotone_alist_forall {A} (P : A -> Prop)
-  : Proper (leq ==> flip leq) (alist_forall P).
-Proof. eauto with order colist. Qed.
-
 (* #[global] *)
 (*   Instance antimonotone_alist_forall {A} (P : A -> Prop) *)
 (*   : Proper (leq ==> flip leq) (alist_forall P). *)
@@ -1246,8 +1224,28 @@ Proof. eauto with order colist. Qed.
 (* Qed. *)
 (* #[global] Hint Resolve antimonotone_alist_forall : colist. *)
 
+Definition alist_exists {A} (P : A -> Prop) : alist A -> Prop :=
+  afold False id (fun a x => P a \/ x).
+
+Definition colist_exists {A} (P : A -> Prop) : colist A -> Prop :=
+  co (alist_exists P).
+
+Definition alist_forall {A} (P : A -> Prop) : alist A -> Prop :=
+  afold True id (fun a x => P a /\ x).
+
 Definition colist_forall {A} (P : A -> Prop) : colist A -> Prop :=
   coop (alist_forall P).
+
+#[global]
+  Instance monotone_alist_exists {A} (P : A -> Prop)
+: Proper (leq ==> leq) (alist_exists P).
+Proof. eauto with order colist. Qed.
+#[global] Hint Resolve monotone_alist_exists : colist.
+
+#[global]
+  Instance antimonotone_alist_forall {A} (P : A -> Prop)
+  : Proper (leq ==> flip leq) (alist_forall P).
+Proof. eauto with order colist. Qed.
 
 (* Fixpoint filter {A} (f : A -> bool) (l : alist A) : alist A := *)
 (*   match l with *)
@@ -1264,14 +1262,26 @@ Lemma alist_exists_filter {A} (a : A) (l : alist A) (P : A -> bool) :
   alist_exists (eq a) l ->
   alist_exists (eq a) (filter P l).
 Proof.
-  unfold filter.
-  revert a P; induction l; intros x P HPx Hex; inv Hex; simpl.
-  - constructor; auto.
-  - rewrite HPx; constructor; auto.
-  - destruct (P a) eqn:HPa.
-    + apply alist_exists_tl; auto.
-    + constructor; auto.
+  unfold filter, alist_exists.
+  revert a P; induction l; simpl; intros x P HPx Hex; unfold id; auto.
+  destruct Hex as [Hex|Hex]; subst.
+  - rewrite HPx; left; auto.
+  - destruct (P a) eqn:Hpa; simpl; auto.
 Qed.
+
+(* Lemma alist_exists_filter {A} (a : A) (l : alist A) (P : A -> bool) : *)
+(*   P a = true -> *)
+(*   alist_exists (eq a) l -> *)
+(*   alist_exists (eq a) (filter P l). *)
+(* Proof. *)
+(*   unfold filter. *)
+(*   revert a P; induction l; intros x P HPx Hex; inv Hex; simpl. *)
+(*   - constructor; auto. *)
+(*   - rewrite HPx; constructor; auto. *)
+(*   - destruct (P a) eqn:HPa. *)
+(*     + apply alist_exists_tl; auto. *)
+(*     + constructor; auto. *)
+(* Qed. *)
 
 (** Filtering colists. *)
 

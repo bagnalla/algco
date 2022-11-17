@@ -47,17 +47,10 @@ Qed.
 
 #[global]
   Instance monotone_asieve_aux : Proper (leq ==> leq) asieve_aux.
-Proof with eauto with colist order aCPO.
-  apply monotone_afold...
-  intro; apply continuous_monotone, continuous_compose...
-Qed.
+Proof. apply monotone_afold; eauto with colist order aCPO. Qed.
 #[global] Hint Resolve monotone_asieve_aux : colist.
 
 Definition sieve_aux : colist nat -> colist nat := co asieve_aux.
-
-(* Bad definition. *)
-(* CoFixpoint sieve (n : nat) : colist nat := *)
-(*   cocons n (cotau (cofilter (fun m => m mod n =? O) (cotau (sieve (S n))))). *)
 
 Definition sieve : colist nat := sieve_aux (nats 2).
 Definition sieve_list (n : nat) : colist nat := asieve_aux (prefix n (nats 2)).
@@ -71,7 +64,7 @@ Proof.
   { lia. }
   destruct (Nat.eqb_spec n m); subst.
   - constructor; auto.
-  - apply alist_exists_tl; auto; apply IHk; lia.
+  - right; apply IHk; lia.
 Qed.
 
 Lemma nats_exists (n m : nat) :
@@ -100,23 +93,21 @@ Proof with eauto with order colist aCPO.
   induction k; simpl; intros n l Hn Hlt Hex.
   { inv Hex. }
   unfold sieve_aux, asieve_aux.
-  destruct l; simpl; inv Hex.
+  unfold alist_exists in Hex.
+  destruct l; simpl in *; try contradiction.
   - rewrite co_fold_tau'...
-    2: { intro; apply monotone_compose... }
-    constructor; auto.
-  - rewrite co_fold_cons'...
-    2: { intro; apply continuous_compose... }
-    constructor; auto.
-  - destruct Hlt.
-    rewrite co_fold_cons'...
-    2: { intro; apply continuous_compose... }
-    apply alist_exists_tl; auto.
-    rewrite prefix_cofilter.
-    apply alist_exists_filter; auto.
-    unfold is_prime in Hn.
-    destruct Hn as [Hn Hn'].
-    apply Hn' in H1; auto.
-    destruct (Nat.eqb_spec (n mod n0) O); auto.
+    intro; apply monotone_compose...
+  - destruct Hex as [Hex|Hex]; subst.
+    + rewrite co_fold_cons'...
+      left; auto.
+    + rewrite co_fold_cons'...
+      destruct (Nat.eqb_spec n n0); subst.
+      { left; auto. }
+      right; rewrite prefix_cofilter.
+      destruct Hlt as [H Hlt].
+      apply alist_exists_filter; auto.
+      destruct Hn as [Hn Hn']; apply Hn' in H; auto.
+      destruct (Nat.eqb_spec (n mod n0) O); auto.
 Qed.
 
 Lemma prime_exists_sieve_aux_nats (n m : nat) :
@@ -203,10 +194,9 @@ Proof with eauto with aCPO colist order.
   destruct l; simpl.
   - rewrite co_fold_nil'; auto.
   - rewrite co_fold_tau'...
-    2: { intro j; apply monotone_compose... }
+    2: { intro; apply monotone_compose... }
     rewrite IHi; auto.
   - rewrite co_fold_cons'...
-    2: { intro j; apply continuous_compose... }
     rewrite prefix_cofilter, IHi; auto.
 Qed.
 

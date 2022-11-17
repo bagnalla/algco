@@ -761,6 +761,7 @@ Proof.
     apply continuous_monotone; auto.
   - apply Hf; auto.
 Qed.
+#[global] Hint Resolve continuous_compose : order.
 
 Lemma supremum_eventually_constant_at {A} `{OType A} (f : nat -> A) (x : A) :
   chain f ->
