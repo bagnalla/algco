@@ -2,11 +2,16 @@
 
 aCPO.v
 axioms.v
+cocwp.v
+cocwp_facts.v
 colist.v
 cotree.v
 cpo.v
 eR.v
+geometric_series.v
+itree.v
 misc.v
+mu.v
 order.v
 Q.v
 R.v

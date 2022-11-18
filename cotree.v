@@ -1846,6 +1846,8 @@ Proof.
     try reflexivity; intros; constructor.
 Qed.
 
+(** These could be implemented as co-folds to gain access to the
+    computation lemmas. *)
 Inductive atree_some {I A} (P : A -> Prop) : atree I A -> Prop :=
 | atree_some_leaf : forall x, P x -> atree_some P (aleaf x)
 | atree_some_tau : forall t, atree_some P t -> atree_some P (atau t)

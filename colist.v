@@ -1320,6 +1320,29 @@ Proof with eauto with colist order.
     destruct Hl; split; auto.
 Qed.
 
+Lemma prefix_inj_le {A} (l : alist A) (i : nat) :
+  alist_le (prefix i (inj l)) l.
+Proof.
+  revert l; induction i; simpl; intro l.
+  { constructor. }
+  destruct l; simpl.
+  - constructor.
+  - constructor; auto.
+  - constructor; auto.
+Qed.
+
+(* Lemma colist_forall_inj {A} (P : A -> Prop) (l : alist A) : *)
+(*   alist_forall P l -> *)
+(*   colist_forall P (inj l). *)
+(* Proof with eauto with colist order. *)
+(*   intro Hl. *)
+(*   apply coop_intro... *)
+(*   intro i. *)
+(*   unfold ideal; simpl; unfold flip. *)
+(*   eapply antimonotone_alist_forall; eauto. *)
+(*   apply prefix_inj_le. *)
+(* Qed. *)
+
 Lemma alist_forall_impl {A} (P Q : A -> Prop) (l : alist A) :
   (forall x, P x -> Q x) ->
   alist_forall P l ->
@@ -1350,3 +1373,4 @@ Proof with eauto with aCPO colist order.
   - rewrite co_fold_cons'...
     destruct (f a); rewrite <- IHi; reflexivity.
 Qed.
+
