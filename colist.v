@@ -24,7 +24,7 @@ From Coq Require Import
   ClassicalChoice
 .
 
-From algco Require Import aCPO axioms cpo misc order tactics.
+From algco Require Import aCPO axioms conat cpo misc order tactics.
 
 Local Open Scope order_scope.
 
@@ -32,18 +32,15 @@ Create HintDb colist.
 
 Inductive alist (A : Type) : Type :=
 | anil : alist A
-| atau : alist A -> alist A
 | acons : A -> alist A -> alist A.
 
 CoInductive colist (A : Type) : Type :=
-| conil : colist A
-| cotau : colist A -> colist A
+| conil : colist A (* bottom / divergence *)
 | cocons : A -> colist A -> colist A.
 
 Definition unf {A} (l : colist A) :=
   match l with
   | conil => conil
-  | cotau l => cotau l
   | cocons x xs => cocons x xs
   end.
 
@@ -52,9 +49,6 @@ Proof. destruct l; auto. Qed.
 
 CoInductive colist_le {A} : colist A -> colist A -> Prop :=
 | colist_le_conil : forall l, colist_le conil l
-| colist_le_tau : forall l1 l2,
-    colist_le l1 l2 ->
-    colist_le (cotau l1) (cotau l2)
 | colist_le_cocons : forall x l1 l2,
     colist_le l1 l2 ->
     colist_le (cocons x l1) (cocons x l2).
@@ -69,7 +63,6 @@ Proof. cofix CH; intros []; constructor; eauto. Qed.
 Proof.
   cofix CH; intros x y z Hxy Hyz; inv Hxy.
   - constructor.
-  - inv Hyz; constructor; eauto.
   - inv Hyz; constructor; eauto.
 Qed.
 
@@ -88,9 +81,6 @@ Proof. constructor. Qed.
 
 CoInductive colist_eq {A} : colist A -> colist A -> Prop :=
 | colist_eq_nil : colist_eq conil conil
-| colist_eq_tau : forall l l',
-    colist_eq l l' ->
-    colist_eq (cotau l) (cotau l')
 | colist_eq_cons : forall x l l',
     colist_eq l l' ->
     colist_eq (cocons x l) (cocons x l').
@@ -131,7 +121,6 @@ Fixpoint prefix {A} (n : nat) (l : colist A) : alist A :=
   | O => anil
   | S n' => match l with
            | conil => anil
-           | cotau l' => atau (prefix n' l')
            | cocons x xs => acons x (prefix n' xs)
            end
   end.
@@ -141,7 +130,6 @@ Fixpoint coprefix {A} (n : nat) (l : colist A) : colist A :=
   | O => conil
   | S n' => match l with
            | conil => conil
-           | cotau l' => cotau (coprefix n' l')
            | cocons x xs => cocons x (coprefix n' xs)
            end
   end.
@@ -163,20 +151,6 @@ Proof.
   etransitivity; eauto; etransitivity; eauto.
 Qed.
 
-Lemma continuous_cotau {A} : continuous (@cotau A).
-Proof.
-  intros ch Hch s Hs; split.
-  - intro i; constructor; apply Hs.
-  - intros x Hx.
-    destruct x; try solve [specialize (Hx (S O)); inv Hx].
-    pose proof Hx as Hx'.
-    specialize (Hx' (S O)).
-    inv Hx'.
-    constructor; apply Hs.
-    intro i; specialize (Hx i); inv Hx; auto.
-Qed.
-#[global] Hint Resolve continuous_cotau : colist.
-
 Lemma continuous_cocons {A} (a : A) : continuous (cocons a).
 Proof.
   intros ch Hch s Hs; split.
@@ -193,9 +167,6 @@ Qed.
 
 Inductive alist_le {A} : alist A -> alist A -> Prop :=
 | alist_le_conil : forall l, alist_le anil l
-| alist_le_tau : forall l1 l2,
-    alist_le l1 l2 ->
-    alist_le (atau l1) (atau l2)
 | alist_le_cocons : forall x l1 l2,
     alist_le l1 l2 ->
     alist_le (acons x l1) (acons x l2).
@@ -210,7 +181,6 @@ Proof. intro l; induction l; constructor; auto. Qed.
 Proof.
   intro a; induction a; intros b c Hab Hbc.
   - constructor.
-  - inv Hab; inv Hbc; constructor; eapply IHa; eauto.
   - inv Hab; inv Hbc; constructor; eapply IHa; eauto.
 Qed.
 
@@ -232,7 +202,6 @@ Proof. constructor. Qed.
 Proof.
   constructor; intro a; induction a; intros b [H0 H1]; inv H0; inv H1; auto.
   - f_equal; apply IHa; split; auto.
-  - f_equal; apply IHa; split; auto.
 Qed.
 
 Lemma prefix_monotone {A} (n : nat) :
@@ -249,11 +218,6 @@ Proof.
   - constructor.
   - destruct l.
     + constructor.
-    + destruct j; simpl.
-      * inv Hij.
-      * constructor; apply IHi; inv Hij.
-        { reflexivity. }
-        simpl; lia.
     + destruct j; simpl.
       * inv Hij.
       * constructor; apply IHi; inv Hij.
@@ -294,7 +258,6 @@ Proof.
   destruct t.
   - right; intro HC; inv HC.
   - left; constructor.
-  - left; constructor.
 Qed.
 
 Lemma not_anil_dec {A} (t : alist A) : { not_anil t } + { ~ not_anil t }.
@@ -302,20 +265,17 @@ Proof.
   destruct t.
   - right; intro HC; inv HC.
   - left; constructor.
-  - left; constructor.
 Qed.
 
 Definition step {A} (l : colist A) : colist A :=
   match l with
   | conil => conil
-  | cotau xs => xs
   | cocons _ xs => xs
   end.
 
 Definition lstep {A} (l : alist A) : alist A :=
   match l with
   | anil => anil
-  | atau xs => xs
   | acons _ xs => xs
   end.
 
@@ -324,7 +284,6 @@ CoFixpoint colist_sup {A} (ch : nat -> colist A) : colist A :=
   match LPO_option (fun n => not_conil_dec (ch n)) with
   | Some n => match ch n with
              | conil => conil
-             | cotau _ => cotau (colist_sup (step ∘ ch))
              | cocons x xs => cocons x (colist_sup (step ∘ ch))
              end
   | None => conil
@@ -336,7 +295,6 @@ Lemma chain_step {A} (ch : nat -> colist A) :
 Proof.
   intros Hch i; unfold compose; simpl.
   destruct (ch i) eqn:Hchi; simpl; try constructor.
-  - specialize (Hch i); rewrite Hchi in Hch; inv Hch; simpl; auto.
   - specialize (Hch i); rewrite Hchi in Hch; inv Hch; simpl; auto.
 Qed.
 
@@ -377,31 +335,6 @@ Proof.
   intros Hch i; unfold compose; simpl.
   destruct (ch i) eqn:Hchi; simpl; try constructor.
   - specialize (Hch i); rewrite Hchi in Hch; inv Hch; simpl; auto.
-  - specialize (Hch i); rewrite Hchi in Hch; inv Hch; simpl; auto.
-Qed.
-
-Lemma directed_cotau_cocons {A} (ch : nat -> colist A) i j a l1 l2 :
-  directed ch ->
-  ch i = cotau l1 ->
-  ch j = cocons a l2 ->
-  False.
-Proof.
-  intros Hch Hi Hj.
-  specialize (Hch i j); destruct Hch as [l [Hl Hl']].
-  rewrite Hi in Hl; rewrite Hj in Hl'.
-  inv Hl; rewrite <- H0 in Hl'; inv Hl'.
-Qed.
-
-Lemma directed_atau_acons {A} (ch : nat -> alist A) i j a l1 l2 :
-  directed ch ->
-  ch i = atau l1 ->
-  ch j = acons a l2 ->
-  False.
-Proof.
-  intros Hch Hi Hj.
-  specialize (Hch i j); destruct Hch as [l [Hl Hl']].
-  rewrite Hi in Hl; rewrite Hj in Hl'.
-  inv Hl; rewrite <- H0 in Hl'; inv Hl'.
 Qed.
 
 Lemma colist_sup_ub {A} (ch : nat -> colist A) :
@@ -425,20 +358,6 @@ Proof.
         specialize (Hch n i); destruct Hch as [k [H0 H1]].
         rewrite Hchn in H0; inv H0.
         rewrite Hchi in H1; inv H1.
-        rewrite <- H2 in H0; inv H0. 
-        constructor; auto.
-        replace c0 with ((step ∘ ch) i).
-        2: { unfold compose; rewrite Hchi; reflexivity. }
-        apply CH, directed_step; auto. }
-      { eapply directed_cotau_cocons in Hchn; eauto; contradiction. }
-    + clear Ho.
-      destruct (ch i) eqn:Hchi.
-      { constructor. }
-      { eapply directed_cotau_cocons in Hchn; eauto; try contradiction. }
-      { pose proof Hch as Hch'.
-        specialize (Hch n i); destruct Hch as [k [H0 H1]].
-        rewrite Hchn in H0; inv H0.
-        rewrite Hchi in H1; inv H1.
         rewrite <- H4 in H5; inv H5.
         constructor.
         replace c0 with ((step ∘ ch) i).
@@ -448,17 +367,6 @@ Proof.
     destruct (ch i); try constructor; exfalso; apply Ho; constructor.
 Qed.
 
-Lemma upper_bound_step_tau {A} (l : colist A) (ch : nat -> colist A) :
-  upper_bound (cotau l) ch ->
-  upper_bound l (step ∘ ch).
-Proof.
-  intros Hub i; specialize (Hub i); unfold compose.
-  destruct (ch i) eqn:Hchi.
-  - constructor.
-  - inv Hub; auto.
-  - inv Hub; auto.
-Qed.
-
 Lemma upper_bound_step_cons {A} (x : A) (l : colist A) (ch : nat -> colist A) :
   upper_bound (cocons x l) ch ->
   upper_bound l (step ∘ ch).
@@ -466,7 +374,6 @@ Proof.
   intros Hub i; specialize (Hub i); unfold compose.
   destruct (ch i) eqn:Hchi.
   - constructor.
-  - inv Hub; auto.
   - inv Hub; auto.
 Qed.
 
@@ -498,17 +405,6 @@ Proof.
     2: { constructor. }
     destruct (ch n) eqn:Hchn.
     + constructor.
-    (* + specialize (Hub n); rewrite Hchn in Hub; inv Hub. *)
-    + constructor; apply CH.
-      * apply directed_step; auto.
-      * apply upper_bound_step_tau; auto.
-    + specialize (Hub n); rewrite Hchn in Hub; inv Hub.
-  - rewrite unf_eq; simpl.
-    destruct (LPO_option (fun n : nat => not_conil_dec (ch n))) eqn:Ho.
-    2: { constructor. }
-    destruct (ch n) eqn:Hchn.
-    + constructor.
-    + specialize (Hub n); rewrite Hchn in Hub; inv Hub.
     + pose proof Hub as Hub'.
       specialize (Hub n); rewrite Hchn in Hub; inv Hub.
       constructor; apply CH; auto.
@@ -536,7 +432,6 @@ Qed.
 Fixpoint inj {A} (l : alist A) : colist A :=
   match l with
   | anil => conil
-  | atau xs => cotau (inj xs)
   | acons x xs => cocons x (inj xs)
   end.
 
@@ -559,27 +454,6 @@ Lemma equ_alist {A} (a b : alist A) :
   a === b -> a = b.
 Proof. intro Heq; apply list_le_antisym; apply Heq. Qed.
 
-Lemma supremum_lstep_tau {A} (l : alist A) (ch : nat -> alist A) :
-  supremum (atau l) ch ->
-  supremum l (lstep ∘ ch).
-Proof.
-  intros [Hub Hlub]; split.
-  - intro i; specialize (Hub i); unfold compose.
-    inv Hub; simpl; auto; constructor.
-  - unfold compose; intros y Hy.
-    unfold upper_bound in Hy.
-    simpl in Hy.
-    assert (H: upper_bound (atau y) ch).
-    { intro i.
-      specialize (Hy i); simpl in Hy.
-      destruct (ch i) eqn:Hchi.
-      - constructor.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
-        constructor; auto.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub. }
-    apply Hlub in H; inv H; auto.
-Qed.
-
 Lemma supremum_lstep_cons {A} (a : A) (l : alist A) (ch : nat -> alist A) :
   supremum (acons a l) ch ->
   supremum l (lstep ∘ ch).
@@ -596,46 +470,8 @@ Proof.
       destruct (ch i) eqn:Hchi.
       - constructor.
       - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
         constructor; auto. }
     apply Hlub in H; inv H; auto.
-Qed.
-
-Lemma supremum_atau {A} (l : alist A) (ch : nat -> alist A) :
-  supremum (atau l) ch ->
-  exists i l', ch i = atau l'.
-Proof.
-  intros [Hub Hlub].
-  destruct (strong_LPO (fun n => not_anil_dec (ch n))).
-  - destruct e as [n H].
-    specialize (Hub n).
-    destruct (ch n) eqn:Hchn.
-    + inv H.
-    + exists n, a; auto.
-    + inv Hub.
-  - assert (H: upper_bound anil ch).
-    { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
-      + constructor.
-      + exfalso; apply n; exists i; rewrite Hchi; constructor.
-      + inv Hub. }
-    apply Hlub in H; inv H.
-Qed.
-
-Lemma supremum_atau' {A} (l : alist A) (ch : nat -> alist A) :
-  supremum (atau l) ch ->
-  exists i l', ch i = atau l' /\ l' ⊑ l.
-Proof.
-  intros [Hub Hlub].
-  destruct (strong_LPO (fun n => not_anil_dec (ch n))).
-  - destruct e as [n H].
-    specialize (Hub n).
-    destruct (ch n) eqn:Hchn; inv H; inv Hub; exists n, a; split; auto.
-  - assert (H: upper_bound anil ch).
-    { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
-      + constructor.
-      + exfalso; apply n; exists i; rewrite Hchi; constructor.
-      + inv Hub. }
-    apply Hlub in H; inv H.
 Qed.
 
 Lemma supremum_acons' {A} (a : A) (l : alist A) (ch : nat -> alist A) :
@@ -652,28 +488,7 @@ Proof.
   - assert (H: upper_bound anil ch).
     { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
       + constructor.
-      + inv Hub.
       + exfalso; apply n; exists i; rewrite Hchi; constructor. }
-    apply Hlub in H; inv H.
-Qed.
-
-Lemma supremum_cotau {A} (t : colist A) (ch : nat -> colist A) :
-  supremum (cotau t) ch ->
-  exists i t', ch i = cotau t'.
-Proof.
-  intros [Hub Hlub].
-  destruct (strong_LPO (fun n => not_conil_dec (ch n))).
-  - destruct e as [n H].
-    specialize (Hub n).
-    destruct (ch n) eqn:Hchn.
-    + inv H.
-    + exists n, c; auto.
-    + inv Hub.
-  - assert (H: upper_bound conil ch).
-    { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
-      + constructor.
-      + exfalso; apply n; exists i; rewrite Hchi; constructor.
-      + inv Hub. }
     apply Hlub in H; inv H.
 Qed.
 
@@ -691,7 +506,6 @@ Proof.
   - assert (H: upper_bound conil ch).
     { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
       + constructor.
-      + inv Hub.
       + exfalso; apply n; exists i; rewrite Hchi; constructor. }
     apply Hlub in H; inv H.
 Qed.
@@ -704,19 +518,6 @@ Proof.
   revert ch; induction l; intros ch Hch Hl.
   - exists O; apply equ_alist; split; try constructor; apply Hl.
   - pose proof Hl as Hl'.
-    apply supremum_lstep_tau in Hl.
-    apply IHl in Hl; clear IHl.
-    2: { apply directed_lstep; auto. }
-    destruct Hl as [j Hj].
-    unfold compose in Hj.
-    unfold lstep in Hj.
-    destruct (ch j) eqn:Hchj; subst.
-    + apply supremum_atau' in Hl'.
-      destruct Hl' as [i [l' [Hi Hl']]]; inv Hl'; exists i; auto.
-    + exists j; auto.
-    + apply supremum_atau in Hl'; destruct Hl' as [i [l' Hl']].
-      exfalso; eapply directed_atau_acons; eauto.
-  - pose proof Hl as Hl'.
     apply supremum_lstep_cons in Hl.
     apply IHl in Hl; clear IHl.
     2: { apply directed_lstep; auto. }
@@ -726,8 +527,6 @@ Proof.
     destruct (ch j) eqn:Hchj; subst.
     + apply supremum_acons' in Hl'.
       destruct Hl' as [i [l' [Hi Hl']]]; inv Hl'; exists i; auto.
-    + destruct Hl' as [H0 H1]; specialize (H0 j).
-      rewrite Hchj in H0; inv H0; exists j; auto.
     + destruct Hl' as [H0 H1]; specialize (H0 j).
       rewrite Hchj in H0; inv H0; exists j; auto.
 Qed.
@@ -742,24 +541,12 @@ Proof.
   - destruct b.
     + constructor.
     + specialize (H (S O)); inv H.
-    + specialize (H (S O)); inv H.
   - destruct b.
-    + specialize (H (S O)); inv H.
-    + constructor; apply CH; intro i; specialize (H (S i)); inv H; auto.
-    + specialize (H (S O)); inv H.
-  - destruct b.
-    + specialize (H (S O)); inv H.
     + specialize (H (S O)); inv H.
     + pose proof H as H'.
       specialize (H' (S O)); inv H'.
       constructor; apply CH; intro i; specialize (H (S i)); inv H; auto.
 Qed.
-
-(* Lemma alist_le_colist_le' {A} (a b : colist A) : *)
-(*   (forall i, prefix i a ⊑ prefix i b) -> *)
-(*   a ⊑ b. *)
-(* Proof. *)
-(* Admitted. *)
 
 Lemma alist_le_colist_le {A} (a b : alist A) :
   a ⊑ b ->
@@ -767,7 +554,6 @@ Lemma alist_le_colist_le {A} (a b : alist A) :
 Proof.
   revert b; induction a; simpl; intros b Hab.
   - constructor.
-  - destruct b; inv Hab; constructor; apply IHa; auto.
   - destruct b; inv Hab; constructor; apply IHa; auto.
 Qed.
 
@@ -782,28 +568,6 @@ Proof.
   revert b; induction a; simpl; intros b Hab.
   - constructor.
   - destruct b; inv Hab; constructor; apply IHa; auto.
-  - destruct b; inv Hab; constructor; apply IHa; auto.
-Qed.
-
-Lemma supremum_step_tau {A} (t : colist A) (ch : nat -> colist A) :
-  supremum (cotau t) ch ->
-  supremum t (step ∘ ch).
-Proof.
-  intros [Hub Hlub]; split.
-  - intro i; specialize (Hub i); unfold compose.
-    inv Hub; simpl; auto; constructor.
-  - unfold compose; intros y Hy.
-    unfold upper_bound in Hy.
-    simpl in Hy.
-    assert (H: upper_bound (cotau y) ch).
-    { intro i.
-      specialize (Hy i); simpl in Hy.
-      destruct (ch i) eqn:Hchi.
-      - constructor.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
-        constructor; auto.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub. }
-    apply Hlub in H; inv H; auto.
 Qed.
 
 Lemma supremum_step_cons {A} (a : A) (l : colist A) (ch : nat -> colist A) :
@@ -822,7 +586,6 @@ Proof.
       destruct (ch i) eqn:Hchi.
       - constructor.
       - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
         constructor; auto. }
     apply Hlub in H; inv H; auto.
 Qed.
@@ -837,48 +600,11 @@ Proof.
     apply supremum_const'.
     apply equ_arrow; intro i; rewrite Hx; reflexivity.
   - assert (Hc: supremum x (step ∘ ch)).
-    { apply supremum_step_tau; auto. }
-    split.
-    + intro i; destruct (ch i) eqn:Hchi; simpl.
-      * constructor.
-      * destruct Hx as [Hub Hlub].
-        specialize (Hub i).
-        rewrite Hchi in Hub.
-        inv Hub.
-        constructor.
-        apply prefix_monotone; auto.
-      * destruct Hx as [Hub Hlub].
-        specialize (Hub i); rewrite Hchi in Hub; inv Hub.
-    + intros ub Hub; destruct ub.
-      * assert (H: forall i, ch i = conil).
-        { intro i; specialize (Hub i); simpl in Hub.
-          destruct (ch i); auto; inv Hub. }
-        assert (supremum conil ch).
-        { apply supremum_const'; apply equ_arrow; intro i.
-          unfold const; rewrite H; reflexivity. }
-        eapply supremum_unique in Hx; eauto.
-        apply equ_colist_eq in Hx; inv Hx.
-      * constructor.
-        eapply IHn.
-        2: { eauto. }
-        { apply directed_step; auto. }
-        intro i; specialize (Hub i); simpl in Hub.
-        unfold compose.
-        destruct (ch i) eqn:Hchi; simpl.
-        { destruct n; constructor. }
-        { inv Hub; auto. }
-        { inv Hub. }
-      * apply supremum_cotau in Hx.
-        destruct Hx as [i [t Ht] ].
-        specialize (Hub i); simpl in Hub; rewrite Ht in Hub; inv Hub.  
-  - assert (Hc: supremum x (step ∘ ch)).
     { eapply supremum_step_cons; eauto. }
     split.
     + intro i; destruct (ch i) eqn:Hchi; simpl.
       * constructor.
       * destruct Hx as [Hub Hlub].
-        specialize (Hub i); rewrite Hchi in Hub; inv Hub.
-      * destruct Hx as [Hub Hlub].
         specialize (Hub i).
         rewrite Hchi in Hub.
         inv Hub.
@@ -893,14 +619,6 @@ Proof.
           unfold const; rewrite H; reflexivity. }
         eapply supremum_unique in Hx; eauto.
         apply equ_colist_eq in Hx; inv Hx.
-      * pose proof Hx as Hx'.
-        apply supremum_cocons' in Hx'.
-        destruct Hx' as [i [l' [Hx' Hx'']]].
-        pose proof Hub as Hub'.
-        specialize (Hub' i).
-        simpl in Hub'.
-        rewrite Hx' in Hub'.
-        inv Hub'.
       * pose proof Hx as Hx'.
         apply supremum_cocons' in Hx'.
         destruct Hx' as [i [l' [Hx' Hx'']]].
@@ -918,7 +636,6 @@ Proof.
         unfold compose.
         destruct (ch i) eqn:Hchi; simpl.
         { destruct n; constructor. }
-        { inv Hub. }
         { inv Hub; auto. }
 Qed.
 
@@ -940,19 +657,6 @@ Proof.
       destruct l; inv Hub; constructor.
     + destruct l.
       * constructor.
-      * pose proof Hub as Hub'.
-        specialize (Hub' (S O)).
-        inv Hub'.
-        constructor; apply CH.
-        intro i.
-        specialize (Hub (S i)); simpl in Hub.
-        inv Hub; auto.
-      * specialize (Hub (S O)).
-        destruct l; inv Hub; constructor.
-    + destruct l.
-      * constructor.
-      * specialize (Hub (S O)).
-        destruct l; inv Hub; constructor.
       * pose proof Hub as Hub'.
         specialize (Hub' (S O)).
         inv Hub'.
@@ -990,83 +694,79 @@ Proof.
 Qed.
 (* #[global] Hint Resolve aCPO_colist : colist. *)
 
-Fixpoint afold {A B} (z : B) (f : B -> B) (g : A -> B -> B) (l : alist A) : B :=
+Fixpoint afold {A B} (z : B) (f : A -> B -> B) (l : alist A) : B :=
   match l with
   | anil => z
-  | atau xs => f (afold z f g xs)
-  | acons x xs => g x (afold z f g xs)
+  | acons x xs => f x (afold z f xs)
   end.
 
+(* Fixpoint para {A B} (z : B) (f : A -> alist A -> B -> B) (l : alist A) : B := *)
+(*   match l with *)
+(*   | anil => z *)
+(*   | acons x xs => f x xs (para z f xs) *)
+(*   end. *)
+
 #[global]
-  Instance monotone_afold {A B} `{OType B} (z : B) (f : B -> B) (g : A -> B -> B)
-  {Hz : forall b, z ⊑ afold z f g b}
-  {Hf : Proper (leq ==> leq) f}
-  {Hg : forall a, Proper (leq ==> leq) (g a)}
-  : Proper (leq ==> leq) (afold z f g).
+  Instance monotone_afold {A B} `{OType B} (z : B) (f : A -> B -> B)
+  {Hz : forall b, z ⊑ afold z f b}
+  {Hf : forall a, Proper (leq ==> leq) (f a)}
+  : Proper (leq ==> leq) (afold z f).
 Proof.
-  intro a; revert Hz Hf Hg; revert f;
-    induction a; intros f Hz Hf Hg b Hab; inv Hab; simpl.
+  intro a; revert Hz Hf; revert f;
+    induction a; intros f Hz Hf b Hab; inv Hab; simpl.
   - apply Hz.
-  - apply Hf; auto.
-  - apply Hg, IHa; auto.
+  - apply Hf, IHa; auto.
 Qed.
 #[global] Hint Resolve monotone_afold : colist.
 
+(* #[global] *)
+(*   Instance monotone_para {A B} `{OType B} (z : B) (f : A -> alist A -> B -> B) *)
+(*   {Hz : forall b, z ⊑ para z f b} *)
+(*   {Hf : forall a, Proper (leq ==> leq ==> leq) (f a)} *)
+(*   : Proper (leq ==> leq) (para z f). *)
+(* Proof. *)
+(*   intro a; revert Hz Hf; revert f; *)
+(*     induction a; intros f Hz Hf b Hab; inv Hab; simpl. *)
+(*   - apply Hz. *)
+(*   - apply Hf; auto. *)
+(* Qed. *)
+(* #[global] Hint Resolve monotone_para : colist. *)
+
+(* Definition copara {A B} `{OType B} (z : B) (f : A -> alist A -> B -> B) : colist A -> B := *)
+(*   co (para z f). *)
+
 #[global]
-  Instance antimonotone_afold {A B} `{OType B} (z : B) (f : B -> B) (g : A -> B -> B)
-  {Hz : forall b, afold z f g b ⊑ z}
-  {Hf : Proper (leq ==> leq) f}
-  {Hg : forall a, Proper (leq ==> leq) (g a)}
-  : Proper (leq ==> flip leq) (afold z f g).
+  Instance antimonotone_afold {A B} `{OType B} (z : B) (f : A -> B -> B)
+  {Hz : forall b, afold z f b ⊑ z}
+  {Hf : forall a, Proper (leq ==> leq) (f a)}
+  : Proper (leq ==> flip leq) (afold z f).
 Proof.
-  intro a; revert Hz Hf Hg; revert f;
-    induction a; intros f Hz Hf Hg b Hab; inv Hab; simpl.
+  intro a; revert Hz Hf; revert f;
+    induction a; intros f Hz Hf b Hab; inv Hab; simpl.
   - apply Hz.
   - apply Hf, IHa; auto.
-  - apply Hg, IHa; auto.
 Qed.
 #[global] Hint Resolve antimonotone_afold : colist.
 
 (** Computation lemmas for cofolds. *)
 
-Lemma co_fold_nil {A B} `{dCPO B} (z : B) (f : B -> B) (g : A -> B -> B) :
-  co (afold z f g) conil === z.
+Lemma co_fold_nil {A B} `{dCPO B} (z : B) (f : A -> B -> B) :
+  co (afold z f) conil === z.
 Proof.
   apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
-Lemma co_fold_tau {A B} `{dCPO B}
-  (z : B) (f : B -> B) (g : A -> B -> B) (l : colist A) :
-  (forall b, z ⊑ afold z f g b) ->
-  continuous f ->
-  (forall a, monotone (g a)) ->
-  z ⊑ f z ->
-  co (afold z f g) (cotau l) === f (co (afold z f g) l).
-Proof.
-  intros Hg Hf Hz Hgz.
-  apply supremum_sup.
-  apply shift_supremum'' with (f := fun i => f (afold z f g (ideal l i))); auto.
-  { apply Hf.
-    { apply monotone_directed; auto with colist order.
-      apply chain_directed, chain_ideal. }
-    { apply dsup_spec.
-      { apply monotone_directed; auto with colist order.
-        apply chain_directed, chain_ideal. } } }
-  apply equ_arrow; intro i; reflexivity.
-Qed.
-
 Lemma co_fold_cons {A B} `{dCPO B}
-  (z : B) (f : B -> B) (g : A -> B -> B) (a : A) (l : colist A) :
-  (forall b, z ⊑ afold z f g b) ->
-  monotone f ->
-  (forall a, continuous (g a)) ->
-  z ⊑ g a z ->
-  co (afold z f g) (cocons a l) === g a (co (afold z f g) l).
+  (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
+  (forall b, z ⊑ afold z f b) ->
+  (forall a, continuous (f a)) ->
+  z ⊑ f a z ->
+  co (afold z f) (cocons a l) === f a (co (afold z f) l).
 Proof.
-  intros Hz Hf Hg Hfaz.
+  intros Hz Hf Hfaz.
   apply supremum_sup.
-  apply shift_supremum'' with (f := fun i => g a (afold z f g (ideal l i))); auto.
-  { apply Hg.
+  apply shift_supremum'' with (f := fun i => f a (afold z f (ideal l i))); auto.
+  { apply Hf.
     { apply monotone_directed; auto with colist order.
       apply chain_directed, chain_ideal. }
     { apply dsup_spec.
@@ -1078,66 +778,35 @@ Qed.
 (** Equality computaton lemmas for cofolds. *)
 
 Lemma co_fold_nil' {A B} {o : OType B} `{@ExtType B o} `{@dCPO B o}
-  (z : B) (f : B -> B) (g : A -> B -> B) :
-  co (afold z f g) conil = z.
+  (z : B) (f : A -> B -> B) :
+  co (afold z f) conil = z.
 Proof. apply ext, co_fold_nil. Qed.
 
-Lemma co_fold_tau' {A B} {o : OType B} `{@ExtType B o} `{@dCPO B o}
-  (z : B) (f : B -> B) (g : A -> B -> B) (l : colist A) :
-  (forall b, z ⊑ afold z f g b) ->
-  continuous f ->
-  (forall a, monotone (g a)) ->
-  z ⊑ f z ->
-  co (afold z f g) (cotau l) = f (co (afold z f g) l).
-Proof. intros Hz Hf Hg Hfaz; apply ext, co_fold_tau; auto. Qed.
-
 Lemma co_fold_cons' {A B} {o : OType B} `{@ExtType B o} `{@dCPO B o}
-  (z : B) (f : B -> B) (g : A -> B -> B) (a : A) (l : colist A) :
-  (forall b, z ⊑ afold z f g b) ->
-  monotone f ->
-  (forall a, continuous (g a)) ->
-  z ⊑ g a z ->
-  co (afold z f g) (cocons a l) = g a (co (afold z f g) l).
-Proof. intros Hz Hf Hg Hfaz; apply ext, co_fold_cons; auto. Qed.
+  (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
+  (forall b, z ⊑ afold z f b) ->
+  (forall a, continuous (f a)) ->
+  z ⊑ f a z ->
+  co (afold z f) (cocons a l) = f a (co (afold z f) l).
+Proof. intros Hz Hf Hfaz; apply ext, co_fold_cons; auto. Qed.
 
-Lemma coop_fold_nil {A B} `{ldCPO B} (z : B) (f : B -> B) (g : A -> B -> B) :
-  coop (afold z f g) conil === z.
+Lemma coop_fold_nil {A B} `{ldCPO B} (z : B) (f : A -> B -> B) :
+  coop (afold z f) conil === z.
 Proof.
   apply infimum_inf, infimum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
-Lemma coop_fold_tau {A B} `{ldCPO B}
-  (z : B) (f : B -> B) (g : A -> B -> B) (l : colist A) :
-  (forall b, afold z f g b ⊑ z) ->
-  dec_continuous f ->
-  (forall a, monotone (g a)) ->
-  f z ⊑ z ->
-  coop (afold z f g) (cotau l) === f (coop (afold z f g) l).
-Proof with eauto with colist order.
-  intros Hg Hf Hz Hgz.
-  apply infimum_inf.
-  apply shift_infimum'' with (f := fun i => f (afold z f g (ideal l i))); auto.
-  { apply Hf.
-    { apply antimonotone_downward_directed...
-        apply chain_directed, chain_ideal. }
-    { apply dinf_spec.
-      { apply antimonotone_downward_directed...
-        apply chain_directed, chain_ideal. } } }
-  apply equ_arrow; intro i; reflexivity.
-Qed.
-
 Lemma coop_fold_cons {A B} `{ldCPO B}
-  (z : B) (f : B -> B) (g : A -> B -> B) (a : A) (l : colist A) :
-  (forall b, afold z f g b ⊑ z) ->
-  monotone f ->
-  (forall a, dec_continuous (g a)) ->
-  g a z ⊑ z ->
-  coop (afold z f g) (cocons a l) === g a (coop (afold z f g) l).
+  (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
+  (forall b, afold z f b ⊑ z) ->
+  (forall a, dec_continuous (f a)) ->
+  f a z ⊑ z ->
+  coop (afold z f) (cocons a l) === f a (coop (afold z f) l).
 Proof with eauto with colist order.
-  intros Hz Hf Hg Hfaz.
+  intros Hz Hf Hfaz.
   apply infimum_inf.
-  apply shift_infimum'' with (f := fun i => g a (afold z f g (ideal l i))); auto.
-  { apply Hg.
+  apply shift_infimum'' with (f := fun i => f a (afold z f (ideal l i))); auto.
+  { apply Hf.
     { apply antimonotone_downward_directed...
       apply chain_directed, chain_ideal. }
     { apply dinf_spec.
@@ -1147,48 +816,17 @@ Proof with eauto with colist order.
 Qed.
 
 Lemma coop_fold_nil' {A B} {o : OType B} `{@ExtType B o} `{@ldCPO B o}
-  (z : B) (f : B -> B) (g : A -> B -> B) :
-  coop (afold z f g) conil = z.
+  (z : B) (f : A -> B -> B) :
+  coop (afold z f) conil = z.
 Proof. apply ext, coop_fold_nil. Qed.
 
-Lemma coop_fold_tau' {A B} {o : OType B} `{@ExtType B o} `{@ldCPO B o}
-  (z : B) (f : B -> B) (g : A -> B -> B) (l : colist A) :
-  (forall b, afold z f g b ⊑ z) ->
-  dec_continuous f ->
-  (forall a, monotone (g a)) ->
-  f z ⊑ z ->
-  coop (afold z f g) (cotau l) = f (coop (afold z f g) l).
-Proof. intros Hz Hf Hg Hfz; apply ext, coop_fold_tau; auto. Qed.
-
 Lemma coop_fold_cons' {A B} {o : OType B} `{@ExtType B o} `{@ldCPO B o}
-  (z : B) (f : B -> B) (g : A -> B -> B) (a : A) (l : colist A) :
-  (forall b, afold z f g b ⊑ z) ->
-  monotone f ->
-  (forall a, dec_continuous (g a)) ->
-  g a z ⊑ z ->
-  coop (afold z f g) (cocons a l) = g a (coop (afold z f g) l).
-Proof. intros Hz Hf Hg Hgz; apply ext, coop_fold_cons; auto. Qed.
-
-(** Left co-fold as a raw CoFixpoint. *)
-CoFixpoint cofold {A B} (g : colist B -> A -> colist B)
-  (acc : colist B) (l : colist A) : colist B :=
-  match l with
-  | conil => acc
-  | cotau xs => cotau (cofold g acc xs)
-  | cocons x xs => cotau (cofold g (g acc x) xs)
-  end.
-
-(* Inductive alist_exists {A} (P : A -> Prop) : alist A -> Prop := *)
-(* | alist_exists_tau : forall l, *)
-(*     alist_exists P l -> *)
-(*     alist_exists P (atau l) *)
-(* | alist_exists_hd : forall a l, *)
-(*     P a -> *)
-(*     alist_exists P (acons a l) *)
-(* | alist_exists_tl : forall a l, *)
-(*     ~ P a -> *)
-(*     alist_exists P l -> *)
-(*     alist_exists P (acons a l). *)
+  (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
+  (forall b, afold z f b ⊑ z) ->
+  (forall a, dec_continuous (f a)) ->
+  f a z ⊑ z ->
+  coop (afold z f) (cocons a l) = f a (coop (afold z f) l).
+Proof. intros Hz Hf Hgz; apply ext, coop_fold_cons; auto. Qed.
 
 Lemma forall_False_impl {A} (f : A -> Prop) :
   forall x : A, False ⊑ f x.
@@ -1225,13 +863,13 @@ Proof. intro a; apply dec_continuous_conj. Qed.
 (* #[global] Hint Resolve antimonotone_alist_forall : colist. *)
 
 Definition alist_exists {A} (P : A -> Prop) : alist A -> Prop :=
-  afold False id (fun a x => P a \/ x).
+  afold False (fun a x => P a \/ x).
 
 Definition colist_exists {A} (P : A -> Prop) : colist A -> Prop :=
   co (alist_exists P).
 
 Definition alist_forall {A} (P : A -> Prop) : alist A -> Prop :=
-  afold True id (fun a x => P a /\ x).
+  afold True (fun a x => P a /\ x).
 
 Definition colist_forall {A} (P : A -> Prop) : colist A -> Prop :=
   coop (alist_forall P).
@@ -1247,15 +885,38 @@ Proof. eauto with order colist. Qed.
   : Proper (leq ==> flip leq) (alist_forall P).
 Proof. eauto with order colist. Qed.
 
-(* Fixpoint filter {A} (f : A -> bool) (l : alist A) : alist A := *)
-(*   match l with *)
-(*   | anil => anil *)
-(*   | atau l' => atau (filter f l') *)
-(*   | acons a l' => if f a then acons a (filter f l') else atau (filter f l') *)
-(*   end. *)
+(** Inversion lemma for colist_exists. *)
+Lemma colist_exists_cons {A} (P : A -> Prop) (a : A) (l : colist A) :
+  colist_exists P (cocons a l) -> P a \/ colist_exists P l.
+Proof with eauto with order colist.
+  unfold colist_exists, alist_exists; intro Hex.
+  rewrite co_fold_cons' in Hex...
+  intro; apply continuous_disj.
+Qed.
+
+Lemma colist_forall_nil {A} (P : A -> Prop) :
+  colist_forall P conil.
+Proof with eauto with order colist.
+  apply coop_intro...
+  intros []; constructor.
+Qed.
+
+Lemma colist_forall_cons {A} (P : A -> Prop) (a : A) (l : colist A) :
+  colist_forall P (cocons a l) <-> P a /\ colist_forall P l.
+Proof with eauto with order colist.
+  split.
+  - unfold colist_forall, alist_forall; intro Hex.
+    rewrite coop_fold_cons' in Hex...
+  - intros [H0 H1].
+    apply coop_intro...
+    intros [|i]; simpl; unfold flip; simpl.
+    { constructor. }
+    apply coop_elim with (i:=i) in H1...
+    constructor; auto.
+Qed.
 
 Definition filter {A} (f : A -> bool) : alist A -> alist A :=
-  afold anil (@atau A) (fun a l' => if f a then acons a l' else atau l').
+  afold anil (fun a l' => if f a then acons a l' else l').
 
 Lemma alist_exists_filter {A} (a : A) (l : alist A) (P : A -> bool) :
   P a = true ->
@@ -1286,12 +947,13 @@ Qed.
 (** Filtering colists. *)
 
 Definition afilter {A} (f : A -> bool) : alist A -> colist A :=
-  afold conil (@cotau A) (fun a l' => if f a then cocons a l' else cotau l').
+  afold conil (fun a l' => if f a then cocons a l' else l').
 
 #[global]
   Instance monotone_afilter {A} (f : A -> bool) : Proper (leq ==> leq) (afilter f).
 Proof.
-  apply monotone_afold; auto with order colist; intro; constructor.
+  apply monotone_afold; auto with order colist.
+  intros x a b Hab; destr; auto; constructor; auto.
 Qed.
 #[global] Hint Resolve monotone_afilter : colist.
 
@@ -1303,7 +965,6 @@ Proof with eauto with colist order.
   unfold cofilter, afilter, filter.
   induction l; simpl.
   - rewrite co_fold_nil'; auto.
-  - rewrite co_fold_tau', IHl...
   - rewrite co_fold_cons', IHl...
     destruct (P a); auto.
 Qed.
@@ -1315,7 +976,6 @@ Proof with eauto with colist order.
   unfold colist_forall, alist_forall.
   induction l; intro Hl; simpl.
   - rewrite coop_fold_nil'; auto.
-  - unfold id; rewrite coop_fold_tau'...
   - rewrite coop_fold_cons'...
     destruct Hl; split; auto.
 Qed.
@@ -1327,7 +987,6 @@ Proof.
   { constructor. }
   destruct l; simpl.
   - constructor.
-  - constructor; auto.
   - constructor; auto.
 Qed.
 
@@ -1349,8 +1008,18 @@ Lemma alist_forall_impl {A} (P Q : A -> Prop) (l : alist A) :
   alist_forall Q l.
 Proof.
   unfold alist_forall; induction l; intros HPQ HP; simpl; auto.
-  - unfold id; auto.
-  - destruct HP; split; auto.
+  destruct HP; split; auto.
+Qed.
+
+Lemma colist_forall_impl {A} (P Q : A -> Prop) (l : colist A) :
+  (forall x, P x -> Q x) ->
+  colist_forall P l ->
+  colist_forall Q l.
+Proof with eauto with colist order aCPO.
+  intros HPQ HP.
+  apply coop_intro...
+  intro i; apply coop_elim with (i:=i)in HP...
+  eapply alist_forall_impl; eauto.
 Qed.
 
 Lemma alist_forall_afilter {A} (P : A -> Prop) (Q : A -> bool) (l : alist A) :
@@ -1361,16 +1030,420 @@ Proof.
   destruct Hl; destruct (Q a) eqn:HQa; simpl; auto.
 Qed.
 
-Lemma prefix_cofilter {A} (i : nat) (f : A -> bool) (l : colist A) :
-  prefix i (cofilter f l) = filter f (prefix i l).
-Proof with eauto with aCPO colist order.
-  unfold cofilter, afilter, filter.
-  revert f l; induction i; intros f l; simpl; auto.
-  destruct l; simpl.
-  - rewrite co_fold_nil'; auto.
-  - rewrite co_fold_tau'...
-    rewrite <- IHi; reflexivity.
-  - rewrite co_fold_cons'...
-    destruct (f a); rewrite <- IHi; reflexivity.
+(* Inductive alist_colist_le {A} : alist A -> colist A -> Prop := *)
+(* | alist_colist_le_nil : forall l, alist_colist_le anil l *)
+(* | alist_colist_le_cons : forall x l1 l2, *)
+(*     alist_colist_le l1 l2 -> *)
+(*     alist_colist_le (acons x l1) (cocons x l2). *)
+(* #[global] Hint Constructors alist_colist_le : colist. *)
+
+(* #[global] *)
+(*   Instance antimonotone_alist_colist_le {A} : Proper (leq ==> flip leq) (@alist_colist_le A). *)
+(* Proof. *)
+(*   intro a; induction a; intros b Hab l Hl. *)
+(*   { constructor. } *)
+(*   inv Hab; inv Hl. *)
+(*   constructor; eapply IHa; eauto. *)
+(* Qed. *)
+(* #[global] Hint Resolve antimonotone_alist_colist_le : colist. *)
+
+Definition alist_colist_le {A} : alist A ->  colist A -> Prop :=
+  afold (const True) (fun a f l => match l with
+                             | conil => False
+                             | cocons b l' => a = b /\ f l'
+                             end).
+
+#[global]
+  Instance antimonotone_alist_colist_le {A} : Proper (leq ==> flip leq) (@alist_colist_le A).
+Proof.
+  apply antimonotone_afold.
+  - intros ? ? ?; apply I.
+  - intros a f g Hfg l Hl; destruct l; auto.
+    destruct Hl; subst; split; auto.
+    apply Hfg; auto.
+Qed.
+#[global] Hint Resolve antimonotone_alist_colist_le : colist.
+
+Definition colist_le' {A} : colist A -> colist A -> Prop :=
+  coop alist_colist_le.
+
+Lemma alist_colist_le_prefix {A} (l1 l2 : colist A) (i : nat) :
+  l1 ⊑ l2 ->
+  alist_colist_le (prefix i l1) l2.
+Proof.
+  revert l1 l2; induction i; intros l1 l2 Hle; simpl.
+  { constructor. }
+  destruct l1; inv Hle.
+  { constructor. }
+  constructor; auto; apply IHi; auto.
 Qed.
 
+Lemma colist_le'_inv_cons {A} (a : A) (l1 l2 : colist A) :
+  colist_le' (cocons a l1) l2 ->
+  exists l2', l2 = cocons a l2' /\ colist_le' l1 l2'.
+Proof with eauto with colist order aCPO.
+  intro Hle.
+  destruct l2; try solve [apply coop_elim2 with (i := S O) in Hle;
+                          eauto with colist order; inv Hle].
+  assert (a = a0).
+  { apply coop_elim2 with (i := S O) in Hle...
+    destruct Hle; auto. }
+  subst.
+  exists l2; split; auto.
+  apply coop_intro2...
+  intro i.
+  apply coop_elim2 with (i := S i) in Hle...
+  apply Hle.
+Qed.
+
+
+Lemma colist_le_colist_le' {A} (l1 l2 : colist A) :
+  l1 ⊑ l2 <-> colist_le' l1 l2.
+Proof with eauto with colist order aCPO.
+  split.
+  - intro Hle.
+    unfold colist_le'.
+    apply coop_intro2...
+    intro i; apply alist_colist_le_prefix; auto.
+  - revert l1 l2; cofix CH; intros l1 l2 Hle.
+    destruct l1.
+    { constructor. }
+    apply colist_le'_inv_cons in Hle.
+    destruct Hle as [l2' [? Hle]]; subst; constructor; apply CH; auto.
+Qed.
+
+Lemma alist_forall_filter {A} (P : A -> bool) (l : alist A) :
+  alist_forall (fun x => P x = true) (filter P l).
+Proof.
+  unfold filter.
+  induction l; simpl.
+  { constructor. }
+  destruct (P a) eqn:Pa.
+  - split; auto.
+  - auto.
+Qed.
+
+Inductive alist_nth {A} (P : A -> Prop) : nat -> alist A -> Prop :=
+| alist_nth_here : forall a l,
+    P a ->
+    alist_nth P O (acons a l)
+| alist_nth_there : forall n a l,
+    alist_nth P n l ->
+    alist_nth P (S n) (acons a l).
+
+Inductive nth' {A} (P : A -> Prop) : nat -> colist A -> Prop :=
+| nth'_here : forall a l,
+    P a ->
+    nth' P O (cocons a l)
+| nth'_there : forall n a l,
+    nth' P n l ->
+    nth' P (S n) (cocons a l).
+
+Inductive nth {A} (P : A -> Prop) : nat -> colist A -> Prop :=
+| nth_here : forall a l,
+    P a ->
+    nth P O (cocons a l)
+| nth_there : forall n a l,
+    ~ P a ->
+    nth P n l ->
+    nth P (S n) (cocons a l).
+
+Lemma nth_alist_exists_prefix {A} (P : A -> Prop) (l : colist A) (n : nat) :
+  nth P n l ->
+  alist_exists P (prefix (S n) l).
+Proof.
+  revert l; induction n; intros m Hm; inv Hm; simpl.
+  { left; auto. }
+  right; apply IHn; auto.
+Qed.
+
+Lemma forall_not_nth_colist_forall {A} (P : A -> Prop) (l : colist A) :
+  (forall n, ~ nth P n l) -> 
+  colist_forall (fun x => ~ P x) l.
+Proof with eauto with colist order aCPO.
+  intro Hl.
+  apply coop_intro...
+  intro i.
+  revert Hl; revert l; induction i; intros l Hl.
+  { constructor. }
+  simpl in *; unfold flip in *; simpl.
+  destruct l.
+  { constructor. }
+  constructor.
+  - specialize (Hl O); intro HC; apply Hl; constructor; auto.
+  - apply IHi.
+    pose proof Hl as Hl'.
+    specialize (Hl' O).
+    intro n; specialize (Hl (S n)).
+    intro HC; apply Hl.
+    constructor; auto.
+    intro HP; apply Hl'; constructor; auto.
+Qed.
+
+Lemma alist_forall_colist_le'_afilter {A} (P : A -> bool) (l : alist A) :
+  alist_forall (fun x : A => P x <> true) l ->
+  colist_le' (afilter P l) conil.
+Proof.
+  unfold colist_le', alist_colist_le, afilter.
+  induction l; intro Hl; simpl.
+  { rewrite coop_fold_nil'; apply I. }
+  destruct Hl.
+  destruct (P a); try congruence; clear H; auto.
+Qed.
+
+Lemma cofilter_all_neq_true_nil {A} (P : A -> bool) (l : colist A) :
+  colist_forall (fun x : A => P x <> true) l ->
+  cofilter P l = conil.
+Proof with eauto with colist order aCPO.
+  intro Hl.
+  apply ext.
+  split.
+  - apply colist_le_colist_le'.
+    unfold cofilter.
+    apply co_coopP...
+    { intros ch Hch a Ha; unfold compose.
+      apply apply_infimum, cocontinuous_coop... }
+    apply coop_intro.
+    { apply monotone_antimonotone_compose...
+      eapply cocontinuous_antimonotone.
+      intros ch Hch a Ha; unfold compose.
+      apply apply_infimum, cocontinuous_coop... }
+    intro i.
+    apply coop_elim with (i:=i) in Hl...
+    apply alist_forall_colist_le'_afilter; auto.
+  - constructor.
+Qed.
+
+Lemma prefix_cofilter {A} (P : A -> bool) (l : colist A) (i : nat) :
+  exists j, prefix i (cofilter P l) = filter P (prefix j l).
+Proof with eauto with colist order aCPO.
+  revert l; induction i; intro l; simpl.
+  { exists O; reflexivity. }
+  destruct (classic (exists k, nth (fun x => P x = true) k l)) as [[k Hk]|Hk].
+  - revert Hk. revert l.
+    induction k; intros l Hk; inv Hk.
+    + specialize (IHi l0); destruct IHi as [j Hj].
+      unfold cofilter, afilter, filter.
+      rewrite co_fold_cons'...
+      exists (S j); simpl.
+      rewrite H.
+      f_equal; eauto.
+    + apply IHk in H1.
+      unfold cofilter, afilter, filter.
+      rewrite co_fold_cons'...
+      destruct (P a) eqn:HPa; try congruence.
+      clear H0.
+      destruct H1 as [j Hj].
+      exists (S j).
+      unfold cofilter, afilter in Hj.
+      rewrite Hj.
+      unfold filter.
+      simpl. rewrite HPa. reflexivity.
+  - assert (H: forall k, ~ nth (fun x => P x = true) k l).
+    { intros k HC; apply Hk; exists k; auto. }
+    apply forall_not_nth_colist_forall in H.
+    apply cofilter_all_neq_true_nil in H; rewrite H; exists O; reflexivity.
+Qed.
+
+Lemma colist_forall_cofilter {A} (P : A -> bool) (l : colist A) :
+  colist_forall (fun x => P x = true) (cofilter P l).
+Proof with eauto with colist order aCPO.
+  apply coop_intro...
+  simpl; unfold flip.  
+  intro i.
+  generalize (prefix_cofilter P l i).
+  intros [j Hj].
+  rewrite Hj.
+  apply alist_forall_filter.
+Qed.
+
+Lemma alist_forall_conj {A} (P Q : A -> Prop) (l : alist A) :
+  alist_forall P l ->
+  alist_forall Q l ->
+  alist_forall (fun x => P x /\ Q x) l.
+Proof.
+  induction l; intros HP HQ; inv HP; inv HQ; constructor; auto.
+  apply IHl; auto.
+Qed.
+
+Lemma colist_forall_conj {A} (P Q : A -> Prop) (l : colist A) :
+  colist_forall P l ->
+  colist_forall Q l ->
+  colist_forall (fun x => P x /\ Q x) l.
+Proof with eauto with colist order aCPO.
+  intros HP HQ.
+  apply coop_intro...
+  intro i.
+  apply coop_elim with (i:=i) in HP...
+  apply coop_elim with (i:=i) in HQ...
+  apply alist_forall_conj; auto.
+Qed.
+
+Lemma alist_forall_filter' {A} (P : A -> Prop) (Q : A -> bool) (l : alist A) :
+  alist_forall P l ->
+  alist_forall P (filter Q l).
+Proof.
+  unfold filter.
+  induction l; intro Hl; inv Hl; simpl.
+  { constructor. }
+  destruct (Q a); auto; constructor; auto.
+  apply IHl; auto.
+Qed.
+
+Lemma colist_forall_cofilter' {A} (P : A -> Prop) (Q : A -> bool) (l : colist A) :
+  colist_forall P l ->
+  colist_forall P (cofilter Q l).
+Proof with eauto with colist order aCPO.
+  intro Hl.
+  apply coop_intro...
+  intro i.
+  generalize (prefix_cofilter Q l i).
+  intros [j Hj].
+  simpl; unfold flip.
+  rewrite Hj.
+  apply coop_elim with (i:=j) in Hl...
+  apply alist_forall_filter'; auto.
+Qed.
+
+Lemma colist_forall_cofilter_conj {A} (P : A -> Prop) (Q : A -> bool) (l : colist A) :
+  colist_forall P l ->
+  colist_forall (fun x => P x /\ Q x = true) (cofilter Q l).
+Proof with eauto with colist order aCPO.
+  intro Hl.
+  apply colist_forall_conj.
+  - apply colist_forall_cofilter'; auto.
+  - apply colist_forall_cofilter.
+Qed.
+
+Definition alist_length {A} : alist A -> conat :=
+  afold cozero (fun _ => cosucc).
+
+Definition alist_length' {A} : alist A -> nat :=
+  afold O (fun _ => S).
+
+#[global]
+  Instance monotone_alist_length {A} : Proper (leq ==> leq) (@alist_length A).
+Proof.
+  apply monotone_afold.
+  { intro; constructor. }
+  intros _; apply continuous_monotone, continuous_cosucc.
+Qed.
+
+Definition colist_length {A} : colist A -> conat :=
+  co alist_length.
+
+(* Definition morph {A B} (z : colist B) (f : colist B -> colist B) *)
+(*   (g : A -> colist B -> colist B) : colist A -> colist B := *)
+(*   co (afold z f g). *)
+
+Definition morph {A B} `{o: OType B} (z : B) (f : A -> B -> B) : colist A -> B :=
+  co (afold z f).
+
+(*
+Extract Constant morph => "
+  fun _ ->
+  fun z ->
+  fun f ->
+  fun g ->
+  let rec go = function
+    | lazy Conil -> z
+    | lazy (Cotau l) -> f l
+    | lazy (Cocons (a, l)) -> g a (go l) in
+  go
+".
+*)
+
+(** These should all be equivalent. *)
+
+Definition generative {A} (l : colist A) : Prop :=
+  forall i, prefix i l ⊏ prefix (S i) l.
+
+Definition generative' {A} (l : colist A) : Prop :=
+  forall n, nth' (const True) n l.
+
+Definition generative'' {A} (l : colist A) : Prop :=
+  colist_length l = omega.
+
+Definition generative''' {A} (l : colist A) : Prop :=
+  omega ⊑ colist_length l.
+
+(** Only safe for generative colists (no occurrences of nil). *)
+Extract Constant morph => "
+  \ o z f l ->
+    case l of
+      Conil -> z
+      Cocons a l' -> f a (morph o z f l')
+".
+
+Lemma colist_length_inj {A} (l : colist A) (n : nat) :
+  colist_length l = conat.inj n ->
+  exists al, l = inj al.
+Proof with eauto with colist conat order aCPO.
+  revert l; induction n; simpl; intros l Hl.
+  { exists anil; destruct l.
+    - reflexivity.
+    - unfold colist_length, alist_length in Hl.
+      rewrite co_fold_cons' in Hl...
+      inv Hl. }
+  destruct l.
+  - exists anil; reflexivity.
+  - unfold colist_length, alist_length in Hl.
+    rewrite co_fold_cons' in Hl...
+    inv Hl.
+    apply IHn in H0.
+    destruct H0 as [al ?]; subst.
+    exists (acons a al); auto.
+Qed.
+
+Lemma not_alist_nth_alist_length {A} (P : A -> Prop) (l : alist A) :
+  ~ alist_nth P (alist_length' l) l.
+Proof.
+  unfold alist_length'.
+  induction l; simpl; intro HC; inv HC.
+  apply IHl; auto.
+Qed.
+
+Lemma nth'_inj_alist_nth {A} (P : A -> Prop) (n : nat) (l : alist A) :
+  nth' P n (inj l) ->
+  alist_nth P n l.
+Proof.
+  revert n; induction l; intros n Hn; inv Hn; constructor; auto.
+Qed.
+
+Lemma generative'_generative'' {A} (l : colist A) :
+  generative' l <-> generative'' l.
+Proof with eauto with colist conat order aCPO.
+  unfold generative', generative''; split; intro H.
+  - destruct (@conat_finite_or_omega (colist_length l)); auto.
+    destruct H0 as [m Hm].
+    exfalso.
+    apply colist_length_inj in Hm.
+    destruct Hm as [al Hal]; subst.
+    specialize (H (alist_length' al)).
+    apply nth'_inj_alist_nth in H.
+    eapply not_alist_nth_alist_length; eauto.
+  - intro n; revert H; revert l.
+    unfold colist_length, alist_length.
+    induction n; intros l Hl.
+    { destruct l.
+      - rewrite co_fold_nil', (@conat.unf_eq omega) in Hl; inv Hl.
+      - constructor; apply I. }
+    destruct l.
+    + rewrite co_fold_nil', (@conat.unf_eq omega) in Hl; inv Hl.
+    + constructor.
+      apply IHn.
+      rewrite co_fold_cons' in Hl...
+      rewrite (@conat.unf_eq omega) in Hl.
+      inv Hl; auto.
+Qed.
+
+Lemma generative''_generative''' {A} (l : colist A) :
+  generative'' l <-> generative''' l.
+Proof.
+  unfold generative'', generative'''.
+  split.
+  - intro Heq; rewrite Heq; reflexivity.
+  - intro Hle.
+    apply ext; split; auto.
+    apply le_omega.
+Qed.

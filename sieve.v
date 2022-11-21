@@ -1,4 +1,4 @@
-(** * Sieve of Eratosthenes without algebraic coinduction. *)
+(** * Sieve of Eratosthenes with algebraic coinduction. *)
 
 Set Implicit Arguments.
 Set Contextual Implicit.
@@ -24,289 +24,82 @@ From Coq Require Import
   ClassicalChoice
 .
 
-From algco Require Import aCPO axioms misc colist cpo order tactics.
+From algco Require Import aCPO axioms misc conat colist cpo inf_primes order tactics.
 
 Local Open Scope order_scope.
 
-CoFixpoint cofilter {A} (f : A -> bool) (l : colist A) : colist A :=
-  match l with
-  | conil => conil
-  | cotau l' => cotau (cofilter f l')
-  | cocons a l' => if f a then cocons a (cofilter f l') else cotau (cofilter f l')
-  end.
-
 CoFixpoint nats (n : nat) : colist nat := cocons n (nats (S n)).
 
-Fixpoint sieve_aux_alist (l : alist nat) : alist nat :=
-  match l with
-  | anil => anil
-  | atau l' => atau (sieve_aux_alist l')
-  | acons n l' => acons n (filter (fun m => negb (m mod n =? O)) (sieve_aux_alist l'))
-  end.
+Definition asieve_aux' : alist nat -> alist nat :=
+  afold anil (fun n l' => acons n (filter (fun m => negb (m mod n =? O)) l')).
 
-CoFixpoint sieve_aux (l : colist nat) : colist nat :=
-  match l with
-  | conil => conil
-  | cotau l' => cotau (sieve_aux l')
-  | cocons n l' => cocons n (sieve_aux (cofilter (fun m => negb (m mod n =? O)) l'))
-  end.
+Definition asieve_aux : alist nat -> colist nat :=
+  afold conil (fun n l' => cocons n (cofilter (fun m => negb (m mod n =? O)) l')).
 
-(* Bad definition. *)
-(* CoFixpoint sieve (n : nat) : colist nat := *)
-(*   cocons n (cotau (cofilter (fun m => m mod n =? O) (cotau (sieve (S n))))). *)
+#[global]
+  Instance monotone_asieve_aux : Proper (leq ==> leq) asieve_aux.
+Proof. apply monotone_afold; eauto with colist order aCPO. Qed.
+#[global] Hint Resolve monotone_asieve_aux : colist.
+
+Definition sieve_aux : colist nat -> colist nat := co asieve_aux.
 
 Definition sieve : colist nat := sieve_aux (nats 2).
-Definition sieve_list (n : nat) : alist nat := sieve_aux_alist (prefix n (nats 2)).
+Definition sieve_list (n : nat) : colist nat := asieve_aux (prefix n (nats 2)).
 
-Lemma cofilter_comm_leq {A} (P Q : A -> bool) (l : colist A) :
-  cofilter P (cofilter Q l) ⊑ cofilter Q (cofilter P l).
-Proof.
-  simpl.
-  revert l P Q.
-  cofix CH; intros l P Q.
-  destruct l.
-  - rewrite unf_eq; constructor.
-  - rewrite unf_eq; simpl.
-    rewrite (@unf_eq _ (cofilter Q (cofilter P (cotau l)))); simpl.
-    constructor; auto.
-  - rewrite unf_eq; simpl.
-    rewrite (@unf_eq _ (cofilter Q (cofilter P (cocons a l)))); simpl.
-    destruct (P a) eqn:HPa, (Q a) eqn:HQa.
-    + rewrite HPa; constructor; auto.
-    + constructor; auto.
-    + rewrite HPa; constructor; auto.
-    + constructor; auto.
-Qed.
+(* Definition sieve' : colist nat := *)
+(*   morph conil (fun n l' => cocons n (cofilter (fun m => negb (m mod n =? O)) l')) (nats 2). *)
 
-Lemma cofilter_comm {A} (P Q : A -> bool) (l : colist A) :
-  cofilter P (cofilter Q l) = cofilter Q (cofilter P l).
-Proof. apply ext; split; apply cofilter_comm_leq. Qed.
-
-Lemma cofilter_comm_impl_leq {A} (P Q : A -> bool) (l : colist A) :
-  (forall a, P a = true -> Q a = true) ->
-  cofilter P (cofilter Q l) ⊑ cofilter P l.
-Proof.
-  revert l.
-  cofix CH; intros l HPQ.
-  destruct l; simpl.
-  - rewrite unf_eq; constructor.
-  - rewrite unf_eq; simpl.
-    rewrite (@unf_eq _ (cofilter P (cotau l))); simpl.
-    constructor; apply CH; auto.
-  - rewrite unf_eq; simpl.
-    rewrite (@unf_eq _ (cofilter P (cocons a l))); simpl.
-    destruct (Q a) eqn:HQa.
-    + destruct (P a); constructor; apply CH; auto.
-    + destruct (P a) eqn:HPa.
-      * apply HPQ in HPa; congruence.
-      * constructor; apply CH; auto.
-Qed.
-
-Lemma cofilter_comm_impl_leq' {A} (P Q : A -> bool) (l : colist A) :
-  (forall a, P a = true -> Q a = true) ->
-  cofilter P l ⊑ cofilter P (cofilter Q l).
-Proof.
-  revert l.
-  cofix CH; intros l HPQ.
-  destruct l; simpl.
-  - rewrite unf_eq; constructor.
-  - rewrite unf_eq; simpl.
-    rewrite (@unf_eq _ (cofilter P (cofilter Q (cotau l)))); simpl.
-    constructor; apply CH; auto.
-  - rewrite unf_eq; simpl.
-    rewrite (@unf_eq _ (cofilter P (cofilter Q (cocons a l)))); simpl.
-    destruct (P a) eqn:HPa.
-    + assert (HQa: Q a = true) by (apply HPQ; auto).
-      rewrite HQa, HPa; constructor; apply CH; auto.
-    + destruct (Q a) eqn:HQa.
-      * rewrite HPa; constructor; apply CH; auto.
-      * constructor; apply CH; auto.
-Qed.
-
-Lemma cofilter_comm_impl {A} (P Q : A -> bool) (l : colist A) :
-  (forall a, P a = true -> Q a = true) ->
-  cofilter P (cofilter Q l) = cofilter P l.
-Proof.
-  intro HPQ.
-  apply ext; split.
-  - apply cofilter_comm_impl_leq; auto.
-  - apply cofilter_comm_impl_leq'; auto.
-Qed.
-
-Lemma sieve_aux_prefix n l :
-  sieve_aux_alist (prefix n l) = prefix n (sieve_aux l).
-Proof.
-  revert l; induction n; intro l; simpl; auto.
-  destruct l; simpl; auto.
-  - rewrite IHn; reflexivity.
-  - rewrite IHn; f_equal.
-    clear IHn.
-    unfold filter.
-    revert n0 l.
-    induction n; intros m l; simpl; auto.
-    destruct l; simpl; auto.
-    + rewrite IHn; auto.
-    + destruct (n0 mod m =? O) eqn:Hmod; simpl.
-      * rewrite IHn; f_equal; f_equal; f_equal.
-        rename n0 into k.
-        apply cofilter_comm_impl.
-        intros i Hi.
-        apply Bool.negb_true_iff in Hi.
-        apply Bool.negb_true_iff.
-        (* k is a multiple of m. *)
-        (* i is not a multiple of m. *)
-        (* therefore, i is not a multiple of k. *)
-        destruct (Nat.eqb_spec (k mod m) 0); try congruence.
-        destruct (Nat.eqb_spec (i mod m) 0); try congruence.
-        destruct (Nat.eqb_spec (i mod k) 0); try congruence.
-        exfalso; apply n0; clear n0.
-        destruct i, m, k; auto.
-        { simpl; lia. }
-        { inv e. }
-        { inv e0. }
-        apply Nat.mod_divides in e; try lia.
-        apply Nat.mod_divides in e0; try lia.
-        apply Nat.mod_divides; try lia.
-        destruct e as [a Ha].
-        destruct e0 as [b Hb].
-        eexists.
-        rewrite Hb. rewrite Ha. rewrite Nat.mul_assoc; reflexivity.
-      * rewrite IHn, cofilter_comm; auto.
-Qed.
-
-(* Eval compute in (sieve_list 100). *)
-
-(* (** Extracting the sieve. *) *)
 (* From Coq Require Import ExtrOcamlBasic. *)
-(* Extraction "extract/sieve/sieve.ml" sieve. *)
+(* Extraction "extract/sieve/sieve.ml" sieve'. *)
 
-Inductive alist_exists {A} (P : A -> Prop) : alist A -> Prop :=
-| alist_exists_tau : forall l,
-    alist_exists P l ->
-    alist_exists P (atau l)
-| alist_exists_hd : forall a l,
-    P a ->
-    alist_exists P (acons a l)
-| alist_exists_tl : forall a l,
-    ~ P a ->
-    alist_exists P l ->
-    alist_exists P (acons a l).
-
-CoInductive colist_forall {A} (P : A -> Prop) : colist A -> Prop :=
-| colist_forall_nil : colist_forall P conil
-| colist_forall_tau : forall l,
-    colist_forall P l ->
-    colist_forall P (cotau l)
-| colist_forall_cons : forall a l,
-    P a ->
-    colist_forall P l ->
-    colist_forall P (cocons a l).
-
-Inductive alist_forall {A} (P : A -> Prop) : alist A -> Prop :=
-| alist_forall_nil : alist_forall P anil
-| alist_forall_tau : forall l,
-    alist_forall P l ->
-    alist_forall P (atau l)
-| alist_forall_cons : forall a l,
-    P a ->
-    alist_forall P l ->
-    alist_forall P (acons a l).
-
-Lemma alist_forall_colist_forall {A} (P : A -> Prop) (l : colist A) :
-  (forall n, alist_forall P (prefix n l)) -> colist_forall P l.
-Proof.
-  revert P l; cofix CH; intros P l H.
-  destruct l.
-  - constructor.
-  - constructor; apply CH; intro n.
-    specialize (H (S n)); inv H; auto.
-  - assert (colist_forall P l).
-    { apply CH; intro n; specialize (H (S n)); inv H; auto. }
-    specialize (H (S O)); inv H; constructor; auto.
-Qed.
-
-Lemma colist_forall_alist_forall {A} (P : A -> Prop) (l : colist A) :
-  colist_forall P l -> (forall n, alist_forall P (prefix n l)).
-Proof.
-  intros H n.
-  revert l H; induction n; intros l H; simpl.
-  { constructor. }
-  inv H; constructor; auto.
-Qed.
-
-Inductive colist_exists {A} (P : A -> Prop) : colist A -> Prop :=
-| colist_exists_tau : forall l,
-    colist_exists P l ->
-    colist_exists P (cotau l)
-| colist_exists_hd : forall a l,
-    P a ->
-    colist_exists P (cocons a l)
-| colist_exists_tl : forall a l,
-    ~ P a ->
-    colist_exists P l ->
-    colist_exists P (cocons a l).
-
-Lemma alist_exists_colist_exists {A} (P : A -> Prop) (l : colist A) :
-  (exists n, alist_exists P (prefix n l)) -> colist_exists P l.
-Proof.
-  intros [n H].
-  revert H. revert l.
-  induction n; simpl; intros l H.
-  { inv H. }
-  destruct l; inv H.
-  - constructor; apply IHn; auto.
-  - constructor; auto.
-  - apply colist_exists_tl; auto.
-Qed.
-
-Lemma colist_exists_alist_exists {A} (P : A -> Prop) (l : colist A) :
-  colist_exists P l ->  exists n, alist_exists P (prefix n l).
-Proof.
-  induction 1.
-  - destruct IHcolist_exists as [n IH].
-    exists (S n).
-    simpl; constructor; auto.
-  - exists (S O); constructor; auto.
-  - destruct IHcolist_exists as [n IH].
-    exists (S n); apply alist_exists_tl; auto.
-Qed.
+(* From Coq Require Import ExtrHaskellBasic. *)
+(* Extraction Language Haskell. *)
+(* Extraction "extract/sieve/Sieve.hs" sieve'. *)
 
 Lemma alists_exists_nats n m k :
   m <= n ->
   n < m + k ->
   alist_exists (eq n) (prefix k (nats m)).
 Proof.
-  revert n m; induction k; intros n m H0 H1.
+  revert n m; induction k; intros n m H0 H1; simpl.
   { lia. }
-  simpl.
   destruct (Nat.eqb_spec n m); subst.
   - constructor; auto.
-  - apply alist_exists_tl; auto.
-    apply IHk; lia.
+  - right; apply IHk; lia.
 Qed.
 
 Lemma nats_exists (n m : nat) :
   m <= n ->
   colist_exists (eq n) (nats m).
-Proof.
+Proof with eauto with colist order aCPO.
   intro Hle.
-  apply alist_exists_colist_exists.
-  exists (n - m + 1).
+  apply co_intro with (n - m + 1)...
   apply alists_exists_nats; lia.
 Qed.
 
-Lemma alist_exists_filter {A} (a : A) (l : alist A) (P : A -> bool) :
+Lemma alist_exists_prefix_cofilter {A} (P : A -> bool) (a : A) (l : colist A) (i j : nat) :
+  i <= j ->
   P a = true ->
-  alist_exists (eq a) l ->
-  alist_exists (eq a) (filter P l).
-Proof.
-  unfold filter.
-  revert a P; induction l; intros x P HPx Hex; inv Hex; simpl.
-  - constructor; auto.
-  - rewrite HPx; constructor; auto.
-  - destruct (P a) eqn:HPa.
-    + apply alist_exists_tl; auto.
-    + constructor; auto.
+  alist_exists (eq a) (prefix i l) ->
+  alist_exists (eq a) (prefix j (cofilter P l)).
+Proof with eauto with order colist aCPO.
+  revert a l j; induction i; simpl; intros a l j Hle Ha Hex.
+  { destruct Hex. }
+  destruct l.
+  { destruct Hex. }
+  unfold cofilter, afilter.
+  rewrite co_fold_cons'...
+  destruct Hex as [?|Hex]; subst.
+  - rewrite Ha.
+    destruct j; try lia.
+    left; auto.
+  - destruct j; try lia.
+    simpl.
+    destruct (P a0) eqn:HPa0.
+    + right; apply IHi; auto; lia.
+    + specialize (IHi a l (S j)).
+      simpl in IHi.
+      apply IHi; try lia; auto.
 Qed.
 
 Lemma prime_exists_sieve_aux (n : nat) (l : colist nat) :
@@ -314,42 +107,47 @@ Lemma prime_exists_sieve_aux (n : nat) (l : colist nat) :
   colist_forall (fun m => 1 < m) l ->
   colist_exists (eq n) l ->
   colist_exists (eq n) (sieve_aux l).
-Proof.
-  intros Hn Hlt Hex.
-  apply colist_exists_alist_exists in Hex.
-  destruct Hex as [k Hex].
-  apply alist_exists_colist_exists.
-  exists k.
-  rewrite <- sieve_aux_prefix.
-  apply colist_forall_alist_forall with (n := k) in Hlt; auto.
-  revert Hlt Hex.
-  generalize (prefix k l) as l'.
-  clear l k; intro l.  
-  revert Hn; revert n.
-  induction l; intros n Hn Hlt Hex; inv Hlt; inv Hex.
-  - constructor; auto.
-  - constructor; auto.
-  - apply alist_exists_tl; auto.
-    apply alist_exists_filter; auto.
-    unfold is_prime in Hn.
-    destruct Hn as [Hn Hn'].
-    apply Hn' in H1; auto.
-    destruct (Nat.eqb_spec (n mod a) O); auto.
-Qed.
+Proof with eauto with order colist aCPO.
+  intros Hn Hall Hex.
+  unfold sieve_aux.
+  apply co_coP...
+  { apply continuous_co... }
+  apply co_elim in Hex...
+  destruct Hex as [i Hex].
+  apply co_intro with i.
+  { apply monotone_compose...    
+    apply continuous_monotone.
+    apply continuous_co... }
+  unfold compose; simpl in *; unfold flip in *.
+  unfold asieve_aux.
+  revert Hall Hex Hn.
+  revert l n.
+  induction i; simpl; intros l n Hall Hex Hn.
+  { destruct Hex. }
+  destruct l.
+  { destruct Hex. }
+  simpl.
+  destruct Hex; subst.
+  - unfold colist_exists, alist_exists.
+    rewrite co_fold_cons'...
+    intro a; apply continuous_disj.
+  - unfold colist_forall, alist_forall in Hall.
+    rewrite coop_fold_cons' in Hall...
+    destruct Hall as [Hlt Hall].
 
-Lemma prime_exists_sieve_aux_nats (n m : nat) :
-  1 < m ->
-  m <= n ->
-  is_prime n ->
-  colist_exists (eq n) (sieve_aux (nats m)).
-Proof.
-  intros Hlt Hle Hn.
-  apply prime_exists_sieve_aux; auto.
-  - clear Hle Hn n.
-    revert Hlt; revert m.
-    cofix CH; intros n Hn.
-    rewrite unf_eq; constructor; auto.
-  - apply nats_exists; auto.
+    apply IHi in H; auto.
+    apply co_elim in H...
+    destruct H as [j Hex]; simpl in Hex; unfold flip in Hex.
+    apply co_intro with (S j)...
+    simpl; unfold flip; simpl.
+    destruct (Nat.eqb_spec n n0); subst.
+    { left; auto. }
+    right.
+    eapply alist_exists_prefix_cofilter; auto.
+    destruct Hn as [Hn Hn'].
+    specialize (Hn' n0 Hlt n1).
+    apply Bool.negb_true_iff.
+    destruct (Nat.eqb_spec (n mod n0) 0); lia.
 Qed.
 
 Lemma is_prime_2_le n :
@@ -357,59 +155,60 @@ Lemma is_prime_2_le n :
   2 <= n.
 Proof. intros [H ?]; inv H; auto. Qed.
 
+Lemma prime_exists_asieve_aux_nats (n m : nat) :
+  1 < m ->
+  m <= n ->
+  is_prime n ->
+  colist_exists (eq n) (sieve_aux (nats m)).
+Proof with eauto with colist order aCPO.
+  intros Hlt Hle Hprime.
+  generalize (nats_exists Hle); intro H.
+  apply prime_exists_sieve_aux; auto.
+  apply coop_intro...
+  intro i; clear Hprime H Hle n.
+  simpl; unfold flip.
+  revert Hlt; revert m.
+  induction i; intros m Hlt; simpl.
+  { apply I. }
+  split; auto.
+  apply IHi; lia.
+Qed.
+
 Theorem prime_exists_sieve (n : nat) :
   is_prime n ->
   colist_exists (eq n) sieve.
-Proof.
-  intro Hn; apply prime_exists_sieve_aux_nats; auto; apply is_prime_2_le; auto.
+Proof with eauto with colist order aCPO.
+  intro Hn.
+  apply prime_exists_asieve_aux_nats; auto; try lia.
+  apply is_prime_2_le; auto.
 Qed.
 
-CoInductive alist_increasing_from : nat -> alist nat -> Prop :=
+Inductive alist_increasing_from : nat -> alist nat -> Prop :=
 | alist_increasing_from_nil : forall n, alist_increasing_from n anil
-| alist_increasing_from_tau : forall n l,
-    alist_increasing_from n l ->
-    alist_increasing_from n (atau l)
 | alist_increasing_from_cons : forall n l,
     alist_increasing_from (S n) l ->
     alist_increasing_from n (acons n l).
 
-Lemma alist_forall_afilter {A} (P : A -> Prop) (Q : A -> bool) (l : alist A) :
-  alist_forall P l ->
-  alist_forall (fun x => P x /\ Q x = true) (filter Q l).
-Proof.
-  unfold filter.
-  induction l; intro Hl; inv Hl; simpl.
-  - constructor.
-  - constructor; auto.
-  - destruct (Q a) eqn:HQa; constructor; auto.
-Qed.
-
-Lemma alist_forall_impl {A} (P Q : A -> Prop) (l : alist A) :
-  (forall x, P x -> Q x) ->
-  alist_forall P l ->
-  alist_forall Q l.
-Proof. induction l; intros HPQ HP; inv HP; constructor; auto. Qed.
-
-Lemma alist_forall_sieve_aux_alist l n :
+Lemma colist_forall_asieve_aux l n :
   1 < n ->
   alist_increasing_from n l ->
-  alist_forall (fun n0 : nat => n <= n0 /\ (forall m : nat, n <= m -> n0 <> m -> n0 mod m <> 0))
-    (sieve_aux_alist l).
-Proof.
-  revert n.
+  colist_forall (fun n0 : nat => n <= n0 /\ (forall m : nat, n <= m -> n0 <> m -> n0 mod m <> 0))
+    (asieve_aux l).
+Proof with eauto with colist order aCPO.
+  unfold asieve_aux.
+  unfold colist_forall, alist_forall; revert n.
   induction l; simpl; intros n Hlt Hl; inv Hl.
-  { constructor. }
-  { constructor; auto. }
-  constructor.
-  - split; auto.
-    intros n Hle Hneq; intro HC.
+  { rewrite coop_fold_nil'... }
+  rewrite coop_fold_cons'...
+  split.
+  - split; auto; intros n Hle Hneq HC.
     (* a is strictly less than n so can't be a multiple of n. *)
     apply Nat.mod_divides in HC; try lia.
     destruct HC as [c HC]; subst; destruct c; lia.
   - assert (Hlt': 1 < S a) by lia.
     specialize (IHl _ Hlt' H1).
-    eapply alist_forall_impl.
-    2: { apply alist_forall_afilter; eauto. }
+    eapply colist_forall_impl.
+    2: { apply colist_forall_cofilter_conj; apply IHl. }
     intros n [[H0 H2] H3]; split.
     + apply Bool.negb_true_iff, Nat.eqb_neq in H3; lia.
       (* H3 implies a <> n which together with H0 implies the goal. *)
@@ -431,149 +230,401 @@ Qed.
 
 Theorem sieve_forall :
   colist_forall is_prime sieve.
-Proof.
-  apply alist_forall_colist_forall; intro n.
-  unfold is_prime.
-  unfold sieve.
-  rewrite <- sieve_aux_prefix.
-  apply alist_forall_sieve_aux_alist; try lia.
+Proof with eauto with colist order aCPO.
+  unfold sieve, sieve_aux.
+  apply co_coopP...
+  (* Why won't this automate? works with typeclass_instances... *)
+  { apply cocontinuous_coop... }
+  unfold compose.
+  apply coop_intro...
+  (* This should automate... *)
+  { intros x y Hxy; eapply antimonotone_coop... }
+  intro i; apply colist_forall_asieve_aux; try lia.
   apply alist_increasing_from_nats.
 Qed.
 
-(** The rest is for nodup. *)
-
-Lemma alist_forall_afilter' {A} (P : A -> Prop) (Q : A -> bool) (l : alist A) :
-  alist_forall P l ->
-  alist_forall P (filter Q l).
+Lemma generative_nats (n : nat) :
+  generative (nats n).
 Proof.
-  unfold filter.
-  induction l; intro Hl; inv Hl; simpl.
-  - constructor.
-  - constructor; auto.
-  - destruct (Q a) eqn:HQa; constructor; auto.
+  intro i; revert n; induction i; intro n; simpl.
+  { split.
+    - constructor.
+    - intro HC; inv HC. }
+  split.
+  - constructor; apply IHi.
+  - intro HC; inv HC.
+    specialize (IHi (S n)).
+    destruct IHi as [H1 H2].
+    apply H2; auto.
 Qed.
 
-Inductive alist_nodup {A} : alist A -> Prop :=
-| alist_nodup_nil : alist_nodup anil
-| alist_nodup_tau : forall l,
-    alist_nodup l ->
-    alist_nodup (atau l)
-| alist_nodup_cons : forall a l,
-    alist_forall (fun x => x <> a) l ->
-    alist_nodup l ->
-    alist_nodup (acons a l).
-
-CoInductive colist_nodup {A} : colist A -> Prop :=
-| colist_nodup_nil : colist_nodup conil
-| colist_nodup_tau : forall l,
-    colist_nodup l ->
-    colist_nodup (cotau l)
-| colist_nodup_cons : forall a l,
-    colist_forall (fun x => x <> a) l ->
-    colist_nodup l ->
-    colist_nodup (cocons a l).
-
-Lemma alist_nodup_colist_nodup {A} (l : colist A) :
-  (forall n, alist_nodup (prefix n l)) -> colist_nodup l.
+Lemma colist_exists_inj_alist_exists {A} (a : A) (l : alist A) :
+  colist_exists (eq a) (inj l) ->
+  alist_exists (eq a) l.
 Proof.
-  revert l; cofix CH; intros l H.
-  destruct l.
-  - constructor.
-  - constructor; apply CH; intro n.
-    specialize (H (S n)); inv H; auto.
-  - constructor.
-    + apply alist_forall_colist_forall; intro n.
-      specialize (H (S n)); inv H; auto.
-    + apply CH; intro n; specialize (H (S n)); inv H; auto.
+  revert a; induction l; simpl; intros x Hex.
+  { unfold colist_exists, alist_exists in Hex.
+    rewrite co_fold_nil' in Hex; contradiction. }
+  apply colist_exists_cons in Hex.
+  destruct Hex as [?|Hex]; subst.
+  { left; auto. }
+  right; apply IHl; auto.
 Qed.
 
-Lemma colist_nodup_alist_nodup {A} (l : colist A) :
-  colist_nodup l -> (forall n, alist_nodup (prefix n l)).
-Proof.
-  intros H n; revert H; revert l; induction n; intros l Hl.
-  { constructor. }
-  inv Hl.
-  - constructor.
-  - constructor; auto.
-  - constructor; auto.
-    apply colist_forall_alist_forall; auto.
-Qed.
+Fixpoint alist_max (l : alist nat) : nat :=
+  match l with
+  | anil => O
+  | acons n l' => max n (alist_max l')
+  end.
 
-Lemma alist_forall_sieve_aux_alist' P l :
-  alist_forall P l ->
-  alist_forall P (sieve_aux_alist l).
-Proof.
-  induction l; intro Hl; inv Hl; constructor; auto.
-  apply alist_forall_afilter'; auto.
-Qed.
-
-Lemma alist_nodup_afilter {A} (P : A -> bool) (l : alist A) :
-  alist_nodup l ->
-  alist_nodup (filter P l).
-Proof.
-  unfold filter.
-  induction l; intro Hl; inv Hl.
-  - constructor.
-  - constructor; auto.
-  - simpl; destruct (P a); constructor; auto.
-    apply alist_forall_afilter'; auto.
-Qed.
-  
-Lemma colist_nodup_sieve_aux l :
-  colist_nodup l ->
-  colist_nodup (sieve_aux l).
-Proof.
-  intro H.
-  apply alist_nodup_colist_nodup; intro n.
-  apply colist_nodup_alist_nodup with (n:=n) in H.
-  rewrite <- sieve_aux_prefix.
-  revert H.
-  generalize (prefix n l).
-  clear l; intro l; induction l; intro Hl; inv Hl.
-  - constructor.
-  - constructor; auto.
-  - constructor.
-    + apply alist_forall_afilter'.
-      apply alist_forall_sieve_aux_alist'; auto.
-    + apply alist_nodup_afilter; auto.
-Qed.
-
-Lemma colist_forall_neq_nats (n m : nat) :
+Lemma lt_mod_neq_0 (n m : nat) :
+  0 < m ->
+  0 < n ->
   n < m ->
-  colist_forall (fun x : nat => x <> n) (nats m).
+  n mod m <> 0.
 Proof.
-  revert n m; cofix CH; intros n m Hnm.
-  rewrite unf_eq; constructor; auto; lia.
+  intros H0 H1 h2.
+  rewrite Nat.mod_eq; try lia.
+  generalize (Nat.div_str_pos_iff n m).
+  lia.
 Qed.
 
-Lemma colist_nodup_nats (n : nat) :
-  colist_nodup (nats n).
+Lemma is_prime_Z_to_nat (p : Z) :
+  Znumtheory.prime p ->                          
+  is_prime (Z.to_nat p).
 Proof.
-  revert n; cofix CH; intro n.
-  rewrite unf_eq; constructor; auto.
-  apply colist_forall_neq_nats; lia.
+  intros [Hlt Hprime].
+  split.
+  - lia.
+  - intros m Hm Hneq.
+    unfold Znumtheory.rel_prime in Hprime.
+    destruct (Nat.leb_spec m (Z.to_nat p)).
+    { assert (Hmp: m < Z.to_nat p) by lia.
+      assert (H0: (1 <= Z.of_nat m < p)%Z) by lia.
+      apply Hprime in H0.
+      destruct H0.
+      unfold Z.divide in *.
+      clear H0 H1.
+      intro HC.
+      apply Nat.mod_divide in HC; try lia.
+      unfold Nat.divide in HC.
+      destruct HC as [z Hzm].
+      clear H Hneq.
+      specialize (H2 (Z.of_nat m)).
+      assert (H3: (exists z : Z, Z.of_nat m = (z * Z.of_nat m)%Z)).
+      { exists 1%Z; lia. }
+      assert (H4: (exists z : Z, p = (z * Z.of_nat m)%Z)).
+      { exists (Z.of_nat z); lia. }
+      specialize (H2 H3 H4).
+      destruct H2 as [x Hx].
+      destruct (2 <=? x)%Z eqn:H0x.
+      { apply Zle_bool_imp_le in H0x.
+        assert (1 < x * Z.of_nat m)%Z.
+        { apply Z.lt_1_mul_pos; lia. }
+        lia. }
+      apply Z.leb_nle in H0x.
+      assert (Z.of_nat m = 1%Z).
+      { destruct (Z.eqb_spec x 1); subst; lia. }
+      lia. }
+    apply lt_mod_neq_0; lia.
 Qed.
 
-Theorem sieve_nodup :
-  colist_nodup sieve.
+Lemma exists_larger_prime (l : list nat) :
+  exists n, is_prime n /\ Forall (fun m => m < n) l.
 Proof.
-  apply colist_nodup_sieve_aux, colist_nodup_nats.
+  set (l' := map Z.of_nat l).
+  set (n := fold_right Z.max Z0 l').
+  generalize (ex_prime_gt n).
+  intros [p [Hgt Hprime]].
+  exists (Z.to_nat p); split.
+  - apply is_prime_Z_to_nat; auto.
+  - clear Hprime.
+    revert Hgt.
+    unfold n, l'.
+    clear n l'.
+    revert p.
+    induction l; intros p Hgt.
+    { constructor. }
+    simpl in *; constructor.
+    + lia.
+    + apply IHl; lia.
 Qed.
 
-(* Fixpoint remove_taus {A} (l : alist A) : alist A := *)
-(*   match l with *)
-(*   | anil => anil *)
-(*   | atau l' => remove_taus l' *)
-(*   | acons a l' => acons a (remove_taus l') *)
-(*   end. *)
+Fixpoint list_of_alist {A} (l : alist A) : list A :=
+  match l with
+  | anil => []
+  | acons a l' => a :: list_of_alist l'
+  end.
 
-(* Eval compute in (remove_taus (prefix 100 sieve)). *)
+Lemma Forall_alist_of_list {A} (P : A -> Prop) (l : alist A) :
+  Forall P (list_of_alist l) ->
+  alist_forall P l.
+Proof.
+  induction l; intro Hall.
+  { constructor. }
+  inv Hall.
+  split; auto; apply IHl; auto.
+Qed.
 
-(* #[global] *)
-(*   Instance monotone_afilter {A} (f : A -> bool) : Proper (leq ==> leq) (afilter f). *)
-(* Proof. *)
-(*   intro a; induction a; intros b Hab; inv Hab; simpl. *)
-(*   - constructor. *)
-(*   - constructor; apply IHa; auto. *)
-(*   - destruct (f a); constructor; apply IHa; auto. *)
-(* Qed. *)
+Lemma exists_larger_prime_alist (l : alist nat) :
+  exists n, is_prime n /\ alist_forall (fun m => m < n) l.
+Proof.
+  generalize (@exists_larger_prime (list_of_alist l)).
+  intros [n [Hn Hl]].
+  exists n; split; auto.
+  apply Forall_alist_of_list; auto.
+Qed.
+
+Theorem generative_sieve :
+  generative'' sieve.
+Proof with eauto with colist order aCPO.
+  unfold generative''.
+  destruct (@conat_finite_or_omega (colist_length sieve)); auto.
+  exfalso.
+  destruct H as [m H].
+  apply colist_length_inj in H.
+  destruct H as [al H].
+  generalize (exists_larger_prime_alist al); intros [n [Hn Hall]].
+  apply prime_exists_sieve in Hn.
+  rewrite H in Hn.
+  apply colist_exists_inj_alist_exists in Hn.
+  clear H m.
+  revert Hn Hall; revert n.
+  induction al; intros n Hex Hall.
+  { destruct Hex. }
+  destruct Hex as [?|Hex]; subst.
+  { destruct Hall; lia. }
+  destruct Hall as [H0 H1].
+  eapply IHal; eauto.
+Qed.
+
+(** Is it possible to write this as a fold? *)
+Inductive alist_ordered {A} (R : A -> A -> Prop) : alist A -> Prop :=
+| alist_ordered_nil : alist_ordered R anil
+| alist_ordered_cons : forall n l,
+    alist_forall (R n) l ->
+    alist_ordered R l ->
+    alist_ordered R (acons n l).
+
+#[global]
+  Instance antimonotone_alist_ordered {A} (R : A -> A -> Prop)
+  : Proper (leq ==> flip leq) (alist_ordered R).
+Proof.
+  intro a; induction a; intros b Hab Hordered.
+  { constructor. }
+  inv Hab; inv Hordered.
+  constructor.
+  - eapply antimonotone_alist_forall; eauto.
+  - eapply IHa; eauto.
+Qed.
+#[global] Hint Resolve antimonotone_alist_ordered : colist.
+
+Definition ordered {A} (R : A -> A -> Prop) : colist A -> Prop :=
+  coop (alist_ordered R).
+
+Lemma ordered_nil {A} (R : A -> A -> Prop) :
+  ordered R conil.
+Proof with eauto with order colist aCPO.
+  apply coop_intro...
+  intros []; constructor.
+Qed.
+
+Lemma ordered_cons {A} (R : A -> A -> Prop) (a : A) (l : colist A) :
+  ordered R (cocons a l) <-> colist_forall (R a) l /\ ordered R l.
+Proof with eauto with order colist aCPO.
+  split.
+  - intro Hord; split.
+    + apply coop_intro...
+      intro i; apply coop_elim with (i := S i) in Hord...
+      inv Hord; auto.
+    + apply coop_intro...
+      intro i; apply coop_elim with (i := S i) in Hord...
+      inv Hord; auto.
+  - intros [Hall Hord].
+    apply coop_intro...
+    simpl; unfold flip.
+    intros []; simpl.
+    + constructor.
+    + constructor.
+      * apply coop_elim with (i:=n) in Hall...
+      * apply coop_elim with (i:=n) in Hord...
+Qed.
+
+Definition sorted : colist nat -> Prop := ordered Nat.le.
+Definition increasing : colist nat -> Prop := ordered Nat.lt.
+Definition nodup {A} : colist A -> Prop := ordered (fun a b => a <> b).
+
+Lemma alist_forall_colist_forall_asieve_aux P l :
+  alist_forall P l ->
+  colist_forall P (asieve_aux l).
+Proof.
+  unfold asieve_aux.
+  induction l; intros Hall; simpl.
+  { apply colist_forall_nil. }
+  inv Hall.
+  apply colist_forall_cons; split; auto.
+  apply colist_forall_cofilter'; auto.
+Qed.
+
+Lemma alist_forall_colist_forall_afilter {A} (P : A -> Prop) Q l :
+  alist_forall P l ->
+  colist_forall P (afilter Q l).
+Proof.
+  unfold afilter.
+  induction l; simpl; intros Hall.
+  { apply colist_forall_nil. }
+  inv Hall.
+  destruct (Q a) eqn:HQa; auto.
+  apply colist_forall_cons; auto.
+Qed.
+
+Lemma alist_ordered_ordered_afilter {A} (R : A -> A -> Prop) P l :
+  alist_ordered R l ->
+  ordered R (afilter P l).
+Proof.
+  unfold afilter.
+  induction l; intro Hord; simpl.
+  { apply ordered_nil. }
+  inv Hord.
+  destruct (P a) eqn:HPa; auto.
+  apply ordered_cons; split; auto.
+  apply alist_forall_colist_forall_afilter; auto.
+Qed.
+
+Lemma ordered_cofilter {A} (R : A -> A -> Prop) (P : A -> bool) (l : colist A) :
+  ordered R l ->
+  ordered R (cofilter P l).
+Proof with eauto with colist order aCPO.
+  intro Hord.
+  unfold cofilter.
+  apply co_coopP...
+  { apply cocontinuous_coop... }
+  apply coop_intro.
+  { apply monotone_antimonotone_compose...
+    apply cocontinuous_antimonotone, cocontinuous_coop... }
+  intro i; simpl; unfold flip, compose.
+  apply alist_ordered_ordered_afilter.
+  apply coop_elim with (i:=i) in Hord...
+Qed.
+
+Lemma ordered_asieve_aux (R : nat -> nat -> Prop) l :
+  alist_ordered R l ->
+  ordered R (asieve_aux l).
+Proof.
+  unfold asieve_aux.
+  induction l; simpl; intros Hord.
+  { apply ordered_nil. }
+  inv Hord.
+  apply ordered_cons; split.
+  - apply colist_forall_cofilter'.
+    apply alist_forall_colist_forall_asieve_aux; auto.
+  - apply ordered_cofilter; auto.
+Qed.
+
+Lemma alist_increasing_asieve_aux (R : nat -> nat -> Prop) (l : alist nat) :
+  alist_ordered R l ->
+  ordered R (asieve_aux l).
+Proof.
+  induction l; intro Hord; simpl.
+  { apply ordered_nil. }
+  inv Hord.
+  apply ordered_cons; split.
+  - apply colist_forall_cofilter'.
+    apply alist_forall_colist_forall_asieve_aux; auto.
+  - apply ordered_cofilter.
+    apply ordered_asieve_aux; auto.
+Qed.
+
+Lemma increasing_sieve_aux (l : colist nat) :
+  increasing l ->
+  increasing (sieve_aux l).
+Proof with eauto with colist order aCPO.
+  intro Hinc.
+  unfold sieve_aux.
+  apply co_coopP...
+  { apply cocontinuous_coop... }
+  apply coop_intro...
+  { apply monotone_antimonotone_compose...
+    apply cocontinuous_antimonotone.
+    apply cocontinuous_coop... }
+  intro i; unfold compose.
+  apply coop_elim with (i:=i) in Hinc...
+  apply alist_increasing_asieve_aux; auto.
+Qed.
+
+Lemma alist_increasing_from_alist_forall_lt n l :
+  alist_increasing_from (S n) l ->
+  alist_forall (Nat.lt n) l.
+Proof.
+  revert n; induction l; intros n Hinc.
+  { constructor. }
+  inv Hinc; constructor; auto.
+  apply IHl in H1.
+  eapply alist_forall_impl.
+  2: { eauto. }
+  intro x; lia.
+Qed.
+
+Lemma alist_increasing_from_increasing n l :
+  alist_increasing_from n l ->
+  alist_ordered Nat.lt l.
+Proof.
+  revert n; induction l; intros n Hinc.
+  { constructor. }
+  inv Hinc.
+  constructor; eauto.
+  apply alist_increasing_from_alist_forall_lt; auto.
+Qed.
+
+Lemma increasing_nats (n : nat) :
+  increasing (nats n).
+Proof with eauto with colist order aCPO.
+  apply coop_intro...
+  intro i.
+  eapply alist_increasing_from_increasing.
+  apply alist_increasing_from_nats.
+Qed.
+
+Lemma increasing_sieve :
+  increasing sieve.
+Proof. apply increasing_sieve_aux, increasing_nats. Qed.
+
+Lemma alist_ordered_impl {A} (R1 R2 : A -> A -> Prop) (l : alist A) :
+  (forall x y, R1 x y -> R2 x y) ->
+  alist_ordered R1 l ->
+  alist_ordered R2 l.
+Proof.
+  induction l; intros HR Hl.
+  { constructor. }
+  inv Hl; constructor; auto.
+  eapply alist_forall_impl.
+  - intro x; apply HR.
+  - assumption.
+Qed.
+
+Lemma ordered_impl {A} (R1 R2 : A -> A -> Prop) (l : colist A) :
+  (forall x y, R1 x y -> R2 x y) ->
+  ordered R1 l ->
+  ordered R2 l.
+Proof with eauto with colist order.
+  intros HR Hl.
+  apply coop_intro...
+  intro i; apply coop_elim with (i:=i) in Hl...
+  eapply alist_ordered_impl; eauto.
+Qed.
+
+Theorem sorted_sieve :
+  sorted sieve.
+Proof.
+  eapply ordered_impl.
+  2: { apply increasing_sieve. }
+  lia.
+Qed.
+
+Theorem nodup_sieve :
+  nodup sieve.
+Proof.
+  eapply ordered_impl.
+  2: { apply increasing_sieve. }
+  lia.
+Qed.

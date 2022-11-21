@@ -1009,6 +1009,13 @@ Qed.
   Instance ExtType_Prop : ExtType Prop.
 Proof. constructor; apply propositional_extensionality. Qed.
 
+#[global]
+  Instance ExtType_nat : ExtType nat.
+Proof.
+  constructor; intros a b Hab.
+  unfold equiv, equ in Hab; simpl in Hab; lia.
+Qed.
+
 Lemma continuous_cocontinuous_compose {A B C} `{OType A} `{OType B} `{OType C}
   (f : A -> B) (g : B -> C) :
   continuous f ->

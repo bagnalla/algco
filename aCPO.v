@@ -500,6 +500,24 @@ Section aCPO.
     revert y; apply equ_arrow, Proper_co; auto.
   Qed.
 
+  (* Corollary Proper_co'' {C} `{dCPO C} (f g : basis A -> C) (P : basis A -> Prop) (a : A) : *)
+  (*   monotone f -> *)
+  (*   monotone g -> *)
+  (*   (forall i, P (ideal a i) -> f (ideal a i) === g (ideal a i)) -> *)
+  (*   coop P a -> *)
+  (*   co f a === co g a. *)
+  (* Proof. *)
+  (*   intros Hf Hg Hfg Ha. *)
+  (*   split. *)
+  (*   -  *)
+  (*   apply Proper_co'; auto; try reflexivity. *)
+  (*   apply co_unique'; auto. *)
+  (*   - apply continuous_co; auto. *)
+  (*   - rewrite <- Hfg. *)
+  (*     apply equ_arrow; intro b. *)
+  (*     apply co_incl'; auto. *)
+  (* Qed. *)
+
   Corollary Proper_co_ext {C} `{oC: OType C} `{@dCPO _ oC} `{@ExtType _ oC}
     (f g : basis A -> C) (x y : A) :
     monotone f ->
