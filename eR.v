@@ -365,7 +365,8 @@ Proof. constructor; intros f; apply eR_complete_inf. Qed.
   Instance CPO_eR : CPO eR.
 Proof. constructor; intros f; apply eR_complete. Qed.
 
-#[global] Instance Lattice_eR : Lattice eR. Qed.
+#[global]
+  Instance Lattice_eR : Lattice eR. Qed.
 
 Lemma eRplus_assoc (a b c : eR) :
   a + b + c = a + (b + c).

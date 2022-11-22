@@ -127,7 +127,8 @@ Proof.
 Qed.
 #[global] Hint Unfold lCPO_Prop : order.
 
-#[global] Instance Lattice_Prop : Lattice Prop. Qed.
+#[global]
+  Instance Lattice_Prop : Lattice Prop. Qed.
 #[global] Hint Unfold Lattice_Prop : order.
 
 Lemma ge_inf {A} `{lCPO A} (f : nat -> A) (a : A) (i : nat) :
