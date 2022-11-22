@@ -204,6 +204,12 @@ Proof. constructor. Qed.
 #[global] Hint Resolve anil_le : colist.
 
 #[global]
+  Program
+  Instance PType_alist {A} : PType (alist A) :=
+  { bot := anil }.
+Next Obligation. apply anil_le. Qed.
+
+#[global]
   Instance ExtType_alist {A} : ExtType (alist A).
 Proof.
   constructor; intro a; induction a; intros b [H0 H1]; inv H0; inv H1; auto.
