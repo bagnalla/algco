@@ -172,8 +172,8 @@ Qed.
 #[global] Hint Resolve continuous_cocons : colist.
 
 Inductive alist_le {A} : alist A -> alist A -> Prop :=
-| alist_le_conil : forall l, alist_le anil l
-| alist_le_cocons : forall x l1 l2,
+| alist_le_nil : forall l, alist_le anil l
+| alist_le_cons : forall x l1 l2,
     alist_le l1 l2 ->
     alist_le (acons x l1) (acons x l2).
 #[global] Hint Constructors alist_le : colist.
