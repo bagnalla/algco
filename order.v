@@ -140,7 +140,8 @@ Qed.
 Proof. unfold Symmetric, equ; intuition. Qed.
 
 #[global]
-  Program Instance Equivalence_equ A `{OType A} : Equivalence equ.
+  Program
+  Instance Equivalence_equ A `{OType A} : Equivalence equ.
 
 #[global]
   Instance Proper_leq {A} `{OType A} : Proper (equ ==> equ ==> flip impl) leq.
