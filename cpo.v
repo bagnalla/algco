@@ -39,14 +39,7 @@ Class lCPO (A : Type) `{OType A} : Prop :=
 Class ldCPO (A : Type) `{OType A} : Prop :=
   { exists_dinf : forall f : nat -> A, downward_directed f -> exists s, infimum s f }.
 
-(* Definition sup_prim {A} `{OType A} (f : nat -> A) *)
-(*   : { a : A | (exists b, supremum b f) -> supremum a f }. *)
-(* Proof. *)
-(*   apply constructive_indefinite_description. *)
-(*   destruct (classic (exists a, supremum a f)). *)
-(*   - destruct H0 as [a Ha]; exists a; intros; auto. *)
-(*   - exists (f O); intros [a Ha]; exfalso; apply H0; exists a; auto. *)
-(* Qed. *)
+Class Lattice (A : Type) {o : OType A} `{@CPO A o} `{@lCPO A o} : Prop := {}.
 
 Lemma ex_ex_supremum {A} `{OType A} (f : nat -> A) :
   exists x : A, (exists b : A, supremum b f) -> supremum x f.
@@ -133,6 +126,9 @@ Proof.
   - intros ub Hub x i; apply Hub; auto.
 Qed.
 #[global] Hint Unfold lCPO_Prop : order.
+
+#[global] Instance Lattice_Prop : Lattice Prop. Qed.
+#[global] Hint Unfold Lattice_Prop : order.
 
 Lemma ge_inf {A} `{lCPO A} (f : nat -> A) (a : A) (i : nat) :
   f i ⊑ a ->
