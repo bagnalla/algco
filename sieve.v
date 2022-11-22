@@ -1,4 +1,5 @@
 (** * Sieve of Eratosthenes with algebraic coinduction. *)
+(** * Integer (Z) version. *)
 
 Set Implicit Arguments.
 Set Contextual Implicit.
@@ -14,6 +15,7 @@ From Coq Require Import
 .
 Local Open Scope program_scope.
 Local Open Scope equiv_scope.
+Local Open Scope Z_scope.
 Import ListNotations.
 
 From Coq Require Import
@@ -28,57 +30,58 @@ From algco Require Import aCPO axioms misc conat colist cpo inf_primes order tac
 
 Local Open Scope order_scope.
 
-CoFixpoint nats (n : nat) : colist nat := cocons n (nats (S n)).
+Definition is_prime (n : Z) : Prop :=
+  1 < n /\ forall m, 1 < m -> n <> m -> n mod m <> 0.
 
-Definition asieve_aux' : alist nat -> alist nat :=
-  afold anil (fun n l' => acons n (filter (fun m => negb (m mod n =? O)) l')).
+CoFixpoint nats (n : Z) : colist Z := cocons n (nats (n + 1)).
 
-Definition asieve_aux : alist nat -> colist nat :=
-  afold conil (fun n l' => cocons n (cofilter (fun m => negb (m mod n =? O)) l')).
+Definition asieve_aux' : alist Z -> alist Z :=
+  afold anil (fun n l' => acons n (filter (fun m => negb (Z.eqb (Z.modulo m n) 0)) l')).
+
+Definition asieve_aux : alist Z -> colist Z :=
+  afold conil (fun n l' => cocons n (cofilter (fun m => negb (Z.eqb (Z.modulo m n) 0)) l')).
 
 #[global]
   Instance monotone_asieve_aux : Proper (leq ==> leq) asieve_aux.
 Proof. apply monotone_afold; eauto with colist order aCPO. Qed.
 #[global] Hint Resolve monotone_asieve_aux : colist.
 
-Definition sieve_aux : colist nat -> colist nat := co asieve_aux.
+Definition sieve_aux : colist Z -> colist Z := co asieve_aux.
 
-Definition sieve : colist nat := sieve_aux (nats 2).
-Definition sieve_list (n : nat) : colist nat := asieve_aux (prefix n (nats 2)).
+Definition sieve : colist Z := sieve_aux (nats 2).
+Definition sieve_list (n : nat) : colist Z := asieve_aux (prefix n (nats 2)).
 
-(* Definition sieve' : colist nat := *)
-(*   morph conil (fun n l' => cocons n (cofilter (fun m => negb (m mod n =? O)) l')) (nats 2). *)
+Definition sieve_Z' : colist Z :=
+  morph conil (fun n l' => cocons n (cofilter' (fun m => negb (Z.eqb (Z.modulo m n) 0)) l'))
+    (nats 2).
 
-(* From Coq Require Import ExtrOcamlBasic. *)
-(* Extraction "extract/sieve/sieve.ml" sieve'. *)
+From Coq Require Import ExtrHaskellBasic.
+Extraction Language Haskell.
+Extraction "extract/sieve_Z/Sieve.hs" sieve_Z'.
 
-(* From Coq Require Import ExtrHaskellBasic. *)
-(* Extraction Language Haskell. *)
-(* Extraction "extract/sieve/Sieve.hs" sieve'. *)
-
-Lemma alists_exists_nats n m k :
+Lemma alists_exists_nats (n m : Z) k :
   m <= n ->
-  n < m + k ->
+  n < m + Z.of_nat k ->
   alist_exists (eq n) (prefix k (nats m)).
 Proof.
   revert n m; induction k; intros n m H0 H1; simpl.
   { lia. }
-  destruct (Nat.eqb_spec n m); subst.
+  destruct (Z.eqb_spec n m); subst.
   - constructor; auto.
   - right; apply IHk; lia.
 Qed.
 
-Lemma nats_exists (n m : nat) :
+Lemma nats_exists (n m : Z) :
   m <= n ->
   colist_exists (eq n) (nats m).
 Proof with eauto with colist order aCPO.
   intro Hle.
-  apply co_intro with (n - m + 1)...
+  apply co_intro with (i := Z.to_nat (n - m + 1))...
   apply alists_exists_nats; lia.
 Qed.
 
 Lemma alist_exists_prefix_cofilter {A} (P : A -> bool) (a : A) (l : colist A) (i j : nat) :
-  i <= j ->
+  (i <= j)%nat ->
   P a = true ->
   alist_exists (eq a) (prefix i l) ->
   alist_exists (eq a) (prefix j (cofilter P l)).
@@ -102,7 +105,7 @@ Proof with eauto with order colist aCPO.
       apply IHi; try lia; auto.
 Qed.
 
-Lemma prime_exists_sieve_aux (n : nat) (l : colist nat) :
+Lemma prime_exists_sieve_aux (n : Z) (l : colist Z) :
   is_prime n ->
   colist_forall (fun m => 1 < m) l ->
   colist_exists (eq n) l ->
@@ -134,28 +137,27 @@ Proof with eauto with order colist aCPO.
   - unfold colist_forall, alist_forall in Hall.
     rewrite coop_fold_cons' in Hall...
     destruct Hall as [Hlt Hall].
-
     apply IHi in H; auto.
     apply co_elim in H...
     destruct H as [j Hex]; simpl in Hex; unfold flip in Hex.
     apply co_intro with (S j)...
     simpl; unfold flip; simpl.
-    destruct (Nat.eqb_spec n n0); subst.
+    destruct (Z.eqb_spec n z); subst.
     { left; auto. }
     right.
     eapply alist_exists_prefix_cofilter; auto.
     destruct Hn as [Hn Hn'].
-    specialize (Hn' n0 Hlt n1).
+    specialize (Hn' z Hlt n0).
     apply Bool.negb_true_iff.
-    destruct (Nat.eqb_spec (n mod n0) 0); lia.
+    destruct (Z.eqb_spec (n mod z) 0); lia.
 Qed.
 
 Lemma is_prime_2_le n :
   is_prime n ->
   2 <= n.
-Proof. intros [H ?]; inv H; auto. Qed.
+Proof. intros [H ?]; lia. Qed.
 
-Lemma prime_exists_asieve_aux_nats (n m : nat) :
+Lemma prime_exists_asieve_aux_nats (n m : Z) :
   1 < m ->
   m <= n ->
   is_prime n ->
@@ -174,7 +176,7 @@ Proof with eauto with colist order aCPO.
   apply IHi; lia.
 Qed.
 
-Theorem prime_exists_sieve (n : nat) :
+Theorem prime_exists_sieve (n : Z) :
   is_prime n ->
   colist_exists (eq n) sieve.
 Proof with eauto with colist order aCPO.
@@ -183,16 +185,16 @@ Proof with eauto with colist order aCPO.
   apply is_prime_2_le; auto.
 Qed.
 
-Inductive alist_increasing_from : nat -> alist nat -> Prop :=
+Inductive alist_increasing_from : Z -> alist Z -> Prop :=
 | alist_increasing_from_nil : forall n, alist_increasing_from n anil
 | alist_increasing_from_cons : forall n l,
-    alist_increasing_from (S n) l ->
+    alist_increasing_from (n + 1) l ->
     alist_increasing_from n (acons n l).
 
 Lemma colist_forall_asieve_aux l n :
   1 < n ->
   alist_increasing_from n l ->
-  colist_forall (fun n0 : nat => n <= n0 /\ (forall m : nat, n <= m -> n0 <> m -> n0 mod m <> 0))
+  colist_forall (fun n0 : Z => n <= n0 /\ (forall m : Z, n <= m -> n0 <> m -> n0 mod m <> 0))
     (asieve_aux l).
 Proof with eauto with colist order aCPO.
   unfold asieve_aux.
@@ -201,23 +203,24 @@ Proof with eauto with colist order aCPO.
   { rewrite coop_fold_nil'... }
   rewrite coop_fold_cons'...
   split.
-  - split; auto; intros n Hle Hneq HC.
+  - split; try lia; intros n Hle Hneq HC.
     (* a is strictly less than n so can't be a multiple of n. *)
-    apply Nat.mod_divides in HC; try lia.
-    destruct HC as [c HC]; subst; destruct c; lia.
-  - assert (Hlt': 1 < S a) by lia.
+    apply Zdiv.Zmod_divides in HC; try lia.
+    destruct HC as [c HC]; subst.
+    destruct (Z.eqb_spec c 0); subst; nia.
+  - assert (Hlt': 1 < a + 1) by lia.
     specialize (IHl _ Hlt' H1).
     eapply colist_forall_impl.
     2: { apply colist_forall_cofilter_conj; apply IHl. }
     intros n [[H0 H2] H3]; split.
-    + apply Bool.negb_true_iff, Nat.eqb_neq in H3; lia.
+    + apply Bool.negb_true_iff, Z.eqb_neq in H3; lia.
       (* H3 implies a <> n which together with H0 implies the goal. *)
     + intros m Hle Hneq.
-      apply Bool.negb_true_iff, Nat.eqb_neq in H3.
+      apply Bool.negb_true_iff, Z.eqb_neq in H3.
       intro HC; eapply H2.
       2: { eauto. }
       2: { auto. }
-      destruct (Nat.eqb_spec a m); subst; lia.
+      destruct (Z.eqb_spec a m); subst; lia.
 Qed.
 
 Lemma alist_increasing_from_nats n k :
@@ -239,11 +242,22 @@ Proof with eauto with colist order aCPO.
   apply coop_intro...
   (* This should automate... *)
   { intros x y Hxy; eapply antimonotone_coop... }
-  intro i; apply colist_forall_asieve_aux; try lia.
-  apply alist_increasing_from_nats.
+  intro i.
+  generalize (@colist_forall_asieve_aux (ideal (nats 2) i) 2).
+  intro H.
+  eapply colist_forall_impl.
+  2: { apply colist_forall_asieve_aux with (n := 2); try lia.
+       apply alist_increasing_from_nats. }
+  unfold is_prime.
+  intros z [H0 H1]; split; try lia.
+  intros m Hlt Hneq HC.
+  eapply H1.
+  3: { eauto. }
+  lia.
+  lia.
 Qed.
 
-Lemma generative_nats (n : nat) :
+Lemma generative_nats (n : Z) :
   generative (nats n).
 Proof.
   intro i; revert n; induction i; intro n; simpl.
@@ -253,7 +267,7 @@ Proof.
   split.
   - constructor; apply IHi.
   - intro HC; inv HC.
-    specialize (IHi (S n)).
+    specialize (IHi (n + 1)).
     destruct IHi as [H1 H2].
     apply H2; auto.
 Qed.
@@ -271,77 +285,75 @@ Proof.
   right; apply IHl; auto.
 Qed.
 
-Fixpoint alist_max (l : alist nat) : nat :=
+Fixpoint alist_max (l : alist Z) : Z :=
   match l with
-  | anil => O
-  | acons n l' => max n (alist_max l')
+  | anil => 0
+  | acons n l' => Z.max n (alist_max l')
   end.
 
-Lemma lt_mod_neq_0 (n m : nat) :
+Lemma lt_mod_neq_0 (n m : Z) :
   0 < m ->
   0 < n ->
   n < m ->
   n mod m <> 0.
 Proof.
   intros H0 H1 h2.
-  rewrite Nat.mod_eq; try lia.
-  generalize (Nat.div_str_pos_iff n m).
-  lia.
+  rewrite Z.mod_eq; try lia.
+  generalize (Z.div_small_iff n m); lia.
 Qed.
 
-Lemma is_prime_Z_to_nat (p : Z) :
-  Znumtheory.prime p ->                          
-  is_prime (Z.to_nat p).
+Lemma is_prime_Z (p : Z) :
+  Znumtheory.prime p ->
+  is_prime p.
 Proof.
   intros [Hlt Hprime].
   split.
   - lia.
   - intros m Hm Hneq.
     unfold Znumtheory.rel_prime in Hprime.
-    destruct (Nat.leb_spec m (Z.to_nat p)).
-    { assert (Hmp: m < Z.to_nat p) by lia.
-      assert (H0: (1 <= Z.of_nat m < p)%Z) by lia.
+    destruct (Z.leb_spec m p).
+    { assert (Hmp: m < p) by lia.
+      assert (H0: (1 <= m < p)%Z) by lia.
       apply Hprime in H0.
       destruct H0.
       unfold Z.divide in *.
       clear H0 H1.
       intro HC.
-      apply Nat.mod_divide in HC; try lia.
-      unfold Nat.divide in HC.
+      apply Z.mod_divide in HC; try lia.
+      unfold Z.divide in HC.
       destruct HC as [z Hzm].
       clear H Hneq.
-      specialize (H2 (Z.of_nat m)).
-      assert (H3: (exists z : Z, Z.of_nat m = (z * Z.of_nat m)%Z)).
+      specialize (H2 m).
+      assert (H3: (exists z : Z, m = (z * m)%Z)).
       { exists 1%Z; lia. }
-      assert (H4: (exists z : Z, p = (z * Z.of_nat m)%Z)).
-      { exists (Z.of_nat z); lia. }
+      assert (H4: (exists z : Z, p = (z * m)%Z)).
+      { exists z; lia. }
       specialize (H2 H3 H4).
       destruct H2 as [x Hx].
       destruct (2 <=? x)%Z eqn:H0x.
       { apply Zle_bool_imp_le in H0x.
-        assert (1 < x * Z.of_nat m)%Z.
+        assert (1 < x * m)%Z.
         { apply Z.lt_1_mul_pos; lia. }
         lia. }
       apply Z.leb_nle in H0x.
-      assert (Z.of_nat m = 1%Z).
+      assert (m = 1%Z).
       { destruct (Z.eqb_spec x 1); subst; lia. }
       lia. }
     apply lt_mod_neq_0; lia.
 Qed.
 
-Lemma exists_larger_prime (l : list nat) :
+Lemma exists_larger_prime (l : list Z) :
   exists n, is_prime n /\ Forall (fun m => m < n) l.
 Proof.
-  set (l' := map Z.of_nat l).
-  set (n := fold_right Z.max Z0 l').
+  set (n := fold_right Z.max Z0 l).
   generalize (ex_prime_gt n).
   intros [p [Hgt Hprime]].
-  exists (Z.to_nat p); split.
-  - apply is_prime_Z_to_nat; auto.
+  exists p; split.
+  - apply is_prime_Z; auto.
   - clear Hprime.
     revert Hgt.
-    unfold n, l'.
-    clear n l'.
+    unfold n.
+    clear n.
     revert p.
     induction l; intros p Hgt.
     { constructor. }
@@ -350,23 +362,7 @@ Proof.
     + apply IHl; lia.
 Qed.
 
-Fixpoint list_of_alist {A} (l : alist A) : list A :=
-  match l with
-  | anil => []
-  | acons a l' => a :: list_of_alist l'
-  end.
-
-Lemma Forall_alist_of_list {A} (P : A -> Prop) (l : alist A) :
-  Forall P (list_of_alist l) ->
-  alist_forall P l.
-Proof.
-  induction l; intro Hall.
-  { constructor. }
-  inv Hall.
-  split; auto; apply IHl; auto.
-Qed.
-
-Lemma exists_larger_prime_alist (l : alist nat) :
+Lemma exists_larger_prime_alist (l : alist Z) :
   exists n, is_prime n /\ alist_forall (fun m => m < n) l.
 Proof.
   generalize (@exists_larger_prime (list_of_alist l)).
@@ -398,61 +394,8 @@ Proof with eauto with colist order aCPO.
   eapply IHal; eauto.
 Qed.
 
-(** Is it possible to write this as a fold? *)
-Inductive alist_ordered {A} (R : A -> A -> Prop) : alist A -> Prop :=
-| alist_ordered_nil : alist_ordered R anil
-| alist_ordered_cons : forall n l,
-    alist_forall (R n) l ->
-    alist_ordered R l ->
-    alist_ordered R (acons n l).
-
-#[global]
-  Instance antimonotone_alist_ordered {A} (R : A -> A -> Prop)
-  : Proper (leq ==> flip leq) (alist_ordered R).
-Proof.
-  intro a; induction a; intros b Hab Hordered.
-  { constructor. }
-  inv Hab; inv Hordered.
-  constructor.
-  - eapply antimonotone_alist_forall; eauto.
-  - eapply IHa; eauto.
-Qed.
-#[global] Hint Resolve antimonotone_alist_ordered : colist.
-
-Definition ordered {A} (R : A -> A -> Prop) : colist A -> Prop :=
-  coop (alist_ordered R).
-
-Lemma ordered_nil {A} (R : A -> A -> Prop) :
-  ordered R conil.
-Proof with eauto with order colist aCPO.
-  apply coop_intro...
-  intros []; constructor.
-Qed.
-
-Lemma ordered_cons {A} (R : A -> A -> Prop) (a : A) (l : colist A) :
-  ordered R (cocons a l) <-> colist_forall (R a) l /\ ordered R l.
-Proof with eauto with order colist aCPO.
-  split.
-  - intro Hord; split.
-    + apply coop_intro...
-      intro i; apply coop_elim with (i := S i) in Hord...
-      inv Hord; auto.
-    + apply coop_intro...
-      intro i; apply coop_elim with (i := S i) in Hord...
-      inv Hord; auto.
-  - intros [Hall Hord].
-    apply coop_intro...
-    simpl; unfold flip.
-    intros []; simpl.
-    + constructor.
-    + constructor.
-      * apply coop_elim with (i:=n) in Hall...
-      * apply coop_elim with (i:=n) in Hord...
-Qed.
-
-Definition sorted : colist nat -> Prop := ordered Nat.le.
-Definition increasing : colist nat -> Prop := ordered Nat.lt.
-Definition nodup {A} : colist A -> Prop := ordered (fun a b => a <> b).
+Definition sorted : colist Z -> Prop := ordered Z.le.
+Definition increasing : colist Z -> Prop := ordered Z.lt.
 
 Lemma alist_forall_colist_forall_asieve_aux P l :
   alist_forall P l ->
@@ -466,48 +409,7 @@ Proof.
   apply colist_forall_cofilter'; auto.
 Qed.
 
-Lemma alist_forall_colist_forall_afilter {A} (P : A -> Prop) Q l :
-  alist_forall P l ->
-  colist_forall P (afilter Q l).
-Proof.
-  unfold afilter.
-  induction l; simpl; intros Hall.
-  { apply colist_forall_nil. }
-  inv Hall.
-  destruct (Q a) eqn:HQa; auto.
-  apply colist_forall_cons; auto.
-Qed.
-
-Lemma alist_ordered_ordered_afilter {A} (R : A -> A -> Prop) P l :
-  alist_ordered R l ->
-  ordered R (afilter P l).
-Proof.
-  unfold afilter.
-  induction l; intro Hord; simpl.
-  { apply ordered_nil. }
-  inv Hord.
-  destruct (P a) eqn:HPa; auto.
-  apply ordered_cons; split; auto.
-  apply alist_forall_colist_forall_afilter; auto.
-Qed.
-
-Lemma ordered_cofilter {A} (R : A -> A -> Prop) (P : A -> bool) (l : colist A) :
-  ordered R l ->
-  ordered R (cofilter P l).
-Proof with eauto with colist order aCPO.
-  intro Hord.
-  unfold cofilter.
-  apply co_coopP...
-  { apply cocontinuous_coop... }
-  apply coop_intro.
-  { apply monotone_antimonotone_compose...
-    apply cocontinuous_antimonotone, cocontinuous_coop... }
-  intro i; simpl; unfold flip, compose.
-  apply alist_ordered_ordered_afilter.
-  apply coop_elim with (i:=i) in Hord...
-Qed.
-
-Lemma ordered_asieve_aux (R : nat -> nat -> Prop) l :
+Lemma ordered_asieve_aux (R : Z -> Z -> Prop) l :
   alist_ordered R l ->
   ordered R (asieve_aux l).
 Proof.
@@ -521,7 +423,7 @@ Proof.
   - apply ordered_cofilter; auto.
 Qed.
 
-Lemma alist_increasing_asieve_aux (R : nat -> nat -> Prop) (l : alist nat) :
+Lemma alist_increasing_asieve_aux (R : Z -> Z -> Prop) (l : alist Z) :
   alist_ordered R l ->
   ordered R (asieve_aux l).
 Proof.
@@ -535,7 +437,7 @@ Proof.
     apply ordered_asieve_aux; auto.
 Qed.
 
-Lemma increasing_sieve_aux (l : colist nat) :
+Lemma increasing_sieve_aux (l : colist Z) :
   increasing l ->
   increasing (sieve_aux l).
 Proof with eauto with colist order aCPO.
@@ -553,12 +455,12 @@ Proof with eauto with colist order aCPO.
 Qed.
 
 Lemma alist_increasing_from_alist_forall_lt n l :
-  alist_increasing_from (S n) l ->
-  alist_forall (Nat.lt n) l.
+  alist_increasing_from (n + 1) l ->
+  alist_forall (Z.lt n) l.
 Proof.
   revert n; induction l; intros n Hinc.
   { constructor. }
-  inv Hinc; constructor; auto.
+  inv Hinc; constructor; try lia.
   apply IHl in H1.
   eapply alist_forall_impl.
   2: { eauto. }
@@ -567,7 +469,7 @@ Qed.
 
 Lemma alist_increasing_from_increasing n l :
   alist_increasing_from n l ->
-  alist_ordered Nat.lt l.
+  alist_ordered Z.lt l.
 Proof.
   revert n; induction l; intros n Hinc.
   { constructor. }
@@ -576,7 +478,7 @@ Proof.
   apply alist_increasing_from_alist_forall_lt; auto.
 Qed.
 
-Lemma increasing_nats (n : nat) :
+Lemma increasing_nats (n : Z) :
   increasing (nats n).
 Proof with eauto with colist order aCPO.
   apply coop_intro...

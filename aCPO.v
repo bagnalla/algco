@@ -618,7 +618,7 @@ Section aCPO.
     { intros i x Hx; apply Hx. }
     auto.
   Qed.
-
+  
   Theorem co_elim2 {C} (R : basis A -> C -> Prop) (a : A) (c : C) :
     monotone R ->
     co R a c ->

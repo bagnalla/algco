@@ -1047,6 +1047,7 @@ Qed.
 (* Qed. *)
 (* #[global] Hint Resolve antimonotone_alist_colist_le : colist. *)
 
+(* note: this can be generalized by alist_colist_R. *)
 Definition alist_colist_le {A} : alist A ->  colist A -> Prop :=
   afold (const True) (fun a f l => match l with
                              | conil => False
@@ -1375,6 +1376,9 @@ Extract Constant morph => "
       Cocons a l' -> f a (morph o z f l')
 ".
 
+Definition cofilter' {A} (f : A -> bool) : colist A -> colist A :=
+  morph conil (fun a l' => if f a then cocons a l' else l').
+
 Lemma colist_length_inj {A} (l : colist A) (n : nat) :
   colist_length l = conat.inj n ->
   exists al, l = inj al.
@@ -1446,4 +1450,186 @@ Proof.
   - intro Hle.
     apply ext; split; auto.
     apply le_omega.
+Qed.
+
+Lemma not_generative_conil {A} :
+  ~ generative'' (@conil A).
+Proof.
+  unfold generative''.
+  unfold colist_length, alist_length.
+  rewrite co_fold_nil'; intro HC.
+  rewrite (@conat.unf_eq omega) in HC; inv HC.
+Qed.
+
+Lemma generative_cons {A} (a : A) (l : colist A) :
+  generative'' (cocons a l) -> generative'' l.
+Proof with eauto with colist conat order aCPO.
+  unfold generative''.
+  intro Hgen.
+  rewrite (@conat.unf_eq omega) in Hgen.
+  unfold colist_length, alist_length in Hgen.
+  rewrite co_fold_cons' in Hgen...
+  inv Hgen; auto.
+Qed.
+
+Definition alist_R {A B} (R : A -> B -> Prop) : alist A -> alist B -> Prop :=
+  afold (const True) (fun a f l => match l with
+                             | anil => False
+                             | acons b l' => R a b /\ f l'
+                             end).
+
+Definition alist_colist_R {A B} (R : A -> B -> Prop) : alist A -> colist B -> Prop :=
+  afold (const True) (fun a f l => match l with
+                             | conil => False
+                             | cocons b l' => R a b /\ f l'
+                             end).
+
+#[global]
+  Instance antimonotone_alist_colist_R {A B} (R : A -> B -> Prop)
+  : Proper (leq ==> flip leq) (alist_colist_R R).
+Proof.
+  apply antimonotone_afold.
+  { intro; constructor. }
+  intros a f g Hfg l Hl; destruct l; auto.
+  destruct Hl; subst; split; auto.
+  apply Hfg; auto.
+Qed.
+#[global] Hint Resolve antimonotone_alist_colist_R : colist.
+
+Definition colist_R {A B} (R : A -> B -> Prop) : colist A -> colist B -> Prop :=
+  coop (alist_colist_R R).
+
+Lemma colist_R_cons_nil {A B} (R : A -> B -> Prop) (a : A) (l1 : colist A) :
+  ~ colist_R R (cocons a l1) conil.
+Proof with eauto with colist order aCPO.
+  intro HC; apply coop_elim2 with (i := S O) in HC...
+Qed.
+
+Lemma colist_R_cons {A B} (R : A -> B -> Prop) (a : A) (l1 : colist A) (b : B) (l2 : colist B) :
+  colist_R R (cocons a l1) (cocons b l2) <-> R a b /\ colist_R R l1 l2.
+Proof with eauto with colist order aCPO.
+  split.
+  - intro HR; split.
+    + apply coop_elim2 with (i := S O) in HR...
+      destruct HR; auto.
+    + apply coop_intro2...
+      intro i; apply coop_elim2 with (i := S i) in HR...
+      destruct HR; auto.
+  - intros [H0 H1].
+    apply coop_intro2...
+    intros []; simpl; unfold flip; simpl.
+    { constructor. }
+    constructor; auto.
+    apply coop_elim2 with (i:=n) in H1...
+Qed.
+
+Fixpoint list_of_alist {A} (l : alist A) : list A :=
+  match l with
+  | anil => []
+  | acons a l' => a :: list_of_alist l'
+  end.
+
+Lemma Forall_alist_of_list {A} (P : A -> Prop) (l : alist A) :
+  Forall P (list_of_alist l) ->
+  alist_forall P l.
+Proof.
+  induction l; intro Hall.
+  { constructor. }
+  inv Hall.
+  split; auto; apply IHl; auto.
+Qed.
+
+(** Is it possible to write this as a fold? *)
+Inductive alist_ordered {A} (R : A -> A -> Prop) : alist A -> Prop :=
+| alist_ordered_nil : alist_ordered R anil
+| alist_ordered_cons : forall n l,
+    alist_forall (R n) l ->
+    alist_ordered R l ->
+    alist_ordered R (acons n l).
+
+#[global]
+  Instance antimonotone_alist_ordered {A} (R : A -> A -> Prop)
+  : Proper (leq ==> flip leq) (alist_ordered R).
+Proof.
+  intro a; induction a; intros b Hab Hordered.
+  { constructor. }
+  inv Hab; inv Hordered.
+  constructor.
+  - eapply antimonotone_alist_forall; eauto.
+  - eapply IHa; eauto.
+Qed.
+#[global] Hint Resolve antimonotone_alist_ordered : colist.
+
+Definition ordered {A} (R : A -> A -> Prop) : colist A -> Prop :=
+  coop (alist_ordered R).
+
+Lemma ordered_nil {A} (R : A -> A -> Prop) :
+  ordered R conil.
+Proof with eauto with order colist aCPO.
+  apply coop_intro...
+  intros []; constructor.
+Qed.
+
+Lemma ordered_cons {A} (R : A -> A -> Prop) (a : A) (l : colist A) :
+  ordered R (cocons a l) <-> colist_forall (R a) l /\ ordered R l.
+Proof with eauto with order colist aCPO.
+  split.
+  - intro Hord; split.
+    + apply coop_intro...
+      intro i; apply coop_elim with (i := S i) in Hord...
+      inv Hord; auto.
+    + apply coop_intro...
+      intro i; apply coop_elim with (i := S i) in Hord...
+      inv Hord; auto.
+  - intros [Hall Hord].
+    apply coop_intro...
+    simpl; unfold flip.
+    intros []; simpl.
+    + constructor.
+    + constructor.
+      * apply coop_elim with (i:=n) in Hall...
+      * apply coop_elim with (i:=n) in Hord...
+Qed.
+
+Definition nodup {A} : colist A -> Prop := ordered (fun a b => a <> b).
+
+Lemma alist_forall_colist_forall_afilter {A} (P : A -> Prop) Q l :
+  alist_forall P l ->
+  colist_forall P (afilter Q l).
+Proof.
+  unfold afilter.
+  induction l; simpl; intros Hall.
+  { apply colist_forall_nil. }
+  inv Hall.
+  destruct (Q a) eqn:HQa; auto.
+  apply colist_forall_cons; auto.
+Qed.
+
+Lemma alist_ordered_ordered_afilter {A} (R : A -> A -> Prop) P l :
+  alist_ordered R l ->
+  ordered R (afilter P l).
+Proof.
+  unfold afilter.
+  induction l; intro Hord; simpl.
+  { apply ordered_nil. }
+  inv Hord.
+  destruct (P a) eqn:HPa; auto.
+  apply ordered_cons; split; auto.
+  apply alist_forall_colist_forall_afilter; auto.
+Qed.
+
+Lemma ordered_cofilter {A} (R : A -> A -> Prop) (P : A -> bool) (l : colist A) :
+  ordered R l ->
+  ordered R (cofilter P l).
+Proof with eauto with colist order aCPO.
+  intro Hord.
+  unfold cofilter.
+  apply co_coopP...
+  { apply cocontinuous_coop... }
+  apply coop_intro.
+  { apply monotone_antimonotone_compose...
+    apply cocontinuous_antimonotone, cocontinuous_coop... }
+  intro i; simpl; unfold flip, compose.
+  apply alist_ordered_ordered_afilter.
+  apply coop_elim with (i:=i) in Hord...
 Qed.
