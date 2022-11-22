@@ -48,8 +48,8 @@ Lemma unf_eq {A} (l : colist A) : l = unf l.
 Proof. destruct l; auto. Qed.
 
 CoInductive colist_le {A} : colist A -> colist A -> Prop :=
-| colist_le_conil : forall l, colist_le conil l
-| colist_le_cocons : forall x l1 l2,
+| colist_le_nil : forall l, colist_le conil l
+| colist_le_cons : forall x l1 l2,
     colist_le l1 l2 ->
     colist_le (cocons x l1) (cocons x l2).
 #[global] Hint Constructors colist_le : colist.
@@ -78,6 +78,12 @@ Lemma conil_le {A} (l : colist A) :
   conil ⊑ l.
 Proof. constructor. Qed.
 #[global] Hint Resolve conil_le : colist.
+
+#[global]
+  Program
+  Instance PType_colist {A} : PType (colist A) :=
+  { bot := conil }.
+Next Obligation. apply conil_le. Qed.
 
 CoInductive colist_eq {A} : colist A -> colist A -> Prop :=
 | colist_eq_nil : colist_eq conil conil
@@ -1337,22 +1343,21 @@ Definition colist_length {A} : colist A -> conat :=
 (*   (g : A -> colist B -> colist B) : colist A -> colist B := *)
 (*   co (afold z f g). *)
 
-Definition morph {A B} `{o: OType B} (z : B) (f : A -> B -> B) : colist A -> B :=
-  co (afold z f).
+(* Definition morph {A B} `{o: OType B} (z : B) (f : A -> B -> B) : colist A -> B := *)
+(*   co (afold z f). *)
 
-(*
-Extract Constant morph => "
-  fun _ ->
-  fun z ->
-  fun f ->
-  fun g ->
-  let rec go = function
-    | lazy Conil -> z
-    | lazy (Cotau l) -> f l
-    | lazy (Cocons (a, l)) -> g a (go l) in
-  go
-".
-*)
+Definition morph {A B} `{o: PType B} (f : A -> B -> B) : colist A -> B :=
+  co (afold ⊥ f).
+
+Lemma morph_nil {A B} `{o : OType B} `{@PType B o} `{@dCPO B o} (f : A -> B -> B) :
+  morph f conil === ⊥.
+Proof. apply co_fold_nil. Qed.
+
+Lemma morph_cons {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+  (f : A -> B -> B) (a : A) (l : colist A) :
+  (forall x, continuous (f x)) ->
+  morph f (cocons a l) === f a (morph f l).
+Proof. intro Hf; apply co_fold_cons; auto; try intro; apply bot_le. Qed.
 
 (** These should all be equivalent. *)
 
@@ -1370,14 +1375,14 @@ Definition generative''' {A} (l : colist A) : Prop :=
 
 (** Only safe for generative colists (no occurrences of nil). *)
 Extract Constant morph => "
-  \ o z f l ->
+  \ o f l ->
     case l of
-      Conil -> z
+      Conil -> error ""Conil""
       Cocons a l' -> f a (morph o z f l')
 ".
 
 Definition cofilter' {A} (f : A -> bool) : colist A -> colist A :=
-  morph conil (fun a l' => if f a then cocons a l' else l').
+  morph (fun a l' => if f a then cocons a l' else l').
 
 Lemma colist_length_inj {A} (l : colist A) (n : nat) :
   colist_length l = conat.inj n ->

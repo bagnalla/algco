@@ -100,6 +100,10 @@ Section aCPO.
   Definition co {C} `{OType C} (f : basis A -> C) (a : A) : C :=
     sup (f ∘ ideal a).
 
+  (** Need decreasing version of ideal for this. *)
+  (* Definition dec_co {C} `{OType C} (f : basis A -> C) (a : A) : C := *)
+  (*   inf (f ∘ ideal a). *)
+
   (** Co-continuous comorphism. *)
   Definition coop {C} `{OType C} (f : basis A -> C) (a : A) : C :=
     inf (f ∘ ideal a).

@@ -51,13 +51,13 @@ Definition sieve_aux : colist Z -> colist Z := co asieve_aux.
 Definition sieve : colist Z := sieve_aux (nats 2).
 Definition sieve_list (n : nat) : colist Z := asieve_aux (prefix n (nats 2)).
 
-Definition sieve_Z' : colist Z :=
-  morph conil (fun n l' => cocons n (cofilter' (fun m => negb (Z.eqb (Z.modulo m n) 0)) l'))
+Definition sieve' : colist Z :=
+  morph (fun n l' => cocons n (cofilter' (fun m => negb (Z.eqb (Z.modulo m n) 0)) l'))
     (nats 2).
 
 From Coq Require Import ExtrHaskellBasic.
 Extraction Language Haskell.
-Extraction "extract/sieve_Z/Sieve.hs" sieve_Z'.
+Extraction "extract/sieve_Z/Sieve.hs" sieve'.
 
 Lemma alists_exists_nats (n m : Z) k :
   m <= n ->
