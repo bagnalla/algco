@@ -201,7 +201,8 @@ Proof.
 Qed.
 
 #[global]
-  Program Instance OType_eR : OType eR :=
+  Program
+  Instance OType_eR : OType eR :=
   { leq := eRle }.
 Next Obligation. constructor; typeclasses eauto. Qed.
 
@@ -209,6 +210,12 @@ Lemma eR0_le a :
   0 <= a.
 Proof. destruct a; constructor; auto. Qed.
 #[global] Hint Resolve eR0_le : eR.
+
+#[global]
+  Program
+  Instance PType_eR : PType eR :=
+  { bot := 0 }.
+Next Obligation. apply eR0_le. Qed.
 
 Definition proj_eR (r : eR) : R :=
   match r with
@@ -2394,3 +2401,62 @@ Lemma eRmult_eRlt a b :
   0 < a * b ->
   0 < b.
 Proof. intros Ha Hab; apply eRmult_lt_compat_l with a; eRauto. Qed.  
+
+#[global]
+  Instance Proper_eRplus : Proper (leq ==> leq ==> leq) eRplus.
+Proof. intros a b Hab c d Hcd; apply eRplus_le_compat; auto. Qed.
+#[global] Hint Resolve Proper_eRplus : eR.
+
+#[global]
+  Instance Proper_eRplus' a : Proper (leq ==> leq) (eRplus a).
+Proof. intros c d Hcd; apply eRplus_le_compat_l; auto. Qed.
+#[global] Hint Resolve Proper_eRplus' : eR.
+
+Lemma eRplus_le_minus' a b c :
+  a <> infty ->
+  a + b <= c ->
+  b <= c - a.
+Proof.
+  intro Hneq; unfold eRplus, eRminus.
+  destruct a as [a Ha|]; try congruence.
+  destruct b as [b Hb|].
+  - destruct c as [c Hc|].
+    + intro Hle; inv Hle.
+      destruct (Rle_dec a c); constructor; lra.
+    + intro H; inv H; constructor.
+  - intro H; inv H; constructor.
+Qed.
+
+Lemma eRminus_le_plus' a b c :
+  c <= b ->
+  a <= b - c ->
+  c + a <= b.
+Proof.
+  intro Hle; unfold eRplus, eRminus.
+  destruct c as [c Hc|]; try congruence.
+  destruct b as [b Hb|]; inv Hle.
+  - destruct a as [a Ha|].
+    + destr; intro H; inv H; constructor; lra.
+    + destr; try congruence; intros HC; inv HC.
+  - intro; destr; constructor.
+Qed.
+
+Lemma continuous_eRplus (a : eR) :
+  continuous (eRplus a).
+Proof.
+  destruct a as [a Ha|].
+  { intros ch Hch s [Hub Hlub]; unfold compose; split.
+    - intro i; apply eRplus_le_compat_l; apply Hub.
+    - intros x Hx. simpl in *.
+      assert (H: upper_bound (x - er a Ha) ch).
+      { intro i; simpl.
+        specialize (Hx i); simpl in Hx.
+        apply eRplus_le_minus'; congruence. }
+      eapply Hlub in H.
+      apply eRminus_le_plus'.
+      + specialize (Hx O); simpl in Hx; eRauto.
+      + eRauto. }
+  replace (eRplus infty) with (fun _ : eR => infty).
+  2: { ext x; eRauto. }
+  apply continuous_const.
+Qed.

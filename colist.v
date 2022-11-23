@@ -24,7 +24,7 @@ From Coq Require Import
   ClassicalChoice
 .
 
-From algco Require Import aCPO axioms conat cpo misc order tactics.
+From algco Require Import aCPO axioms conat cpo eR misc order tactics.
 
 Local Open Scope order_scope.
 
@@ -1676,6 +1676,8 @@ Proof with eauto with colist order aCPO.
   - apply colist_forall_cofilter.
 Qed.
 
+(*** comap *)
+
 Definition map_f {A B} (f : A -> B) : A -> colist B -> colist B :=
   fun a l => cocons (f a) l.
 
@@ -1705,3 +1707,32 @@ Proof.
   unfold comap; rewrite morph_cons'; auto.
   intro x; apply continuous_cocons.
 Qed.
+
+(*** cosum *)
+
+(** Monotone basis function for sum. *)
+Definition asum : alist eR -> eR :=
+  afold 0 eRplus.
+
+#[global]
+  Instance monotone_asum : Proper (leq ==> leq) asum.
+Proof. apply monotone_afold; eauto with eR order colist. Qed.
+#[global] Hint Resolve monotone_asum : colist.
+
+(** Map comorphism. *)
+Definition cosum : colist eR -> eR :=
+  co (afold 0 eRplus).
+
+Lemma continuous_cosum :
+  continuous cosum.
+Proof. apply continuous_co, monotone_asum. Qed.
+
+(** Computation rule for sum. *)
+Lemma cosum_cons (a : eR) (l : colist eR) :
+  cosum (cocons a l) = a + cosum l.
+Proof.
+  unfold cosum.
+  rewrite co_fold_cons'; auto with eR.
+  apply continuous_eRplus.
+Qed.
+

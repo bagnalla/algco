@@ -1099,3 +1099,9 @@ Proof.
       2: { apply x. }
       intros i y; apply HR; auto.
 Qed.
+
+Lemma continuous_const {A B} `{OType A} `{OType B} (b : B) :
+  continuous (fun _ : A => b).
+Proof.
+  intros ? ? ? ?; apply supremum_const.
+Qed.
