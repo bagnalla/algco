@@ -271,7 +271,7 @@ Proof.
   revert a; induction l; simpl; intros x Hex.
   { unfold colist_exists, alist_exists in Hex.
     rewrite co_fold_nil' in Hex; contradiction. }
-  apply colist_exists_cons in Hex.
+  apply colist_exists_elim in Hex.
   destruct Hex as [?|Hex]; subst.
   { left; auto. }
   right; apply IHl; auto.

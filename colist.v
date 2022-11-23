@@ -897,12 +897,33 @@ Proof. eauto with order colist. Qed.
   : Proper (leq ==> flip leq) (alist_forall P).
 Proof. eauto with order colist. Qed.
 
-(** Inversion lemma for colist_exists. *)
-Lemma colist_exists_cons {A} (P : A -> Prop) (a : A) (l : colist A) :
-  colist_exists P (cocons a l) -> P a \/ colist_exists P l.
+(** Introduction rule 1 for colist_exists. *)
+Lemma colist_exists_intro1 {A} (P : A -> Prop) (a : A) (l : colist A) :
+  P a ->
+  colist_exists P (cocons a l).
 Proof with eauto with order colist.
-  unfold colist_exists, alist_exists; intro Hex.
-  rewrite co_fold_cons' in Hex...
+  unfold colist_exists, alist_exists.
+  rewrite co_fold_cons'...
+  intro; apply continuous_disj.
+Qed.
+
+(** Introduction rule 2 for colist_exists. *)
+Lemma colist_exists_intro2 {A} (P : A -> Prop) (a : A) (l : colist A) :
+  colist_exists P l ->
+  colist_exists P (cocons a l).
+Proof with eauto with order colist.
+  unfold colist_exists, alist_exists.
+  rewrite co_fold_cons'...
+  intro; apply continuous_disj.
+Qed.
+
+(** Elimination rule for colist_exists. *)
+Lemma colist_exists_elim {A} (P : A -> Prop) (a : A) (l : colist A) :
+  colist_exists P (cocons a l) ->
+  P a \/ colist_exists P l.
+Proof with eauto with order colist.
+  unfold colist_exists, alist_exists.
+  rewrite co_fold_cons'...
   intro; apply continuous_disj.
 Qed.
 
@@ -913,6 +934,39 @@ Proof with eauto with order colist.
   intros []; constructor.
 Qed.
 
+(** Introduction rule for colist_forall. *)
+Lemma colist_forall_intro {A} (P : A -> Prop) (a : A) (l : colist A) :
+  P a ->
+  colist_forall P l ->
+  colist_forall P (cocons a l).
+Proof with eauto with order colist.
+  intros H0 H1.
+  apply coop_intro...
+  intros [|i]; simpl; unfold flip; simpl.
+  { constructor. }
+  apply coop_elim with (i:=i) in H1...
+  constructor; auto.
+Qed.
+
+(** Elimination rule 1 for colist_forall. *)
+Lemma colist_forall_elim1 {A} (P : A -> Prop) (a : A) (l : colist A) :
+  colist_forall P (cocons a l) -> P a.
+Proof with eauto with order colist.
+  unfold colist_forall, alist_forall.
+  rewrite coop_fold_cons'...
+  intros []; auto.
+Qed.
+
+(** Elimination rule 2 for colist_forall. *)
+Lemma colist_forall_elim2 {A} (P : A -> Prop) (a : A) (l : colist A) :
+  colist_forall P (cocons a l) -> colist_forall P l.
+Proof with eauto with order colist.
+  unfold colist_forall, alist_forall.
+  rewrite coop_fold_cons'...
+  intros []; auto.
+Qed.
+
+(** Computation rule for colist_forall. *)
 Lemma colist_forall_cons {A} (P : A -> Prop) (a : A) (l : colist A) :
   colist_forall P (cocons a l) <-> P a /\ colist_forall P l.
 Proof with eauto with order colist.
@@ -1045,6 +1099,9 @@ Qed.
 
 Definition colist_le' {A} : colist A -> colist A -> Prop :=
   coop alist_colist_le.
+
+(* Lemma colist_le'_cons {A} (a : A) (l1 l2 : colist A) : *)
+(*   colist_le' *)
 
 Lemma alist_colist_le_prefix {A} (l1 l2 : colist A) (i : nat) :
   l1 ⊑ l2 ->
@@ -1735,4 +1792,3 @@ Proof.
   rewrite co_fold_cons'; auto with eR.
   apply continuous_eRplus.
 Qed.
-
