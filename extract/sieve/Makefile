@@ -1,0 +1,2 @@
+default:
+	ghc main.hs
