@@ -958,40 +958,6 @@ Qed.
 
 (** Filtering colists. *)
 
-Definition afilter {A} (f : A -> bool) : alist A -> colist A :=
-  afold conil (fun a l' => if f a then cocons a l' else l').
-
-#[global]
-  Instance monotone_afilter {A} (f : A -> bool) : Proper (leq ==> leq) (afilter f).
-Proof.
-  apply monotone_afold; auto with order colist.
-  intros x a b Hab; destr; auto; constructor; auto.
-Qed.
-#[global] Hint Resolve monotone_afilter : colist.
-
-Definition cofilter {A} (f : A -> bool) : colist A -> colist A := co (afilter f).
-
-Lemma cofilter_inj_filter {A} (P : A -> bool) (l : alist A) :
-  cofilter P (inj l) = inj (filter P l).
-Proof with eauto with colist order.
-  unfold cofilter, afilter, filter.
-  induction l; simpl.
-  - rewrite co_fold_nil'; auto.
-  - rewrite co_fold_cons', IHl...
-    destruct (P a); auto.
-Qed.
-
-Lemma colist_forall_inj {A} (P : A -> Prop) (l : alist A) :
-  alist_forall P l ->
-  colist_forall P (inj l).
-Proof with eauto with colist order.
-  unfold colist_forall, alist_forall.
-  induction l; intro Hl; simpl.
-  - rewrite coop_fold_nil'; auto.
-  - rewrite coop_fold_cons'...
-    destruct Hl; split; auto.
-Qed.
-
 Lemma prefix_inj_le {A} (l : alist A) (i : nat) :
   alist_le (prefix i (inj l)) l.
 Proof.
@@ -1193,83 +1159,6 @@ Proof with eauto with colist order aCPO.
     intro HP; apply Hl'; constructor; auto.
 Qed.
 
-Lemma alist_forall_colist_le'_afilter {A} (P : A -> bool) (l : alist A) :
-  alist_forall (fun x : A => P x <> true) l ->
-  colist_le' (afilter P l) conil.
-Proof.
-  unfold colist_le', alist_colist_le, afilter.
-  induction l; intro Hl; simpl.
-  { rewrite coop_fold_nil'; apply I. }
-  destruct Hl.
-  destruct (P a); try congruence; clear H; auto.
-Qed.
-
-Lemma cofilter_all_neq_true_nil {A} (P : A -> bool) (l : colist A) :
-  colist_forall (fun x : A => P x <> true) l ->
-  cofilter P l = conil.
-Proof with eauto with colist order aCPO.
-  intro Hl.
-  apply ext.
-  split.
-  - apply colist_le_colist_le'.
-    unfold cofilter.
-    apply co_coopP...
-    { intros ch Hch a Ha; unfold compose.
-      apply apply_infimum, cocontinuous_coop... }
-    apply coop_intro.
-    { apply monotone_antimonotone_compose...
-      eapply cocontinuous_antimonotone.
-      intros ch Hch a Ha; unfold compose.
-      apply apply_infimum, cocontinuous_coop... }
-    intro i.
-    apply coop_elim with (i:=i) in Hl...
-    apply alist_forall_colist_le'_afilter; auto.
-  - constructor.
-Qed.
-
-Lemma prefix_cofilter {A} (P : A -> bool) (l : colist A) (i : nat) :
-  exists j, prefix i (cofilter P l) = filter P (prefix j l).
-Proof with eauto with colist order aCPO.
-  revert l; induction i; intro l; simpl.
-  { exists O; reflexivity. }
-  destruct (classic (exists k, nth (fun x => P x = true) k l)) as [[k Hk]|Hk].
-  - revert Hk. revert l.
-    induction k; intros l Hk; inv Hk.
-    + specialize (IHi l0); destruct IHi as [j Hj].
-      unfold cofilter, afilter, filter.
-      rewrite co_fold_cons'...
-      exists (S j); simpl.
-      rewrite H.
-      f_equal; eauto.
-    + apply IHk in H1.
-      unfold cofilter, afilter, filter.
-      rewrite co_fold_cons'...
-      destruct (P a) eqn:HPa; try congruence.
-      clear H0.
-      destruct H1 as [j Hj].
-      exists (S j).
-      unfold cofilter, afilter in Hj.
-      rewrite Hj.
-      unfold filter.
-      simpl. rewrite HPa. reflexivity.
-  - assert (H: forall k, ~ nth (fun x => P x = true) k l).
-    { intros k HC; apply Hk; exists k; auto. }
-    apply forall_not_nth_colist_forall in H.
-    apply cofilter_all_neq_true_nil in H; rewrite H; exists O; reflexivity.
-Qed.
-
-Lemma colist_forall_cofilter {A} (P : A -> bool) (l : colist A) :
-  colist_forall (fun x => P x = true) (cofilter P l).
-Proof with eauto with colist order aCPO.
-  apply coop_intro...
-  simpl; unfold flip.  
-  intro i.
-  generalize (prefix_cofilter P l i).
-  intros [j Hj].
-  rewrite Hj.
-  apply alist_forall_filter.
-Qed.
-
 Lemma alist_forall_conj {A} (P Q : A -> Prop) (l : alist A) :
   alist_forall P l ->
   alist_forall Q l ->
@@ -1301,31 +1190,6 @@ Proof.
   { constructor. }
   destruct (Q a); auto; constructor; auto.
   apply IHl; auto.
-Qed.
-
-Lemma colist_forall_cofilter' {A} (P : A -> Prop) (Q : A -> bool) (l : colist A) :
-  colist_forall P l ->
-  colist_forall P (cofilter Q l).
-Proof with eauto with colist order aCPO.
-  intro Hl.
-  apply coop_intro...
-  intro i.
-  generalize (prefix_cofilter Q l i).
-  intros [j Hj].
-  simpl; unfold flip.
-  rewrite Hj.
-  apply coop_elim with (i:=j) in Hl...
-  apply alist_forall_filter'; auto.
-Qed.
-
-Lemma colist_forall_cofilter_conj {A} (P : A -> Prop) (Q : A -> bool) (l : colist A) :
-  colist_forall P l ->
-  colist_forall (fun x => P x /\ Q x = true) (cofilter Q l).
-Proof with eauto with colist order aCPO.
-  intro Hl.
-  apply colist_forall_conj.
-  - apply colist_forall_cofilter'; auto.
-  - apply colist_forall_cofilter.
 Qed.
 
 Definition alist_length {A} : alist A -> conat :=
@@ -1365,6 +1229,17 @@ Lemma morph_cons {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
   morph f (cocons a l) === f a (morph f l).
 Proof. intro Hf; apply co_fold_cons; auto; try intro; apply bot_le. Qed.
 
+Lemma morph_nil' {A B} `{o : OType B} `{@ExtType _ o} `{@PType B o} `{@dCPO B o}
+  (f : A -> B -> B) :
+  morph f conil = ⊥.
+Proof. apply ext, co_fold_nil. Qed.
+
+Lemma morph_cons' {A B} `{o : OType B} `{@ExtType _ o} `{@PType B o} `{@dCPO B o}
+  (f : A -> B -> B) (a : A) (l : colist A) :
+  (forall x, continuous (f x)) ->
+  morph f (cocons a l) = f a (morph f l).
+Proof. intro Hf; apply ext, co_fold_cons; auto; try intro; apply bot_le. Qed.
+
 (** These should all be equivalent. *)
 
 Definition generative {A} (l : colist A) : Prop :=
@@ -1386,9 +1261,6 @@ Extract Constant morph => "
       Conil -> error ""Conil""
       Cocons a l' -> f a (morph o z f l')
 ".
-
-Definition cofilter' {A} (f : A -> bool) : colist A -> colist A :=
-  morph (fun a l' => if f a then cocons a l' else l').
 
 Lemma colist_length_inj {A} (l : colist A) (n : nat) :
   colist_length l = conat.inj n ->
@@ -1604,11 +1476,145 @@ Qed.
 
 Definition nodup {A} : colist A -> Prop := ordered (fun a b => a <> b).
 
+(** Filtering colists. *)
+
+Definition filter_f {A} (f : A -> bool) : A -> colist A -> colist A :=
+  fun a l' => if f a then cocons a l' else l'.
+
+(** Monotone basis function for filter. *)
+Definition afilter {A} (f : A -> bool) : alist A -> colist A :=
+  afold ⊥ (filter_f f).
+
+(** Filter comorphism. *)
+Definition cofilter {A} (f : A -> bool) : colist A -> colist A :=
+  morph (filter_f f).
+
+(** Filter computation rule. *)
+Lemma cofilter_cons {A} (f : A -> bool) (a : A) (l : colist A) :
+  cofilter f (cocons a l) = if f a then cocons a (cofilter f l) else cofilter f l.
+Proof.
+  unfold cofilter; rewrite morph_cons'; auto.
+  intro x; apply continuous_ite; eauto with colist order.
+Qed.
+
+#[global]
+  Instance monotone_afilter {A} (f : A -> bool) : Proper (leq ==> leq) (afilter f).
+Proof.
+  apply monotone_afold; eauto with order colist; intro; apply bot_le.
+Qed.
+#[global] Hint Resolve monotone_afilter : colist.
+
+Lemma continuous_cofilter {A} (f : A -> bool) :
+  continuous (cofilter f).
+Proof.
+  apply continuous_co, monotone_afold; eauto with order colist.
+  intro; apply bot_le.
+Qed.
+#[global] Hint Resolve continuous_cofilter : colist.
+
+Lemma cofilter_inj_filter {A} (P : A -> bool) (l : alist A) :
+  cofilter P (inj l) = inj (filter P l).
+Proof with eauto with colist order.
+  unfold cofilter, filter_f, filter.
+  induction l; simpl.
+  - rewrite morph_nil'; auto.
+  - rewrite morph_cons', IHl...
+    destruct (P a); auto.
+Qed.
+
+Lemma alist_forall_colist_le'_afilter {A} (P : A -> bool) (l : alist A) :
+  alist_forall (fun x : A => P x <> true) l ->
+  colist_le' (afilter P l) conil.
+Proof.
+  unfold colist_le', alist_colist_le, afilter, filter_f.
+  induction l; intro Hl; simpl.
+  { rewrite coop_fold_nil'; apply I. }
+  destruct Hl.
+  destruct (P a); try congruence; clear H; auto.
+Qed.
+
+Lemma cofilter_all_neq_true_nil {A} (P : A -> bool) (l : colist A) :
+  colist_forall (fun x : A => P x <> true) l ->
+  cofilter P l = conil.
+Proof with eauto with colist order aCPO.
+  intro Hl.
+  apply ext.
+  split.
+  - apply colist_le_colist_le'.
+    unfold cofilter, morph.
+    apply co_coopP...
+    { intros ch Hch a Ha; unfold compose.
+      apply apply_infimum, cocontinuous_coop... }
+    apply coop_intro.
+    { apply monotone_antimonotone_compose...
+      eapply cocontinuous_antimonotone.
+      intros ch Hch a Ha; unfold compose.
+      apply apply_infimum, cocontinuous_coop... }
+    intro i.
+    apply coop_elim with (i:=i) in Hl...
+    apply alist_forall_colist_le'_afilter; auto.
+  - constructor.
+Qed.
+
+Lemma prefix_cofilter {A} (P : A -> bool) (l : colist A) (i : nat) :
+  exists j, prefix i (cofilter P l) = filter P (prefix j l).
+Proof with eauto with colist order aCPO.
+  revert l; induction i; intro l; simpl.
+  { exists O; reflexivity. }
+  destruct (classic (exists k, nth (fun x => P x = true) k l)) as [[k Hk]|Hk].
+  - revert Hk. revert l.
+    induction k; intros l Hk; inv Hk.
+    + specialize (IHi l0); destruct IHi as [j Hj].
+      unfold cofilter, filter_f, filter.
+      rewrite morph_cons'...
+      exists (S j); simpl.
+      rewrite H.
+      f_equal; eauto.
+    + apply IHk in H1.
+      unfold cofilter, filter_f, filter.
+      rewrite morph_cons'...
+      destruct (P a) eqn:HPa; try congruence.
+      clear H0.
+      destruct H1 as [j Hj].
+      exists (S j).
+      unfold cofilter, filter_f in Hj.
+      rewrite Hj.
+      unfold filter.
+      simpl. rewrite HPa. reflexivity.
+  - assert (H: forall k, ~ nth (fun x => P x = true) k l).
+    { intros k HC; apply Hk; exists k; auto. }
+    apply forall_not_nth_colist_forall in H.
+    apply cofilter_all_neq_true_nil in H; rewrite H; exists O; reflexivity.
+Qed.
+
+Lemma colist_forall_cofilter {A} (P : A -> bool) (l : colist A) :
+  colist_forall (fun x => P x = true) (cofilter P l).
+Proof with eauto with colist order aCPO.
+  apply coop_intro...
+  simpl; unfold flip.  
+  intro i.
+  generalize (prefix_cofilter P l i).
+  intros [j Hj].
+  rewrite Hj.
+  apply alist_forall_filter.
+Qed.
+
+Lemma colist_forall_inj {A} (P : A -> Prop) (l : alist A) :
+  alist_forall P l ->
+  colist_forall P (inj l).
+Proof with eauto with colist order.
+  unfold colist_forall, alist_forall.
+  induction l; intro Hl; simpl.
+  - rewrite coop_fold_nil'; auto.
+  - rewrite coop_fold_cons'...
+    destruct Hl; split; auto.
+Qed.
+
 Lemma alist_forall_colist_forall_afilter {A} (P : A -> Prop) Q l :
   alist_forall P l ->
   colist_forall P (afilter Q l).
 Proof.
-  unfold afilter.
+  unfold afilter, filter_f.
   induction l; simpl; intros Hall.
   { apply colist_forall_nil. }
   inv Hall.
@@ -1620,7 +1626,7 @@ Lemma alist_ordered_ordered_afilter {A} (R : A -> A -> Prop) P l :
   alist_ordered R l ->
   ordered R (afilter P l).
 Proof.
-  unfold afilter.
+  unfold afilter, filter_f.
   induction l; intro Hord; simpl.
   { apply ordered_nil. }
   inv Hord.
@@ -1634,7 +1640,7 @@ Lemma ordered_cofilter {A} (R : A -> A -> Prop) (P : A -> bool) (l : colist A) :
   ordered R (cofilter P l).
 Proof with eauto with colist order aCPO.
   intro Hord.
-  unfold cofilter.
+  unfold cofilter, morph.
   apply co_coopP...
   { apply cocontinuous_coop... }
   apply coop_intro.
@@ -1643,4 +1649,59 @@ Proof with eauto with colist order aCPO.
   intro i; simpl; unfold flip, compose.
   apply alist_ordered_ordered_afilter.
   apply coop_elim with (i:=i) in Hord...
+Qed.
+
+Lemma colist_forall_cofilter' {A} (P : A -> Prop) (Q : A -> bool) (l : colist A) :
+  colist_forall P l ->
+  colist_forall P (cofilter Q l).
+Proof with eauto with colist order aCPO.
+  intro Hl.
+  apply coop_intro...
+  intro i.
+  generalize (prefix_cofilter Q l i).
+  intros [j Hj].
+  simpl; unfold flip.
+  rewrite Hj.
+  apply coop_elim with (i:=j) in Hl...
+  apply alist_forall_filter'; auto.
+Qed.
+
+Lemma colist_forall_cofilter_conj {A} (P : A -> Prop) (Q : A -> bool) (l : colist A) :
+  colist_forall P l ->
+  colist_forall (fun x => P x /\ Q x = true) (cofilter Q l).
+Proof with eauto with colist order aCPO.
+  intro Hl.
+  apply colist_forall_conj.
+  - apply colist_forall_cofilter'; auto.
+  - apply colist_forall_cofilter.
+Qed.
+
+Definition map_f {A B} (f : A -> B) : A -> colist B -> colist B :=
+  fun a l => cocons (f a) l.
+
+(** Monotone basis function for map. *)
+Definition amap {A B} (f : A -> B) : alist A -> colist B :=
+  afold (@conil B) (map_f f).
+
+#[global]
+  Instance monotone_amap {A B} (f : A -> B) : Proper (leq ==> leq) (amap f).
+Proof.
+  apply monotone_afold; eauto with order colist; intro; apply bot_le.
+Qed.
+#[global] Hint Resolve monotone_amap : colist.
+
+(** Map comorphism. *)
+Definition comap {A B} (f : A -> B) : colist A -> colist B :=
+  morph (map_f f).
+
+Lemma continuous_comap {A B} (f : A -> B) :
+  continuous (comap f).
+Proof. apply continuous_co, monotone_amap. Qed.
+
+(** Computation rule for map. *)
+Lemma comap_cons {A B} (f : A -> B) (a : A) (l : colist A) :
+  comap f (cocons a l) = cocons (f a) (comap f l).
+Proof.
+  unfold comap; rewrite morph_cons'; auto.
+  intro x; apply continuous_cocons.
 Qed.

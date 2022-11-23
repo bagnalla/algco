@@ -51,14 +51,6 @@ Definition sieve_aux : colist Z -> colist Z := co asieve_aux.
 Definition sieve : colist Z := sieve_aux (nats 2).
 Definition sieve_list (n : nat) : colist Z := asieve_aux (prefix n (nats 2)).
 
-Definition sieve' : colist Z :=
-  morph (fun n l' => cocons n (cofilter' (fun m => negb (Z.eqb (Z.modulo m n) 0)) l'))
-    (nats 2).
-
-From Coq Require Import ExtrHaskellBasic.
-Extraction Language Haskell.
-Extraction "extract/sieve_Z/Sieve.hs" sieve'.
-
 Lemma alists_exists_nats (n m : Z) k :
   m <= n ->
   n < m + Z.of_nat k ->
@@ -90,8 +82,8 @@ Proof with eauto with order colist aCPO.
   { destruct Hex. }
   destruct l.
   { destruct Hex. }
-  unfold cofilter, afilter.
-  rewrite co_fold_cons'...
+  unfold cofilter, filter_f.
+  rewrite morph_cons'...
   destruct Hex as [?|Hex]; subst.
   - rewrite Ha.
     destruct j; try lia.
@@ -529,4 +521,28 @@ Proof.
   eapply ordered_impl.
   2: { apply increasing_sieve. }
   lia.
+Qed.
+
+Definition sieve_f : Z -> colist Z -> colist Z :=
+  fun n l' => cocons n (cofilter (fun m => negb (Z.eqb (Z.modulo m n) 0)) l').
+
+Definition sieve' : colist Z -> colist Z :=
+  morph sieve_f.
+
+Definition sieve'' : colist Z := sieve' (nats 2).
+
+Lemma sieve_sieve'' : sieve = sieve''.
+Proof. reflexivity. Qed.
+
+From Coq Require Import ExtrHaskellBasic.
+Extraction Language Haskell.
+Extraction "extract/sieve_Z/Sieve.hs" sieve'.
+
+Lemma sieve_cons a l :
+  sieve' (cocons a l) = sieve_f a (sieve' l).
+Proof with eauto with colist order aCPO.
+  unfold sieve'.
+  rewrite morph_cons'; auto.
+  intro x; unfold sieve_f.
+  apply continuous_compose...
 Qed.
