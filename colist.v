@@ -1100,8 +1100,13 @@ Qed.
 Definition colist_le' {A} : colist A -> colist A -> Prop :=
   coop alist_colist_le.
 
-(* Lemma colist_le'_cons {A} (a : A) (l1 l2 : colist A) : *)
-(*   colist_le' *)
+Lemma colist_le'_nil {A} (l : colist A) :
+  colist_le' conil l.
+Proof with eauto with colist order aCPO.
+  unfold colist_le', alist_colist_le.
+  apply coop_intro2...
+  intros []; apply I.
+Qed.
 
 Lemma alist_colist_le_prefix {A} (l1 l2 : colist A) (i : nat) :
   l1 ⊑ l2 ->
@@ -1131,7 +1136,6 @@ Proof with eauto with colist order aCPO.
   apply coop_elim2 with (i := S i) in Hle...
   apply Hle.
 Qed.
-
 
 Lemma colist_le_colist_le' {A} (l1 l2 : colist A) :
   l1 ⊑ l2 <-> colist_le' l1 l2.
@@ -1533,7 +1537,7 @@ Qed.
 
 Definition nodup {A} : colist A -> Prop := ordered (fun a b => a <> b).
 
-(** Filtering colists. *)
+(*** Cofilter *)
 
 Definition filter_f {A} (f : A -> bool) : A -> colist A -> colist A :=
   fun a l' => if f a then cocons a l' else l'.
@@ -1568,6 +1572,27 @@ Proof.
   intro; apply bot_le.
 Qed.
 #[global] Hint Resolve continuous_cofilter : colist.
+
+Lemma cofilter_comm {A} (P Q : A -> bool) (l : colist A) :
+  cofilter P (cofilter Q l) = cofilter Q (cofilter P l).
+Proof with eauto with colist order aCPO.
+  unfold cofilter, morph.
+  rewrite co_co_ext with (x:=l)...
+  rewrite co_co_ext with (f:=afilter P)...
+  unfold afilter.
+  apply Proper_co_ext...
+  clear l. ext l.
+  unfold filter_f, compose; simpl.
+  induction l; simpl.
+  { rewrite 2!co_fold_nil'; auto. }
+  destruct (P a) eqn:HPa, (Q a) eqn:HQa; auto.
+  - rewrite 2!co_fold_cons'...
+    rewrite HPa, HQa, IHl; auto.
+  - rewrite co_fold_cons'...
+    rewrite HQa; auto.
+  - rewrite co_fold_cons'...
+    rewrite HPa; auto.
+Qed.
 
 Lemma cofilter_inj_filter {A} (P : A -> bool) (l : alist A) :
   cofilter P (inj l) = inj (filter P l).
