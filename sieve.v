@@ -124,10 +124,9 @@ Proof with eauto with order colist aCPO.
   simpl.
   destruct Hex; subst.
   - unfold colist_exists, alist_exists.
-    rewrite co_fold_cons'...
-    intro a; apply continuous_disj.
+    apply colist_exists_intro1; auto.
   - unfold colist_forall, alist_forall in Hall.
-    rewrite coop_fold_cons' in Hall...
+    apply colist_forall_cons in Hall.
     destruct Hall as [Hlt Hall].
     apply IHi in H; auto.
     apply co_elim in H...
@@ -192,9 +191,8 @@ Proof with eauto with colist order aCPO.
   unfold asieve_aux.
   unfold colist_forall, alist_forall; revert n.
   induction l; simpl; intros n Hlt Hl; inv Hl.
-  { rewrite coop_fold_nil'... }
-  rewrite coop_fold_cons'...
-  split.
+  { apply colist_forall_nil. }
+  apply colist_forall_intro...
   - split; try lia; intros n Hle Hneq HC.
     (* a is strictly less than n so can't be a multiple of n. *)
     apply Zdiv.Zmod_divides in HC; try lia.
@@ -270,7 +268,7 @@ Lemma colist_exists_inj_alist_exists {A} (a : A) (l : alist A) :
 Proof.
   revert a; induction l; simpl; intros x Hex.
   { unfold colist_exists, alist_exists in Hex.
-    rewrite co_fold_nil' in Hex; contradiction. }
+    apply colist_exists_nil in Hex; contradiction. }
   apply colist_exists_elim in Hex.
   destruct Hex as [?|Hex]; subst.
   { left; auto. }
@@ -546,3 +544,5 @@ Proof with eauto with colist order aCPO.
   intro x; unfold sieve_f.
   apply continuous_compose...
 Qed.
+
+Print Assumptions prime_exists_sieve.

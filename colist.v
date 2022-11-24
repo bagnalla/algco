@@ -903,7 +903,7 @@ Lemma colist_exists_intro1 {A} (P : A -> Prop) (a : A) (l : colist A) :
   colist_exists P (cocons a l).
 Proof with eauto with order colist.
   unfold colist_exists, alist_exists.
-  rewrite co_fold_cons'...
+  rewrite co_fold_cons...
   intro; apply continuous_disj.
 Qed.
 
@@ -913,8 +913,15 @@ Lemma colist_exists_intro2 {A} (P : A -> Prop) (a : A) (l : colist A) :
   colist_exists P (cocons a l).
 Proof with eauto with order colist.
   unfold colist_exists, alist_exists.
-  rewrite co_fold_cons'...
+  rewrite co_fold_cons...
   intro; apply continuous_disj.
+Qed.
+
+Lemma colist_exists_nil {A} (P : A -> Prop) :
+  ~ colist_exists P conil.
+Proof with eauto with order colist.
+  intro HC; apply co_elim in HC...
+  destruct HC as [[] HC]; inv HC.
 Qed.
 
 (** Elimination rule for colist_exists. *)
@@ -923,7 +930,7 @@ Lemma colist_exists_elim {A} (P : A -> Prop) (a : A) (l : colist A) :
   P a \/ colist_exists P l.
 Proof with eauto with order colist.
   unfold colist_exists, alist_exists.
-  rewrite co_fold_cons'...
+  rewrite co_fold_cons...
   intro; apply continuous_disj.
 Qed.
 
@@ -953,7 +960,7 @@ Lemma colist_forall_elim1 {A} (P : A -> Prop) (a : A) (l : colist A) :
   colist_forall P (cocons a l) -> P a.
 Proof with eauto with order colist.
   unfold colist_forall, alist_forall.
-  rewrite coop_fold_cons'...
+  rewrite coop_fold_cons...
   intros []; auto.
 Qed.
 
@@ -962,7 +969,7 @@ Lemma colist_forall_elim2 {A} (P : A -> Prop) (a : A) (l : colist A) :
   colist_forall P (cocons a l) -> colist_forall P l.
 Proof with eauto with order colist.
   unfold colist_forall, alist_forall.
-  rewrite coop_fold_cons'...
+  rewrite coop_fold_cons...
   intros []; auto.
 Qed.
 
@@ -971,8 +978,9 @@ Lemma colist_forall_cons {A} (P : A -> Prop) (a : A) (l : colist A) :
   colist_forall P (cocons a l) <-> P a /\ colist_forall P l.
 Proof with eauto with order colist.
   split.
-  - unfold colist_forall, alist_forall; intro Hex.
-    rewrite coop_fold_cons' in Hex...
+  - intro H; pose proof H as H'.
+    apply colist_forall_elim1 in H.
+    apply colist_forall_elim2 in H'; split; auto.
   - intros [H0 H1].
     apply coop_intro...
     intros [|i]; simpl; unfold flip; simpl.
@@ -1607,10 +1615,11 @@ Qed.
 Lemma alist_forall_colist_le'_afilter {A} (P : A -> bool) (l : alist A) :
   alist_forall (fun x : A => P x <> true) l ->
   colist_le' (afilter P l) conil.
-Proof.
+Proof with eauto with colist order.
   unfold colist_le', alist_colist_le, afilter, filter_f.
   induction l; intro Hl; simpl.
-  { rewrite coop_fold_nil'; apply I. }
+  { apply coop_intro2...
+    intros []; apply I. }
   destruct Hl.
   destruct (P a); try congruence; clear H; auto.
 Qed.
@@ -1685,11 +1694,9 @@ Lemma colist_forall_inj {A} (P : A -> Prop) (l : alist A) :
   alist_forall P l ->
   colist_forall P (inj l).
 Proof with eauto with colist order.
-  unfold colist_forall, alist_forall.
   induction l; intro Hl; simpl.
-  - rewrite coop_fold_nil'; auto.
-  - rewrite coop_fold_cons'...
-    destruct Hl; split; auto.
+  - apply colist_forall_nil.
+  - apply colist_forall_intro; destruct Hl; auto.
 Qed.
 
 Lemma alist_forall_colist_forall_afilter {A} (P : A -> Prop) Q l :

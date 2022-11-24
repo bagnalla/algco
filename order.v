@@ -10,7 +10,7 @@ From Coq Require Import
   Relation_Definitions
   Lia
   Equivalence
-  PropExtensionality
+  (* PropExtensionality *)
 .
 
 Local Open Scope program_scope.
@@ -1006,9 +1006,9 @@ Proof.
   ext x; rewrite equ_arrow in Hfg; specialize (Hfg x); apply ext; auto.
 Qed.
 
-#[global]
-  Instance ExtType_Prop : ExtType Prop.
-Proof. constructor; apply propositional_extensionality. Qed.
+(* #[global] *)
+(*   Instance ExtType_Prop : ExtType Prop. *)
+(* Proof. constructor; apply propositional_extensionality. Qed. *)
 
 #[global]
   Instance ExtType_nat : ExtType nat.
