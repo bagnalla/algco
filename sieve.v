@@ -384,7 +384,7 @@ Proof with eauto with colist order aCPO.
   eapply IHal; eauto.
 Qed.
 
-Definition sorted : colist Z -> Prop := ordered Z.le.
+(* Definition sorted : colist Z -> Prop := ordered Z.le. *)
 Definition increasing : colist Z -> Prop := ordered Z.lt.
 
 Lemma alist_forall_colist_forall_asieve_aux P l :
@@ -510,7 +510,7 @@ Theorem sorted_sieve :
 Proof.
   eapply ordered_impl.
   2: { apply increasing_sieve. }
-  lia.
+  unfold leq; simpl; lia.
 Qed.
 
 Theorem nodup_sieve :

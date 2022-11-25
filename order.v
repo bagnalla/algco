@@ -10,7 +10,7 @@ From Coq Require Import
   Relation_Definitions
   Lia
   Equivalence
-  (* PropExtensionality *)
+  ZArith
 .
 
 Local Open Scope program_scope.
@@ -115,6 +115,9 @@ Qed.
 
 #[global]
   Instance OType_nat : OType nat := {| leq := Nat.le |}.
+
+#[global]
+  Instance OType_Z : OType Z := {| leq := Z.le |}.
 
 #[global]
   Instance OType_list A : OType (list A) :=

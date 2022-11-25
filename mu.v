@@ -56,7 +56,7 @@ Qed.
 #[global] Hint Resolve monotone_amu : mu.
 
 Definition atree_lang {A} : atree bool A -> cotree bool (list bool) :=
-  fold cobot (const (coleaf [])) id (fun k => conode (fun b => cotree_map' (cons b) (k b))).
+  fold cobot (const (coleaf [])) id (fun k => conode (fun b => cotree_map (cons b) (k b))).
 
 Definition cotree_lang {A} : cotree bool A -> cotree bool (list bool) :=
   co atree_lang.
@@ -97,7 +97,7 @@ Qed.
 
 Lemma cotree_lang_node {A} (k : bool -> cotree bool A) :
   cotree_lang (conode k) =
-    conode (fun b => cotree_map' (cons b) (cotree_lang (k b))).
+    conode (fun b => cotree_map (cons b) (cotree_lang (k b))).
 Proof.
   apply cotree_equ_eq.
   unfold cotree_lang, atree_lang.
@@ -145,7 +145,7 @@ Qed.
 
 Lemma cotree_preimage_node {A} (P : A -> bool) (k : bool -> cotree bool A) :
   cotree_preimage P (conode k) =
-    conode (fun b => cotree_map' (cons b) (cotree_preimage P (k b))).
+    conode (fun b => cotree_map (cons b) (cotree_preimage P (k b))).
 Proof.
   apply cotree_equ_eq.
   unfold cotree_preimage, compose.
@@ -221,8 +221,8 @@ Proof
     rewrite <- eRplus_combine_fract.
     unfold atree_lang.
     assert (Heq: forall b, mu (fun bs => 1 / 2 ^ length bs) (atree_lang (a b)) / 2 =
-                             mu (fun bs => 1 / 2 ^ length bs)
-                               (cotree_map' (cons b) (atree_lang (a b)))).
+                        mu (fun bs => 1 / 2 ^ length bs)
+                          (cotree_map (cons b) (atree_lang (a b)))).
     { intro b; unfold mu, co, eRdiv.
       rewrite eRmult_comm.
       rewrite sup_scalar.

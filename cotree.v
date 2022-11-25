@@ -42,14 +42,12 @@ Create HintDb cotree.
 Variant cotreeF (X I A : Type) : Type :=
   | cobotF : cotreeF X I A
   | coleafF : A -> cotreeF X I A
-  | cotauF : X -> cotreeF X I A
   | conodeF : (I -> X) -> cotreeF X I A.
 
 (** The type of cotrees. *)
 CoInductive cotree (I A : Type) : Type :=
 | cobot : cotree I A
 | coleaf : A -> cotree I A
-| cotau : cotree I A -> cotree I A
 | conode : (I -> cotree I A) -> cotree I A.
 
 (** The canonical divergent cotree. *)
@@ -59,7 +57,6 @@ Definition unf {I A} (t : cotree I A) :=
   match t with
   | cobot => cobot
   | coleaf x => coleaf x
-  | cotau t' => cotau t'
   | conode k => conode k
   end.
 
@@ -77,7 +74,6 @@ Proof. destruct t; auto. Qed.
 Inductive atree (I A : Type) : Type :=
 | abot : atree I A
 | aleaf : A -> atree I A
-| atau : atree I A -> atree I A
 | anode : (I -> atree I A) -> atree I A.
 
 Definition bintree (A : Type) : Type := atree bool A.
@@ -86,16 +82,12 @@ Fixpoint atree_map {I A B} (f : A -> B) (t : atree I A) : atree I B :=
   match t with
   | abot => abot
   | aleaf x => aleaf (f x)
-  | atau t' => atau (atree_map f t')
   | anode k => anode (atree_map f ∘ k)
   end.
 
 Inductive atree_le {I A} : atree I A -> atree I A -> Prop :=
 | atree_le_abot : forall t, atree_le abot t
 | atree_le_aleaf : forall x, atree_le (aleaf x) (aleaf x)
-| atree_le_atau : forall t t',
-    atree_le t t' ->
-    atree_le (atau t) (atau t')
 | atree_le_anode : forall f g,
     (forall x, atree_le (f x) (g x)) ->
     atree_le (anode f) (anode g).
@@ -110,7 +102,6 @@ Proof.
   intro x; induction x; intros y z Hxy Hyz.
   - constructor.
   - inv Hxy; auto.
-  - inv Hxy; inv Hyz; constructor; eauto.
   - inv Hxy; inv Hyz; constructor; eauto.
 Qed.
 
@@ -128,9 +119,7 @@ Lemma atree_le_antisym {I A} (a b : atree I A) :
   a = b.
 Proof.
   intro H; induction H; intro Hle; inv Hle; auto.
-  - rewrite IHatree_le; auto.
-  - replace g with f; auto.
-    ext x; apply H0, H3.
+  replace g with f; auto; ext x; apply H0, H3.
 Qed.
 
 Lemma equ_atree {I A} (a b : atree I A) :
@@ -143,7 +132,6 @@ Fixpoint tprefix {I A} (n : nat) (t : cotree I A) : atree I A :=
   | S n' => match t with
             | cobot => abot
             | coleaf x => aleaf x
-            | cotau t' => atau (tprefix n' t')
             | conode k => anode (tprefix n' ∘ k)
             end
   end.
@@ -156,7 +144,6 @@ Fixpoint coprefix {I A} (n : nat) (t : cotree I A) : cotree I A :=
   | S n' => match t with
             | cobot => cobot
             | coleaf x => coleaf x
-            | cotau t' => cotau (coprefix n' t')
             | conode k => conode (coprefix n' ∘ k)
             end
   end.
@@ -165,7 +152,6 @@ Fixpoint inj {I A} (t : atree I A) : cotree I A :=
   match t with
   | abot => cobot
   | aleaf x => coleaf x
-  | atau t' => cotau (inj t')
   | anode f => conode (inj ∘ f)
   end.
 
@@ -174,17 +160,12 @@ Lemma inj_tprefix_coprefix {I A} (t : cotree I A) (n : nat) :
 Proof.
   revert t; induction n; intro t; simpl; auto.
   destruct t; simpl; auto.
-  - rewrite IHn; auto.
-  - unfold compose.
-    f_equal; ext i; apply IHn.
+  - unfold compose; f_equal; ext i; apply IHn.
 Qed.
 
 CoInductive cotree_le {I A} : cotree I A -> cotree I A -> Prop :=
 | cotree_le_cobot : forall t, cotree_le cobot t
 | cotree_le_coleaf : forall x, cotree_le (coleaf x) (coleaf x)
-| cotree_le_cotau : forall t t',
-    cotree_le t t' ->
-    cotree_le (cotau t) (cotau t')
 | cotree_le_conode : forall f g,
     (forall x, cotree_le (f x) (g x)) ->
     cotree_le (conode f) (conode g).
@@ -202,7 +183,6 @@ Proof.
   - constructor.
   - inv Hyz; constructor.
   - inv Hyz; constructor; eauto.
-  - inv Hyz; constructor; eauto.
 Qed.
 
 #[global]
@@ -214,26 +194,9 @@ Proof. constructor; typeclasses eauto. Qed.
   { leq := cotree_le }.
 
 #[global]
-  Instance monotone_cotau {I A} : Proper (leq ==> leq) (@cotau I A).
-Proof. intros a b Hab; constructor; auto. Qed.
-#[global] Hint Resolve monotone_cotau : cotree.
-
-#[global]
   Instance monotone_conode {I A} : Proper (leq ==> leq) (@conode I A).
 Proof. intros a b Hab; constructor; auto. Qed.
 #[global] Hint Resolve monotone_conode : cotree.
-
-Lemma continuous_cotau {I A} :
-  continuous (@cotau I A).
-Proof.
-  intros ch Hch s Hs; split.
-  - intro i; constructor; apply Hs.
-  - intros x Hx.
-    destruct x; try solve [specialize (Hx (S O)); inv Hx].
-    constructor; apply Hs.
-    intro i; specialize (Hx i); inv Hx; auto.
-Qed.
-#[global] Hint Resolve continuous_cotau : cotree.
 
 Lemma continuous_conode {I A} :
   continuous (@conode I A).
@@ -255,9 +218,6 @@ Proof. auto. Qed.
 CoInductive cotree_eq {I A} : cotree I A -> cotree I A -> Prop :=
 | cotree_eq_cobot : cotree_eq cobot cobot
 | cotree_eq_coleaf : forall x, cotree_eq (coleaf x) (coleaf x)
-| cotree_eq_cotau : forall t t',
-    cotree_eq t t' ->
-    cotree_eq (cotau t) (cotau t')
 | cotree_eq_conode : forall f g,
     (forall x, cotree_eq (f x) (g x)) ->
     cotree_eq (conode f) (conode g).
@@ -308,22 +268,10 @@ Proof.
   etransitivity; eauto; etransitivity; eauto.
 Qed.
 
-Definition bstep_tau {I A} (t : atree I A) : atree I A :=
-  match t with
-  | atau t' => t'
-  | _ => abot
-  end.
-
 Definition bstep_node {I A} (i : I) (t : atree I A) : atree I A :=
   match t with
   | anode k => k i
   | _ => abot
-  end.
-
-Definition step_tau {I A} (t : cotree I A) : cotree I A :=
-  match t with
-  | cotau t' => t'
-  | _ => cobot
   end.
 
 Definition step_node {I A} (i : I) (t : cotree I A) : cotree I A :=
@@ -356,14 +304,12 @@ Proof.
   - right; intro HC; inv HC.
   - left; constructor.
   - left; constructor.
-  - left; constructor.
 Qed.
 
 Lemma not_abot_dec {I A} (t : atree I A) : { not_abot t } + { ~ not_abot t }.
 Proof.
   destruct t.
   - right; intro HC; inv HC.
-  - left; constructor.
   - left; constructor.
   - left; constructor.
 Qed.
@@ -374,38 +320,14 @@ CoFixpoint cotree_sup {I A} (ch : nat -> cotree I A) : cotree I A :=
   | Some n => match ch n with
              | cobot => cobot
              | coleaf x => coleaf x
-             | cotau _ => cotau (cotree_sup (step_tau ∘ ch))
              | conode _ => conode (fun x => cotree_sup (step_node x ∘ ch))
              end
   | None => cobot
   end.
 
-Lemma directed_step_tau {I A} (ch : nat -> cotree I A) :
-  directed ch ->
-  directed (step_tau ∘ ch).
-Proof.
-  intros Hch i j.
-  specialize (Hch i j); destruct Hch as [k [Hk Hk']].
-  unfold step_tau, compose.
-  exists k; split.
-  - destruct (ch i) eqn:Hchi; try constructor; inv Hk; auto.
-  - destruct (ch j) eqn:Hchj; try constructor; inv Hk'; auto.
-Qed.
-
 Lemma directed_step_node {I A} (ch : nat -> cotree I A) (x : I) :
   directed ch ->
   directed (step_node x ∘ ch).
-Proof.
-  intros Hch i j; specialize (Hch i j); destruct Hch as [k [Hk Hk']].
-  unfold bstep_node, compose.
-  exists k; split.
-  - destruct (ch i) eqn:Hchi; try constructor; inv Hk; apply H1.
-  - destruct (ch j) eqn:Hchj; try constructor; inv Hk'; apply H1.
-Qed.
-
-Lemma directed_bstep_tau {I A} (ch : nat -> atree I A) :
-  directed ch ->
-  directed (bstep_tau ∘ ch).
 Proof.
   intros Hch i j; specialize (Hch i j); destruct Hch as [k [Hk Hk']].
   unfold bstep_node, compose.
@@ -425,30 +347,6 @@ Proof.
   - destruct (ch j) eqn:Hchj; try constructor; inv Hk'; apply H1.
 Qed.
 
-Lemma directed_leaf_tau {I A} (ch : nat -> cotree I A) i j x t :
-  directed ch ->
-  ch i = coleaf x ->
-  ch j = cotau t ->
-  False.
-Proof.
-  intros Hch Hi Hj.
-  specialize (Hch i j); destruct Hch as [l [Hl Hl']].
-  rewrite Hi in Hl; rewrite Hj in Hl'.
-  inv Hl; rewrite <- H in Hl'; inv Hl'.
-Qed.
-
-Lemma directed_aleaf_atau {I A} (ch : nat -> atree I A) i j x t :
-  directed ch ->
-  ch i = aleaf x ->
-  ch j = atau t ->
-  False.
-Proof.
-  intros Hch Hi Hj.
-  specialize (Hch i j); destruct Hch as [l [Hl Hl']].
-  rewrite Hi in Hl; rewrite Hj in Hl'.
-  inv Hl; rewrite <- H in Hl'; inv Hl'.
-Qed.
-
 Lemma directed_leaf_node {I A} (ch : nat -> cotree I A) i j x k :
   directed ch ->
   ch i = coleaf x ->
@@ -459,30 +357,6 @@ Proof.
   specialize (Hch i j); destruct Hch as [l [Hl Hl']].
   rewrite Hi in Hl; rewrite Hj in Hl'.
   inv Hl; rewrite <- H in Hl'; inv Hl'.
-Qed.
-
-Lemma directed_tau_node {I A} (ch : nat -> cotree I A) i j t k :
-  directed ch ->
-  ch i = cotau t ->
-  ch j = conode k ->
-  False.
-Proof.
-  intros Hch Hi Hj.
-  specialize (Hch i j); destruct Hch as [l [Hl Hl']].
-  rewrite Hi in Hl; rewrite Hj in Hl'.
-  inv Hl; rewrite <- H0 in Hl'; inv Hl'.
-Qed.
-
-Lemma directed_atau_anode {I A} (ch : nat -> atree I A) i j t k :
-  directed ch ->
-  ch i = atau t ->
-  ch j = anode k ->
-  False.
-Proof.
-  intros Hch Hi Hj.
-  specialize (Hch i j); destruct Hch as [l [Hl Hl']].
-  rewrite Hi in Hl; rewrite Hj in Hl'.
-  inv Hl; rewrite <- H0 in Hl'; inv Hl'.
 Qed.
 
 Lemma cotree_sup_ub {I A} (ch : nat -> cotree I A) :
@@ -506,32 +380,14 @@ Proof.
       inv Hk; constructor.
     + clear Ho.
       destruct (ch i) eqn:Hchi.
-      * constructor.
-      * eapply directed_leaf_tau in Hchi; eauto; contradiction.
-      * constructor.
-        replace c0 with ((step_tau ∘ ch) i).
-        2: { unfold compose; rewrite Hchi; reflexivity. }
-        apply CH, directed_step_tau; auto.
-      * eapply directed_tau_node in Hchi; eauto; contradiction.
-    + clear Ho.
-      destruct (ch i) eqn:Hchi.
       { constructor. }
       { eapply directed_leaf_node in Hchi; eauto; contradiction. }
-      { eapply directed_tau_node in Hchi; eauto; contradiction. }
       { constructor; intro x.
         replace (c0 x) with ((step_node x ∘ ch) i).
         2: { unfold compose; rewrite Hchi; reflexivity. }
         apply CH, directed_step_node; auto. }
   - apply LPO_option_none with (n:=i) in Ho.
     destruct (ch i); try constructor; exfalso; apply Ho; constructor.
-Qed.
-
-Lemma upper_bound_step_tau {I A} (t : cotree I A) (ch : nat -> cotree I A) :
-  upper_bound (cotau t) ch ->
-  upper_bound t (step_tau ∘ ch).
-Proof.
-  intros Hub i; specialize (Hub i); unfold compose.
-  destruct (ch i) eqn:Hchi; inv Hub; simpl; auto; constructor.
 Qed.
 
 Lemma upper_bound_step_node {I A} (k : I -> cotree I A) (ch : nat -> cotree I A) (x : I) :
@@ -549,9 +405,7 @@ Proof.
   rewrite unf_eq; simpl.
   destruct (LPO_option (fun _ : nat => not_cobot_dec t)) eqn:H.
   - apply LPO_option_some in H.
-    destruct t; constructor.
-    + unfold compose; apply CH.
-    + intro i; unfold compose; apply CH.
+    destruct t; constructor; intro i; unfold compose; apply CH.
   - apply LPO_option_none with (n:=O) in H.
     destruct t; try constructor; exfalso; apply H; constructor.
 Qed.
@@ -567,7 +421,6 @@ Proof.
   destruct (ch n) eqn:Hchn.
   - constructor.
   - specialize (Ha n); rewrite Hchn in Ha; auto.
-  - specialize (Ha n); rewrite Hchn in Ha; inv Ha.
   - specialize (Ha n); rewrite Hchn in Ha; inv Ha.
 Qed.
 
@@ -588,17 +441,6 @@ Proof.
     2: { constructor. }
     destruct (ch n) eqn:Hchn.
     + constructor.
-    + specialize (Hub n); rewrite Hchn in Hub; inv Hub.
-    + constructor; apply CH.
-      * apply directed_step_tau; auto.
-      * apply upper_bound_step_tau; auto.
-    + specialize (Hub n); rewrite Hchn in Hub; inv Hub.
-  - rewrite unf_eq; simpl.
-    destruct (LPO_option (fun n : nat => not_cobot_dec (ch n))) eqn:Ho.
-    2: { constructor. }
-    destruct (ch n) eqn:Hchn.
-    + constructor.
-    + specialize (Hub n); rewrite Hchn in Hub; inv Hub.
     + specialize (Hub n); rewrite Hchn in Hub; inv Hub.
     + constructor; intro i; apply CH.
       * apply directed_step_node; auto.
@@ -633,12 +475,10 @@ Proof.
     + inv H.
     + inv Hub; exists n; auto.
     + inv Hub.
-    + inv Hub.
   - assert (H: upper_bound cobot ch).
     { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
       + constructor.
       + exfalso; apply n; exists i; rewrite Hchi; constructor.
-      + inv Hub.
       + inv Hub. }
     apply Hlub in H; inv H.
 Qed.
@@ -655,73 +495,9 @@ Proof.
     + inv H.
     + inv Hub; exists n; auto.
     + inv Hub.
-    + inv Hub.
   - assert (H: upper_bound abot ch).
     { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
       + constructor.
-      + exfalso; apply n; exists i; rewrite Hchi; constructor.
-      + inv Hub.
-      + inv Hub. }
-    apply Hlub in H; inv H.
-Qed.
-
-Lemma supremum_cotau {I A} (t : cotree I A) (ch : nat -> cotree I A) :
-  supremum (cotau t) ch ->
-  exists i t', ch i = cotau t'.
-Proof.
-  intros [Hub Hlub].
-  destruct (strong_LPO (fun n => not_cobot_dec (ch n))).
-  - destruct e as [n H].
-    specialize (Hub n).
-    destruct (ch n) eqn:Hchn.
-    + inv H.
-    + inv Hub.
-    + exists n, c; auto.
-    + inv Hub.
-  - assert (H: upper_bound cobot ch).
-    { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
-      + constructor.
-      + inv Hub.
-      + exfalso; apply n; exists i; rewrite Hchi; constructor.
-      + inv Hub. }
-    apply Hlub in H; inv H.
-Qed.
-
-Lemma supremum_atau {I A} (t : atree I A) (ch : nat -> atree I A) :
-  supremum (atau t) ch ->
-  exists i t', ch i = atau t'.
-Proof.
-  intros [Hub Hlub].
-  destruct (strong_LPO (fun n => not_abot_dec (ch n))).
-  - destruct e as [n H].
-    specialize (Hub n).
-    destruct (ch n) eqn:Hchn.
-    + inv H.
-    + inv Hub.
-    + exists n, a; auto.
-    + inv Hub.
-  - assert (H: upper_bound abot ch).
-    { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
-      + constructor.
-      + inv Hub.
-      + exfalso; apply n; exists i; rewrite Hchi; constructor.
-      + inv Hub. }
-    apply Hlub in H; inv H.
-Qed.
-
-Lemma supremum_atau' {I A} (t : atree I A) (ch : nat -> atree I A) :
-  supremum (atau t) ch ->
-  exists i t', ch i = atau t' /\ t' ⊑ t.
-Proof.
-  intros [Hub Hlub].
-  destruct (strong_LPO (fun n => not_abot_dec (ch n))).
-  - destruct e as [n H].
-    specialize (Hub n).
-    destruct (ch n) eqn:Hchn; inv H; inv Hub; exists n, a; split; auto.
-  - assert (H: upper_bound abot ch).
-    { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
-      + constructor.
-      + inv Hub.
       + exfalso; apply n; exists i; rewrite Hchi; constructor.
       + inv Hub. }
     apply Hlub in H; inv H.
@@ -738,12 +514,10 @@ Proof.
     destruct (ch n) eqn:Hchn.
     + inv H.
     + inv Hub.
-    + inv Hub.
     + exists n, c; auto.
   - assert (H: upper_bound cobot ch).
     { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
       + constructor.
-      + inv Hub.
       + inv Hub.
       + exfalso; apply n; exists i; rewrite Hchi; constructor. }
     apply Hlub in H; inv H.
@@ -762,53 +536,8 @@ Proof.
     { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
       + constructor.
       + inv Hub.
-      + inv Hub.
       + exfalso; apply n; exists i; rewrite Hchi; constructor. }
     apply Hlub in H; inv H.
-Qed.
-
-Lemma supremum_step_tau {I A} (t : cotree I A) (ch : nat -> cotree I A) :
-  supremum (cotau t) ch ->
-  supremum t (step_tau ∘ ch).
-Proof.
-  intros [Hub Hlub]; split.
-  - intro i; specialize (Hub i); unfold compose.
-    inv Hub; simpl; auto; constructor.
-  - unfold compose; intros y Hy.
-    unfold upper_bound in Hy.
-    simpl in Hy.
-    assert (H: upper_bound (cotau y) ch).
-    { intro i.
-      specialize (Hy i); simpl in Hy.
-      destruct (ch i) eqn:Hchi.
-      - constructor.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
-        constructor; auto.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub. }
-    apply Hlub in H; inv H; auto.
-Qed.
-
-Lemma supremum_bstep_tau {I A} (t : atree I A) (ch : nat -> atree I A) :
-  supremum (atau t) ch ->
-  supremum t (bstep_tau ∘ ch).
-Proof.
-  intros [Hub Hlub]; split.
-  - intro i; specialize (Hub i); unfold compose.
-    inv Hub; simpl; auto; constructor.
-  - unfold compose; intros y Hy.
-    unfold upper_bound in Hy.
-    simpl in Hy.
-    assert (H: upper_bound (atau y) ch).
-    { intro i.
-      specialize (Hy i); simpl in Hy.
-      destruct (ch i) eqn:Hchi.
-      - constructor.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
-        constructor; auto.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub. }
-    apply Hlub in H; inv H; auto.
 Qed.
 
 Lemma supremum_step_node {I A} (k : I -> cotree I A) (ch : nat -> cotree I A) (x : I) :
@@ -826,7 +555,6 @@ Proof.
       specialize (Hy i); simpl in Hy.
       destruct (ch i) eqn:Hchi.
       - constructor.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
       - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
       - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
         constructor; intro z.
@@ -851,7 +579,6 @@ Proof.
       specialize (Hy i); simpl in Hy.
       destruct (ch i) eqn:Hchi.
       - constructor.
-      - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
       - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
       - specialize (Hub i); simpl in Hub; rewrite Hchi in Hub; inv Hub.
         constructor; intro z.
@@ -884,9 +611,7 @@ Lemma tprefix_monotone {I A} (n : nat) :
   monotone (@tprefix I A n).
 Proof.
   induction n; intros a b Hab; simpl; try constructor.
-  destruct a; inv Hab; constructor.
-  - apply IHn; auto.
-  - intro i; apply IHn; simpl; auto.
+  destruct a; inv Hab; constructor; intro i; apply IHn; simpl; auto.
 Qed.
 
 Lemma tprefix_monotone' {I A} (t : cotree I A) :
@@ -899,9 +624,6 @@ Proof.
     + destruct j; simpl.
       * inv Hij.
       * constructor.
-    + destruct j; simpl.
-      * inv Hij.
-      * constructor; apply IHi; simpl in *; lia.
     + destruct j; simpl.
       * inv Hij.
       * constructor.
@@ -924,55 +646,11 @@ Proof.
       rewrite Hi in Hk; inv Hk.
       rewrite <- H in Hk'; inv Hk'; constructor.
     + exists i; rewrite Hi; reflexivity.
-  - assert (Hc: supremum x (step_tau ∘ ch)).
-    { apply supremum_step_tau; auto. }
-    split.
-    + intro i; destruct (ch i) eqn:Hchi; simpl.
-      * constructor.
-      * destruct Hx as [Hub Hlub].
-        specialize (Hub i); rewrite Hchi in Hub; inv Hub.
-      * destruct Hx as [Hub Hlub].
-        specialize (Hub i).
-        rewrite Hchi in Hub.
-        inv Hub.
-        constructor.
-        apply tprefix_monotone; auto.
-      * destruct Hx as [Hub Hlub].
-        specialize (Hub i); rewrite Hchi in Hub; inv Hub.
-    + intros ub Hub; destruct ub.
-      * assert (H: forall i, ch i = cobot).
-        { intro i; specialize (Hub i); simpl in Hub.
-          destruct (ch i); auto; inv Hub. }
-        assert (supremum cobot ch).
-        { apply supremum_const'; apply equ_arrow; intro i.
-          unfold const; rewrite H; reflexivity. }
-        eapply supremum_unique in Hx; eauto.
-        apply equ_cotree_eq in Hx; inv Hx.
-      * assert (H: upper_bound (coleaf a) ch).
-        { intro i; specialize (Hub i); simpl in Hub.
-          destruct (ch i); inv Hub; constructor. }
-        apply Hx in H; inv H.
-      * constructor.
-        eapply IHn.
-        2: { eauto. }
-        { apply directed_step_tau; auto. }
-        intro i; specialize (Hub i); simpl in Hub.
-        unfold compose.
-        destruct (ch i) eqn:Hchi; simpl.
-        { destruct n; constructor. }
-        { destruct n; constructor. }
-        { inv Hub; auto. }
-        { destruct n; constructor. }
-      * apply supremum_cotau in Hx.
-        destruct Hx as [i [t Ht] ].
-        specialize (Hub i); simpl in Hub; rewrite Ht in Hub; inv Hub.        
   - assert (Hc: forall x, supremum (c x) (step_node x ∘ ch)).
     { intro i; apply supremum_step_node; auto. }
     split.
     + intro i; destruct (ch i) eqn:Hchi; simpl.
       * constructor.
-      * destruct Hx as [Hub Hlub].
-        specialize (Hub i); rewrite Hchi in Hub; inv Hub.
       * destruct Hx as [Hub Hlub].
         specialize (Hub i); rewrite Hchi in Hub; inv Hub.
       * constructor; intro x.
@@ -994,9 +672,6 @@ Proof.
         { intro i; specialize (Hub i); simpl in Hub.
           destruct (ch i); inv Hub; constructor. }
         apply Hx in H; inv H.
-      * apply supremum_conode in Hx.
-        destruct Hx as [i [g Hg] ].
-        specialize (Hub i); simpl in Hub; rewrite Hg in Hub; inv Hub.
       * constructor; intro x.
         eapply IHn.
         2: { eauto. }
@@ -1004,7 +679,6 @@ Proof.
         intro i; unfold compose.
         specialize (Hub i); simpl in Hub.
         destruct (ch i) eqn:Hchi; simpl.
-        { destruct n; constructor. }
         { destruct n; constructor. }
         { destruct n; constructor. }
         inv Hub; apply H1.
@@ -1017,7 +691,6 @@ Proof.
   revert b; induction a; simpl; intros b Hab.
   - constructor.
   - destruct b; inv Hab; constructor.
-  - destruct b; inv Hab; constructor; auto.
   - destruct b; inv Hab; constructor; intro i; apply H, H2.
 Qed.
 
@@ -1028,7 +701,6 @@ Proof.
   revert b; induction a; simpl; intros b Hab.
   - constructor.
   - destruct b; inv Hab; constructor.
-  - destruct b; inv Hab; constructor; auto.
   - destruct b; inv Hab; constructor; intro i; apply H, H2.
 Qed.
 
@@ -1048,21 +720,6 @@ Proof.
   revert ch; induction t; intros ch Hch Ht.
   - exists O; apply equ_atree; split; try constructor; apply Ht.
   - apply supremum_aleaf in Ht; auto.
-  - pose proof Ht as Ht'.
-    apply supremum_bstep_tau in Ht.
-    apply IHt in Ht; clear IHt.
-    2: { apply directed_bstep_tau; auto. }
-    destruct Ht as [j Hj].
-    unfold compose in Hj.
-    unfold bstep_tau in Hj.
-    destruct (ch j) eqn:Hchj; subst.
-    + apply supremum_atau' in Ht'.
-      destruct Ht' as [i [t' [Hi Ht']]]; inv Ht'; exists i; auto.
-    + apply supremum_atau in Ht'; destruct Ht' as [i [t' Ht']].
-      exfalso; eapply directed_aleaf_atau; eauto.
-    + exists j; auto.
-    + apply supremum_atau in Ht'; destruct Ht' as [i [t' Ht']].
-      exfalso; eapply directed_atau_anode; eauto.
   - destruct (is_abotb (a false)) eqn:H'.
     { destruct (a false) eqn:Hal; inv H'.
       destruct (is_abotb (a true)) eqn:H'.
@@ -1114,8 +771,6 @@ Proof.
         destruct (ch k) eqn:Hchk.
         + inv Hk; rewrite <- H0 in Hi; rewrite <- Hi in H'; inv H'.
         + inv Hk; rewrite <- H0 in Hi; rewrite <- Hi in H'; inv H'.
-        + destruct Ht as [Hub Hlub].
-          specialize (Hub k); rewrite Hchk in Hub; inv Hub.
         + inv Hk.
           { rewrite <- H0 in Hi; rewrite <- Hi in H'; inv H'. }
           rewrite <- H in Hi.
@@ -1137,9 +792,7 @@ Lemma coprefix_le {I A} (t : cotree I A) (n : nat) :
   coprefix n t ⊑ t.
 Proof.
   revert t; induction n; intro t; simpl; try constructor.
-  destruct t; constructor.
-  - apply IHn.
-  - intro x; apply IHn.
+  destruct t; constructor; intro x; apply IHn.
 Qed.
 
 Lemma coprefix_supremum {I A} (t : cotree I A) :
@@ -1155,15 +808,6 @@ Proof.
       destruct t; inv Hub; constructor.
     + destruct t.
       * constructor.
-      * specialize (Hub (S O)); inv Hub.
-      * constructor; apply CH.
-        intro i.
-        specialize (Hub (S i)); simpl in Hub.
-        inv Hub; auto.
-      * specialize (Hub (S O)); inv Hub.
-    + destruct t.
-      * constructor.
-      * specialize (Hub (S O)); inv Hub.
       * specialize (Hub (S O)); inv Hub.
       * constructor; intro x; apply CH.
         intro i.
@@ -1199,9 +843,6 @@ Qed.
 Inductive atree_cotree_le {I A} : atree I A -> cotree I A -> Prop :=
 | atree_cotree_le_bot : forall t, atree_cotree_le abot t
 | atree_cotree_le_leaf : forall x, atree_cotree_le (aleaf x) (coleaf x)
-| atree_cotree_le_tau : forall c t,
-    atree_cotree_le c t ->
-    atree_cotree_le (atau c) (cotau t)
 | atree_cotree_le_node : forall f g,
     (forall i, atree_cotree_le (f i) (g i)) ->
     atree_cotree_le (anode f) (conode g).
@@ -1212,7 +853,6 @@ Inductive atree_cotree_le {I A} : atree I A -> cotree I A -> Prop :=
 Proof.
   intro a; induction a; intros b Hab c Hc; inv Hab; auto.
   - constructor.
-  - inv Hc; constructor; apply IHa in H0; apply H0; auto.
   - inv Hc; constructor; intro i.
     specialize (H1 i); apply H in H1; apply H1; auto.
 Qed.
@@ -1242,20 +882,6 @@ Proof.
   destruct t; inv Hle; reflexivity.
 Qed.
 
-Lemma cotree_le'_inv_tau {A} (a b : cotree bool A) :
-  cotree_le' (cotau a) b ->
-  exists b', b = cotau b' /\ cotree_le' a b'.
-Proof.
-  intro Hle.
-  destruct b; try solve [apply coop_elim2 with (i := S O) in Hle;
-                         eauto with cotree order; inv Hle].
-  exists b; split; auto.
-  apply coop_intro2; eauto with cotree order.
-  intro i.
-  apply coop_elim2 with (i := S i) in Hle; eauto with cotree order.
-  inv Hle; auto.
-Qed.
-
 Lemma cotree_le'_inv_node {A} (f : bool -> cotree bool A) (t : cotree bool A) :
   cotree_le' (conode f) t ->
   exists g, t = conode g /\ forall i, cotree_le' (f i) (g i).
@@ -1281,83 +907,65 @@ Proof.
     destruct a.
     + constructor.
     + apply cotree_le'_inv_leaf in Hab; subst; constructor.
-    + apply cotree_le'_inv_tau in Hab.
-      destruct Hab as [b' [? Hab']]; subst.
-      constructor; apply CH, Hab'.
     + apply cotree_le'_inv_node in Hab.
       destruct Hab as [g [? Hg]]; subst.
       constructor; intro b; apply CH, Hg.
 Qed.
 
 Fixpoint fold {I A B}
-  (z : B) (f : A -> B) (g : B -> B) (h : (I -> B) -> B) (t : atree I A) : B :=
+  (z : B) (f : A -> B) (h : (I -> B) -> B) (t : atree I A) : B :=
   match t with
   | abot => z
   | aleaf x => f x
-  | atau t' => g (fold z f g h t')
-  | anode k => h (fold z f g h ∘ k)
+  | anode k => h (fold z f h ∘ k)
   end.
 
-Definition morph {I A B} (f : A -> cotree I B) (t : atree I A) : cotree I B :=
-  fold cobot f (@cotau I B) (@conode I B) t.
+(* Definition morph {I A B} (f : A -> cotree I B) (t : atree I A) : cotree I B := *)
+(*   fold cobot f (@cotau I B) (@conode I B) t. *)
 
 #[global]
-  Instance monotone_fold {I A B} `{OType B} (z : B) (f : A -> B) (g : B -> B) (h : (I -> B) -> B)
-  {Hz : forall b, z ⊑ fold z f g h b}
-  {Hg : Proper (leq ==> leq) g}
+  Instance monotone_fold {I A B} `{OType B} (z : B) (f : A -> B) (h : (I -> B) -> B)
+  {Hz : forall b, z ⊑ fold z f h b}
   {Hh : Proper (leq ==> leq) h}
-  : Proper (leq ==> leq) (fold z f g h).
+  : Proper (leq ==> leq) (fold z f h).
 Proof.
-  intro a; revert Hz Hg Hh; revert f g;
-    induction a; intros f g Hz Hg Hh b Hab; inv Hab; simpl.
+  intro a; revert Hz Hh; revert f;
+    induction a; intros f Hz Hh b Hab; inv Hab; simpl.
   - apply Hz.
   - reflexivity.
-  - apply Hg, IHa; auto.
   - apply Hh; intro x; apply H0; auto; apply H2.
 Qed.
 #[global] Hint Resolve monotone_fold : cotree.
 
 #[global]
   Instance antimonotone_fold {I A B} `{OType B}
-  (z : B) (f : A -> B) (g : B -> B) (h : (I -> B) -> B)
-  {Hz : forall b, fold z f g h b ⊑ z}
-  {Hg : Proper (leq ==> leq) g} {Hh : Proper (leq ==> leq) h}
-  : Proper (leq ==> flip leq) (fold z f g h).
+  (z : B) (f : A -> B) (h : (I -> B) -> B)
+  {Hz : forall b, fold z f h b ⊑ z}
+  {Hh : Proper (leq ==> leq) h}
+  : Proper (leq ==> flip leq) (fold z f h).
 Proof.
-  intro a; revert Hz Hg Hh; revert f g;
-    induction a; simpl; unfold flip; intros f g Hz Hg Hh b Hab; inv Hab.
+  intro a; revert Hz Hh; revert f;
+    induction a; simpl; unfold flip; intros f Hz Hh b Hab; inv Hab.
   - apply Hz.
   - reflexivity.
-  - apply Hg, IHa; auto.
   - apply Hh.
     intro x; unfold compose; simpl.
     eapply H0; auto; apply H2.
 Qed.
 #[global] Hint Resolve antimonotone_fold : cotree.
 
-#[global]
-  Instance monotone_morph {I A B} (f : A -> cotree I B) : Proper (leq ==> leq) (morph f).
-Proof.
-  apply monotone_fold.
-  - intro; constructor.
-  - apply monotone_cotau.
-  - apply monotone_conode.
-Qed.
-#[global] Hint Resolve monotone_morph : cotree.
-
 (** Computation lemmas for co folds. *)
 
-Lemma co_fold_bot {A B} `{dCPO B}
-  (z : B) (f : A -> B) (g : B -> B) (h : (bool -> B) -> B) :
-  co (fold z f g h) cobot === z.
+Lemma co_fold_bot {A B} `{dCPO B} (z : B) (f : A -> B) (h : (bool -> B) -> B) :
+  co (fold z f h) cobot === z.
 Proof.
   apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
 Lemma co_fold_leaf {A B} `{dCPO B}
-  (z : B) (f : A -> B) (g : B -> B) (h : (bool -> B) -> B) (x : A) :
+  (z : B) (f : A -> B) (h : (bool -> B) -> B) (x : A) :
   z ⊑ f x ->
-  co (fold z f g h) (coleaf x) === f x.
+  co (fold z f h) (coleaf x) === f x.
 Proof.
   intro Hz.
   apply supremum_sup.
@@ -1366,42 +974,19 @@ Proof.
   exists (S O); intros n Hn; destruct n; try lia; reflexivity.
 Qed.
 
-Lemma co_fold_tau {A B} `{dCPO B}
-  (z : B) (f : A -> B) (g : B -> B) (h : (bool -> B) -> B) (t : cotree bool A) :
-  continuous g ->
-  monotone h ->
-  (forall b, z ⊑ fold z f g h b) ->
-  z ⊑ g z ->
-  co (fold z f g h) (cotau t) === g (co (fold z f g h) t).
-Proof.
-  intros Hg Hh Hz Hgz.
-  assert (Hg': monotone g).
-  { apply continuous_monotone; auto. }
-  apply supremum_sup.
-  apply shift_supremum'' with (f := fun i => g (fold z f g h (ideal t i))); auto.
-  { apply Hg.
-    { apply monotone_directed; auto with cotree order.
-      apply chain_directed, chain_ideal. }
-    { apply dsup_spec.
-      { apply monotone_directed; auto with cotree order.
-        apply chain_directed, chain_ideal. } } }
-  apply equ_arrow; intro i; reflexivity.
-Qed.
-
 Lemma co_fold_node {A B} `{dCPO B}
-  (z : B) (f : A -> B) (g : B -> B) (h : (bool -> B) -> B) (k : bool -> cotree bool A) :
-  monotone g ->
+  (z : B) (f : A -> B) (h : (bool -> B) -> B) (k : bool -> cotree bool A) :
   wcontinuous h ->
-  (forall b, z ⊑ fold z f g h b) ->
+  (forall b, z ⊑ fold z f h b) ->
   z ⊑ h (fun _ => z) ->
-  co (fold z f g h) (conode k) === h (co (fold z f g h) ∘ k).
+  co (fold z f h) (conode k) === h (co (fold z f h) ∘ k).
 Proof.
-  intros Hg Hh Hz Hhz.
+  intros Hh Hz Hhz.
   assert (Hh': monotone h).
   { apply wcontinuous_monotone; auto. }
   apply supremum_sup.
   apply shift_supremum'' with
-    (f := fun i => h (fun x => fold z f g h (ideal (k x) i))); auto.
+    (f := fun i => h (fun x => fold z f h (ideal (k x) i))); auto.
   { apply Hh.
     { apply monotone_chain.
       - intros i j Hij b; simpl; unfold flip.
@@ -1416,17 +1001,16 @@ Proof.
 Qed.
 
 (** Computation lemmas for coop folds. *)
-Lemma coop_fold_bot {A B} `{ldCPO B}
-  (z : B) (f : A -> B) (g : B -> B) (h : (bool -> B) -> B) :
-  coop (fold z f g h) cobot === z.
+Lemma coop_fold_bot {A B} `{ldCPO B} (z : B) (f : A -> B) (h : (bool -> B) -> B) :
+  coop (fold z f h) cobot === z.
 Proof.
   apply infimum_inf, infimum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
 Lemma coop_fold_leaf {A B} `{ldCPO B}
-  (z : B) (f : A -> B) (g : B -> B) (h : (bool -> B) -> B) (x : A) :
+  (z : B) (f : A -> B) (h : (bool -> B) -> B) (x : A) :
   f x ⊑ z ->
-  coop (fold z f g h) (coleaf x) === f x.
+  coop (fold z f h) (coleaf x) === f x.
 Proof.
   intro Hz.
   apply infimum_inf.
@@ -1435,41 +1019,19 @@ Proof.
   exists (S O); intros n Hn; destruct n; try lia; reflexivity.
 Qed.
 
-Lemma coop_fold_tau {A B} `{ldCPO B}
-  (z : B) (f : A -> B) (g : B -> B) (h : (bool -> B) -> B) (t : cotree bool A) :
-  dec_continuous g ->
-  monotone h ->
-  (forall b, fold z f g h b ⊑ z) ->
-  g z ⊑ z ->
-  coop (fold z f g h) (cotau t) === g (coop (fold z f g h) t).
-Proof.
-  intros Hg Hh Hz Hgz.
-  apply infimum_inf.
-  apply shift_infimum'' with (f := fun i => g (fold z f g h (ideal t i))); auto.
-  { unfold coop.
-    apply Hg.
-    { apply antimonotone_downward_directed; auto with cotree order.
-      apply chain_directed, chain_ideal. }
-    { apply dinf_spec.
-      { apply antimonotone_downward_directed; auto with cotree order.
-        apply chain_directed, chain_ideal. } } }
-  apply equ_arrow; intro i; reflexivity.
-Qed.
-
 Lemma coop_fold_node {A B} `{ldCPO B}
-  (z : B) (f : A -> B) (g : B -> B) (h : (bool -> B) -> B) (k : bool -> cotree bool A) :
-  monotone g ->
+  (z : B) (f : A -> B) (h : (bool -> B) -> B) (k : bool -> cotree bool A) :
   dec_wcontinuous h ->
-  (forall b, fold z f g h b ⊑ z) ->
+  (forall b, fold z f h b ⊑ z) ->
   h (fun _ => z) ⊑ z ->
-  coop (fold z f g h) (conode k) === h (coop (fold z f g h) ∘ k).
+  coop (fold z f h) (conode k) === h (coop (fold z f h) ∘ k).
 Proof.
-  intros Hg Hh Hz Hhz.
+  intros Hh Hz Hhz.
   assert (Hh': monotone h).
   { apply dec_wcontinuous_monotone; auto. }
   apply infimum_inf.
   apply shift_infimum'' with
-    (f := fun i => h (fun x => fold z f g h (ideal (k x) i))); auto.  
+    (f := fun i => h (fun x => fold z f h (ideal (k x) i))); auto.  
   { apply Hh.
     { intros i b; apply antimonotone_fold; auto; apply chain_ideal. }
     { apply infimum_apply; intro x.
@@ -1479,10 +1041,31 @@ Proof.
   apply equ_arrow; intro i; reflexivity.
 Qed.
 
-Definition atree_cotree_bind {I A B} (k : A -> cotree I B) (t : atree I A) : cotree I B :=
-  morph k t.
+(** Computable comorphisms. *)
+Definition morph {I A B} `{PType B} (f : A -> B) (g : (I -> B) -> B) : atree I A -> B :=
+  fold ⊥ f g.
 
-Definition cotree_bind' {A B} (t : cotree bool A) (k : A -> cotree bool B) : cotree bool B :=
+#[global]
+  Instance monotone_morph {I A B} `{PType B} (f : A -> B) (g : (I -> B) -> B)
+  { Hg : Proper (leq ==> leq) g}
+  : Proper (leq ==> leq) (morph f g).
+Proof. apply monotone_fold; auto; intro; apply bot_le. Qed.
+#[global] Hint Resolve monotone_morph : cotree.
+
+(** Extraction primitive for morph. Only safe for generative cotrees
+    (no occurrences of nil). *)
+Extract Constant morph => "
+  \ o f g t ->
+    case t of
+      Cobot -> error ""Cobot""
+      Coleaf a -> f a
+      Conode k -> g (morph o f g . k)
+".
+
+Definition atree_cotree_bind {I A B} (k : A -> cotree I B) (t : atree I A) : cotree I B :=
+ morph k t.
+
+Definition cotree_bind {A B} (t : cotree bool A) (k : A -> cotree bool B) : cotree bool B :=
   co (atree_cotree_bind k) t.
 
 #[global]
@@ -1498,36 +1081,36 @@ Qed.
 
 (** Computation lemmas for bind. *)
 
-Lemma cotree_bind'_bot {A B} (k : A -> cotree bool B) :
-  cotree_bind' cobot k = cobot.
+Lemma cotree_bind_bot {A B} (k : A -> cotree bool B) :
+  cotree_bind cobot k = cobot.
 Proof.
   apply cotree_ext, equ_cotree_eq.
-  unfold cotree_bind', atree_cotree_bind, morph.
+  unfold cotree_bind, atree_cotree_bind, morph.
   rewrite co_fold_bot; reflexivity.
 Qed.
 
-Lemma cotree_bind'_leaf {A B} (k : A -> cotree bool B) (x : A) :
-  cotree_bind' (coleaf x) k = k x.
+Lemma cotree_bind_leaf {A B} (k : A -> cotree bool B) (x : A) :
+  cotree_bind (coleaf x) k = k x.
 Proof.
   apply cotree_ext, equ_cotree_eq.
-  unfold cotree_bind', atree_cotree_bind, morph.
+  unfold cotree_bind, atree_cotree_bind, morph.
   rewrite co_fold_leaf; try reflexivity; constructor.
 Qed.
 
-Lemma cotree_bind'_tau {A B} (k : A -> cotree bool B) (t : cotree bool A) :
-  cotree_bind' (cotau t) k = cotau (cotree_bind' t k).
+Lemma cotree_bind_tau {A B} (k : A -> cotree bool B) (t : cotree bool A) :
+  cotree_bind (cotau t) k = cotau (cotree_bind t k).
 Proof.
   apply cotree_ext, equ_cotree_eq.
-  unfold cotree_bind', atree_cotree_bind, morph.
+  unfold cotree_bind, atree_cotree_bind, morph.
   rewrite co_fold_tau; auto with cotree order;
     try reflexivity; intros; constructor.
 Qed.
 
-Lemma cotree_bind'_node {A B} (k : A -> cotree bool B) (f : bool -> cotree bool A) :
-  cotree_bind' (conode f) k = conode (fun x => cotree_bind' (f x) k).
+Lemma cotree_bind_node {A B} (k : A -> cotree bool B) (f : bool -> cotree bool A) :
+  cotree_bind (conode f) k = conode (fun x => cotree_bind (f x) k).
 Proof.
   apply cotree_ext, equ_cotree_eq.
-  unfold cotree_bind', atree_cotree_bind, morph.
+  unfold cotree_bind, atree_cotree_bind, morph.
   rewrite co_fold_node; auto with cotree order;
     try reflexivity; intros; constructor.
 Qed.
@@ -1535,7 +1118,7 @@ Qed.
 Definition atree_cotree_map {I A B} (f : A -> B) (t : atree I A) : cotree I B :=
   morph (@coleaf I B ∘ f) t.
 
-Definition cotree_map' {A B} (f : A -> B) (t : cotree bool A) : cotree bool B :=
+Definition cotree_map {A B} (f : A -> B) (t : cotree bool A) : cotree bool B :=
   co (atree_cotree_map f) t.
 
 #[global]
@@ -1589,7 +1172,7 @@ Qed.
 
 Lemma cotree_le_bind {A B} (a : cotree bool A) (f g : A -> cotree bool B) :
   (forall x, f x ⊑ g x) ->
-  cotree_bind' a f ⊑ cotree_bind' a g.
+  cotree_bind a f ⊑ cotree_bind a g.
 Proof.
   intros Hfg.
   apply cotree_le_cotree_le'. 
@@ -1600,20 +1183,20 @@ Proof.
   induction i; intros a f g Hfg; simpl.
   { constructor. }
   destruct a.
-  - rewrite 2!cotree_bind'_bot; constructor.
-  - rewrite 2!cotree_bind'_leaf.
+  - rewrite 2!cotree_bind_bot; constructor.
+  - rewrite 2!cotree_bind_leaf.
     specialize (Hfg a); inv Hfg; constructor.
     + apply atree_cotree_le_ideal; auto.
     + intro b; apply atree_cotree_le_ideal; auto.
-  - rewrite 2!cotree_bind'_tau; constructor; auto.    
-  - rewrite 2!cotree_bind'_node; constructor; intro b; apply IHi; auto.
+  - rewrite 2!cotree_bind_tau; constructor; auto.    
+  - rewrite 2!cotree_bind_node; constructor; intro b; apply IHi; auto.
 Qed.
 
 (* This can't be defined as a comorphism because (A -> cotree I B) is
    not an aCPO in general. *)
 Definition cotree_iter_F {I A} (f : I -> cotree bool (I + A))
   : (I -> cotree bool A) -> I -> cotree bool A :=
-  fun g i => cotree_bind' (f i) (fun lr => match lr with
+  fun g i => cotree_bind (f i) (fun lr => match lr with
                                            | inl j => cotau (g j)
                                            | inr x => coleaf x
                                            end).
@@ -1639,11 +1222,11 @@ Proof.
   apply co_incl_id'.
 Qed.
 
-Lemma supremum_cotree_bind' {A B}
+Lemma supremum_cotree_bind {A B}
   (t : cotree bool A) (f : A -> cotree bool B) (g : nat -> A -> cotree bool B) :
   directed g ->
   supremum f g ->
-  supremum (cotree_bind' t f) (fun i : nat => cotree_bind' t (g i)).
+  supremum (cotree_bind t f) (fun i : nat => cotree_bind t (g i)).
 Proof.
   intros Hch Hsup.
   assert (forall x, supremum (f x) (fun i : nat => g i x)).
@@ -1660,11 +1243,11 @@ Proof.
     induction i; simpl; intros f x t Hsup H Hx.
     { constructor. }
     destruct t.
-    + rewrite cotree_bind'_bot; constructor.
-    + rewrite cotree_bind'_leaf.
+    + rewrite cotree_bind_bot; constructor.
+    + rewrite cotree_bind_leaf.
       assert (Hle: cotree_le (f a) x).
       { apply H; intro j; specialize (Hx j).
-        rewrite cotree_bind'_leaf in Hx; apply Hx. }
+        rewrite cotree_bind_leaf in Hx; apply Hx. }
       destruct (f a) eqn:Hfa.
       * constructor.
       * inv Hle; constructor.
@@ -1673,22 +1256,22 @@ Proof.
       * inv Hle; constructor.
         intro b; unfold compose.
         apply atree_cotree_le_ideal; auto.
-    + rewrite cotree_bind'_tau.
+    + rewrite cotree_bind_tau.
       pose proof Hx as Hx'.
-      specialize (Hx i); rewrite cotree_bind'_tau in Hx.
+      specialize (Hx i); rewrite cotree_bind_tau in Hx.
       inv Hx.
       constructor.
       apply IHi; auto.
-      intro j; specialize (Hx' j); rewrite cotree_bind'_tau in Hx'.
+      intro j; specialize (Hx' j); rewrite cotree_bind_tau in Hx'.
       inv Hx'; auto.
-    + rewrite cotree_bind'_node.
+    + rewrite cotree_bind_node.
       pose proof Hx as Hx'.
-      specialize (Hx i); rewrite cotree_bind'_node in Hx.
+      specialize (Hx i); rewrite cotree_bind_node in Hx.
       inv Hx.
       constructor.
       intro b.
       apply IHi; auto.
-      intro j; specialize (Hx' j); rewrite cotree_bind'_node in Hx'.
+      intro j; specialize (Hx' j); rewrite cotree_bind_node in Hx'.
       inv Hx'; auto.
       apply H3.
 Qed.
@@ -1701,7 +1284,7 @@ Proof.
   eapply supremum_apply.
   unfold compose.
   intro x.
-  apply supremum_cotree_bind'.
+  apply supremum_cotree_bind.
   { apply chain_directed; intros i []; constructor; apply Hch. }
   split.
   - intros i []; constructor; apply Hs.
@@ -1731,7 +1314,7 @@ Proof.
   eapply supremum_apply.
   unfold compose.
   intro x.
-  apply supremum_cotree_bind'.
+  apply supremum_cotree_bind.
   { intros i j; simpl.
     specialize (Hch i j); destruct Hch as [k [Hk Hk']].
     exists k; split.
@@ -1759,7 +1342,7 @@ Qed.
 
 (** Unfolding lemma for cotree_iter. *)
 Lemma cotree_iter_unfold {I A} (f : I -> cotree bool (I + A)) (i : I) :
-  cotree_iter f i = cotree_bind' (f i) (fun lr => match lr with
+  cotree_iter f i = cotree_bind (f i) (fun lr => match lr with
                                                   | inl j => cotau (cotree_iter f j)
                                                   | inr x => coleaf x
                                                   end).
@@ -1774,38 +1357,38 @@ Proof.
   rewrite equ_arrow in H; apply H.
 Qed.
 
-(** Computation lemmas for cotree_map'. *)
+(** Computation lemmas for cotree_map. *)
 
-Lemma cotree_map'_bot {A B} (f : A -> B) :
-  @cotree_map' A B f cobot = cobot.
+Lemma cotree_map_bot {A B} (f : A -> B) :
+  @cotree_map A B f cobot = cobot.
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_map', atree_cotree_map, morph.
+  unfold cotree_map, atree_cotree_map, morph.
   rewrite co_fold_bot; reflexivity.
 Qed.
 
-Lemma cotree_map'_leaf {A B} (f : A -> B) (x : A) :
-  @cotree_map' A B f (coleaf x) = coleaf (f x).
+Lemma cotree_map_leaf {A B} (f : A -> B) (x : A) :
+  @cotree_map A B f (coleaf x) = coleaf (f x).
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_map', atree_cotree_map, morph.
+  unfold cotree_map, atree_cotree_map, morph.
   rewrite co_fold_leaf; try reflexivity; constructor.
 Qed.
 
-Lemma cotree_map'_tau {A B} (f : A -> B) (t : cotree bool A) :
-  cotree_map' f (cotau t) = cotau (cotree_map' f t).
+Lemma cotree_map_tau {A B} (f : A -> B) (t : cotree bool A) :
+  cotree_map f (cotau t) = cotau (cotree_map f t).
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_map', atree_cotree_map, morph.
+  unfold cotree_map, atree_cotree_map, morph.
   rewrite co_fold_tau; auto with cotree order;
     try reflexivity; intros; constructor.
 Qed.
 
-Lemma cotree_map'_node {A B} (f : A -> B) (k : bool -> cotree bool A) :
-  cotree_map' f (conode k) = conode (cotree_map' f ∘ k).
+Lemma cotree_map_node {A B} (f : A -> B) (k : bool -> cotree bool A) :
+  cotree_map f (conode k) = conode (cotree_map f ∘ k).
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_map', atree_cotree_map, morph.
+  unfold cotree_map, atree_cotree_map, morph.
   rewrite co_fold_node; auto with cotree order;
     try reflexivity; intros; constructor.
 Qed.
@@ -1938,14 +1521,14 @@ Proof.
 Qed.
 
 Lemma tprefix_map {A B} (t : cotree bool A) (f : A -> B) (i : nat) :
-  tprefix i (cotree_map' f t) = atree_map f (tprefix i t).
+  tprefix i (cotree_map f t) = atree_map f (tprefix i t).
 Proof.
   revert t f; induction i; intros t f; simpl; auto.
   destruct t; simpl.
-  - rewrite cotree_map'_bot; reflexivity.
-  - rewrite cotree_map'_leaf; reflexivity.
-  - rewrite cotree_map'_tau, IHi; reflexivity.
-  - rewrite cotree_map'_node; f_equal; ext x; apply IHi.
+  - rewrite cotree_map_bot; reflexivity.
+  - rewrite cotree_map_leaf; reflexivity.
+  - rewrite cotree_map_tau, IHi; reflexivity.
+  - rewrite cotree_map_node; f_equal; ext x; apply IHi.
 Qed.
 
 Lemma atree_some_impl {I A} (t : atree I A) (P Q : A -> Prop) :
@@ -2019,25 +1602,25 @@ Proof. unfold const; induction t; constructor; auto. Qed.
 
 Lemma atree_cotree_bind_assoc {A B C}
   (t : atree bool A) (f : A -> cotree bool B) (g : B -> cotree bool C) :
-  cotree_bind' (atree_cotree_bind f t) g ===
-    atree_cotree_bind (fun x : A => cotree_bind' (f x) g) t.
+  cotree_bind (atree_cotree_bind f t) g ===
+    atree_cotree_bind (fun x : A => cotree_bind (f x) g) t.
 Proof.
   unfold atree_cotree_bind, morph.
   revert f g; induction t; intros f g; simpl.
-  - rewrite cotree_bind'_bot; reflexivity.
+  - rewrite cotree_bind_bot; reflexivity.
   - reflexivity.
-  - rewrite cotree_bind'_tau, IHt; reflexivity.
-  - rewrite cotree_bind'_node.
+  - rewrite cotree_bind_tau, IHt; reflexivity.
+  - rewrite cotree_bind_node.
     apply cotree_eq_equ; constructor; intro b; apply equ_cotree_eq, H.
 Qed.
 
 (** cotree_bind is associative. *)
-Lemma cotree_bind'_assoc {A B C}
+Lemma cotree_bind_assoc {A B C}
   (t : cotree bool A) (f : A -> cotree bool B) (g : B -> cotree bool C) :
-  cotree_bind' (cotree_bind' t f) g = cotree_bind' t (fun x => cotree_bind' (f x) g).
+  cotree_bind (cotree_bind t f) g = cotree_bind t (fun x => cotree_bind (f x) g).
 Proof.
   apply ext.
-  unfold cotree_bind'.
+  unfold cotree_bind.
   rewrite co_co''; eauto with cotree order.
   apply Proper_co'; eauto with cotree order; try reflexivity.
   { apply monotone_compose; eauto with cotree order.
@@ -2056,8 +1639,8 @@ Proof.
 Qed.
 
 (** coleaf is the identity on the right wrt bind. *)
-Lemma cotree_bind'_id_r {A} (t : cotree bool A) :
-  cotree_bind' t (@coleaf bool A) = t.
+Lemma cotree_bind_id_r {A} (t : cotree bool A) :
+  cotree_bind t (@coleaf bool A) = t.
 Proof.
   apply ext.
   replace t with (id t) by reflexivity.
@@ -2122,7 +1705,7 @@ Proof.
 Qed.
 
 Definition snip {A} (t : cotree bool (unit + A)) : cotree bool A :=
-  cotree_bind' t (cotuple (const cobot) (@coleaf bool A)).
+  cotree_bind t (cotuple (const cobot) (@coleaf bool A)).
 
 Corollary snip_leaf {A} (x : unit + A) :
   snip (coleaf x) = match x with
@@ -2130,10 +1713,10 @@ Corollary snip_leaf {A} (x : unit + A) :
                     | inr y => coleaf y
                     end.
 Proof.
-  unfold snip; rewrite cotree_bind'_leaf.
+  unfold snip; rewrite cotree_bind_leaf.
   destruct x; reflexivity.
 Qed.
 
 Corollary snip_bind {A B} (t : cotree bool (unit + A)) (k : unit + A -> cotree bool (unit + B)) :
-  snip (cotree_bind' t k) = cotree_bind' t (snip ∘ k).
-Proof. apply cotree_bind'_assoc. Qed.
+  snip (cotree_bind t k) = cotree_bind t (snip ∘ k).
+Proof. apply cotree_bind_assoc. Qed.

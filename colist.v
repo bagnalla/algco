@@ -1491,13 +1491,13 @@ Proof.
   split; auto; apply IHl; auto.
 Qed.
 
-(** Is it possible to write this as a fold? *)
+(** Is it possible to write this as a fold? Don't think so. *)
 Inductive alist_ordered {A} (R : A -> A -> Prop) : alist A -> Prop :=
 | alist_ordered_nil : alist_ordered R anil
-| alist_ordered_cons : forall n l,
-    alist_forall (R n) l ->
+| alist_ordered_cons : forall a l,
+    alist_forall (R a) l ->
     alist_ordered R l ->
-    alist_ordered R (acons n l).
+    alist_ordered R (acons a l).
 
 #[global]
   Instance antimonotone_alist_ordered {A} (R : A -> A -> Prop)
@@ -1543,6 +1543,7 @@ Proof with eauto with order colist aCPO.
       * apply coop_elim with (i:=n) in Hord...
 Qed.
 
+Definition sorted {A} `{OType A} : colist A -> Prop := ordered leq.
 Definition nodup {A} : colist A -> Prop := ordered (fun a b => a <> b).
 
 (*** Cofilter *)
