@@ -42,14 +42,14 @@ Proof.
   induction i; simpl; intros x e g f.
   - destruct (e x); try reflexivity; constructor.
   - destruct (e x); try reflexivity; apply cotree_le_bind.
-    intros [[]|a]; try reflexivity; constructor; apply IHi.
+    intros [[]|a]; try reflexivity; try constructor; apply IHi.
 Qed.
 
 (** Example of Proper_co followed by induction on atree. *)
 Lemma cotree_bind_map_sum {A} t g :
   cotree_bind (cotree_map inr t)
     (fun lr : A + (unit + A) => match lr with
-                             | inl j => cotau (g j)
+                             | inl j => g j
                              | inr x => coleaf x
                              end) = t.
 Proof.
@@ -68,9 +68,6 @@ Proof.
   induction a; unfold compose; simpl.
   - rewrite co_fold_bot; reflexivity.
   - rewrite co_fold_leaf; try reflexivity; constructor.
-  - rewrite co_fold_tau; auto with cotree order;
-      try solve [intros; constructor].
-    apply cotree_eq_equ; constructor; apply equ_cotree_eq, IHa.
   - rewrite co_fold_node; auto with cotree order;
       try solve [intros; constructor].
     apply cotree_eq_equ; constructor; intro b; apply equ_cotree_eq, H.
@@ -109,7 +106,6 @@ Qed.
 Proof.
   apply monotone_fold.
   - intros; eRauto.
-  - apply monotone_id.
   - intros g g' Hg; simpl.
     apply eRle_div, eRplus_le_compat; apply Hg.
 Qed.
@@ -117,7 +113,7 @@ Qed.
 
 Lemma fold_avg_bounded {A} (f : A -> eR) (t : atree bool A) :
   bounded f 1 ->
-  fold 1 f id (fun k : bool -> eR => (k false + k true) / 2) t ⊑ 1.
+  fold 1 f (fun k : bool -> eR => (k false + k true) / 2) t ⊑ 1.
 Proof.
   revert f; induction t; intros f Hf; simpl; eRauto.
   unfold compose.
@@ -142,7 +138,6 @@ Qed.
 Proof.
   apply antimonotone_fold.
   - intro a; apply fold_avg_bounded; auto.
-  - apply monotone_id.
   - apply monotone_avg.
 Qed.
 #[global] Hint Resolve antimonotone_btwlp : cotcwp.
@@ -207,24 +202,13 @@ Proof.
   rewrite co_fold_leaf; eRauto.
 Qed.
 
-Lemma cotwp_tau {A} (f : A -> eR) (t : cotree bool A) :
-  cotwp f (cotau t) = cotwp f t.
-Proof.
-  apply equ_eR.
-  unfold cotwp, btwp.
-  rewrite co_fold_tau; eRauto.
-  { apply continuous_id. }
-  { apply monotone_avg. }
-Qed.
-
 Lemma cotwp_node {A} (f : A -> eR) (k : bool -> cotree bool A) :
   cotwp f (conode k) = (cotwp f (k false) + cotwp f (k true)) / 2.
 Proof.
   apply equ_eR.
   unfold cotwp, btwp.
   rewrite co_fold_node; eRauto.
-  { apply monotone_id. }
-  { apply wcontinuous_avg. }
+  apply wcontinuous_avg.
 Qed.
 
 (** An essential lemma about the co-semantics. Proof by using
@@ -266,15 +250,8 @@ Proof.
   - reflexivity.
   - apply equ_eR.
     unfold btwp, atree_cotree_bind, morph in *; simpl.
-    rewrite co_fold_tau; eRauto.
-    { rewrite IHt; reflexivity. }
-    { apply continuous_id. }
-    { apply monotone_avg. }
-  - apply equ_eR.
-    unfold btwp, atree_cotree_bind, morph in *; simpl.
     rewrite co_fold_node; eRauto.
     { apply equ_eR; unfold compose; rewrite 2!H; reflexivity. }
-    { apply monotone_id. }
     { apply wcontinuous_avg. }
 Qed.
 
@@ -296,18 +273,6 @@ Proof.
   rewrite coop_fold_leaf; eRauto; apply Hf.
 Qed.
 
-Lemma cotwlp_tau {A} (f : A -> eR) (t : cotree bool A) :
-  bounded f 1 ->
-  cotwlp f (cotau t) = cotwlp f t.
-Proof.
-  intro Hf; apply equ_eR.
-  unfold cotwlp, btwlp.
-  rewrite coop_fold_tau; eRauto.
-  { apply dec_continuous_id. }
-  { apply monotone_avg. }
-  intros a; apply fold_avg_bounded; auto.
-Qed.
-
 Lemma cotwlp_node {A} (f : A -> eR) (k : bool -> cotree bool A) :
   bounded f 1 ->
   cotwlp f (conode k) = (cotwlp f (k false) + cotwlp f (k true)) / 2.
@@ -315,7 +280,6 @@ Proof.
   intro Hf; apply equ_eR.
   unfold cotwlp, btwlp.
   rewrite coop_fold_node; eRauto.
-  { apply monotone_id. }
   { apply dec_wcontinuous_avg. }
   { intro a; apply fold_avg_bounded; auto. }
   { unfold eRdiv, eRmult; simpl.
@@ -373,16 +337,8 @@ Proof.
   - reflexivity.
   - apply equ_eR.
     unfold btwlp, atree_cotree_bind, morph in *; simpl.
-    rewrite coop_fold_tau; eRauto.
-    { rewrite IHt; auto; reflexivity. }
-    { apply dec_continuous_id. }
-    { apply monotone_avg. }
-    { intro; apply fold_avg_bounded; auto. }
-  - apply equ_eR.
-    unfold btwlp, atree_cotree_bind, morph in *; simpl.
     rewrite coop_fold_node; eRauto.
     { apply equ_eR; unfold compose; rewrite 2!H; auto; reflexivity. }
-    { apply monotone_id. }
     { apply dec_wcontinuous_avg. }
     { intro; apply fold_avg_bounded; auto. }
     { unfold eRdiv, eRmult; simpl.
@@ -391,9 +347,9 @@ Proof.
 Qed.
 
 Lemma cotwp_filter {A} (P : A -> bool) (f : A -> eR) :
-  cotwp (fun x => if P x then f x else 0) === cotwp f ∘ cotree_filter' P.
+  cotwp (fun x => if P x then f x else 0) === cotwp f ∘ cotree_filter P.
 Proof.
-  unfold cotwp, cotree_filter'.
+  unfold cotwp, cotree_filter.
   rewrite co_co; eauto with cotcwp cotree order.
   apply Proper_co; eauto with cotcwp order.
   { apply monotone_compose; eauto with cotree order.
@@ -411,16 +367,10 @@ Proof.
     + rewrite co_fold_leaf; eRauto.
     + rewrite co_fold_bot; reflexivity.
   - unfold btwp, atree_cotree_filter, morph in *; simpl.
-    unfold id.
-    rewrite co_fold_tau; eRauto.
-    { apply continuous_id. }
-    { apply monotone_avg. }
-  - unfold btwp, atree_cotree_filter, morph in *; simpl.
     unfold id, compose in *.
     rewrite co_fold_node; eRauto.
     { unfold compose; apply equ_eR.
       f_equal; f_equal; apply equ_eR, H. }
-    { apply monotone_id. }
     { apply wcontinuous_avg. }
 Qed.
 
@@ -672,13 +622,6 @@ Lemma cotwp_iter_n_iid_F_iid_F' {A} (f : A -> eR) (t : cotree bool (unit + A)) (
   cotwp f (iter_n (iid_F t) cobot i) = cotwp f (iter_n (iid_F' t) cobot i).
 Proof.
   revert f t; induction i; intros f t; simpl; auto.
-  unfold iid_F, iid_F' in *.
-  rewrite 2!cotwp_bind.
-  f_equal.
-  ext lr; destruct lr as [[]|a]; simpl; auto.
-  unfold compose.
-  rewrite cotwp_tau.
-  apply IHi.
 Qed.
 
 Corollary cotwp_iter_n_geometric_series {A} (f : A -> eR) (t : cotree bool (unit + A)) (i : nat) :
@@ -724,7 +667,6 @@ Lemma btwp_btwlp_sum_1 {A} (f : A -> eR) t :
 Proof.
   unfold btwp, btwlp.
   revert f; induction t; intros f Hf; simpl.
-  - eRauto.
   - eRauto.
   - eRauto.
   - rewrite <- 2!eRplus_combine_fract, <- eRplus_assoc.

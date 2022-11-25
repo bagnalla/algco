@@ -28,7 +28,7 @@ Definition cotree_loop_F {A} (e : A -> bool) (g : A -> cotree bool (unit + A))
   fun k x => if e x then
             cotree_bind (g x) (fun y => match y with
                                      | inl _ => coleaf (inl tt)
-                                     | inr z => cotau (k z)
+                                     | inr z => k z
                                      end)
           else
             f x.
@@ -76,7 +76,7 @@ Definition tie_cotree {A} (t : cotree bool (unit + A)) : cotree bool A :=
 (** This can be used instead *)
 Definition iid_F {A} (a : cotree bool (unit + A)) : cotree bool A -> cotree bool A :=
   fun b => cotree_bind a (fun y => match y with
-                             | inl _ => cotau b
+                             | inl _ => b
                              | inr z => coleaf z
                              end).
 
@@ -136,10 +136,10 @@ Definition iid_chain {A} (t : cotree bool (unit + A)) (n : nat) : cotree bool A 
 
 (** wp_ on finite trees. *)
 Definition btwp {A} (f : A -> eR) : atree bool A -> eR :=
-  fold 0 f id (fun k => (k false + k true) / 2).
+  fold 0 f (fun k => (k false + k true) / 2).
 
 Definition btwpQ {A} (f : A -> Q) : atree bool A -> Q :=
-  fold 0%Q f id (fun k => (k false + k true) / 2)%Q.
+  fold 0%Q f (fun k => (k false + k true) / 2)%Q.
 
 (** wp_ on cotrees. *)
 Definition cotwp {A} (f : A -> eR) : cotree bool A -> eR := co (btwp f).
@@ -157,7 +157,7 @@ Definition cofail {A} : cotree bool (unit + A) -> eR := cowpfail (const 0).
 
 (** wlp_ on finite trees. *)
 Definition btwlp {A} (f : A -> eR) : atree bool A -> eR :=
-  fold 1 f id (fun k => (k false + k true) / 2).
+  fold 1 f (fun k => (k false + k true) / 2).
 
 (** wlp_ on cotrees. *)
 Definition cotwlp {A} (f : A -> eR) : cotree bool A -> eR := coop (btwlp f).

@@ -40,7 +40,7 @@ Local Open Scope eR_scope.
 Create HintDb mu.
 
 Definition amu {A} (f : A -> eR) : atree bool A -> eR :=
-  fold 0 f id (fun f => f false + f true).
+  fold 0 f (fun f => f false + f true).
 
 Definition mu {A} (f : A -> eR) : cotree bool A -> eR :=
   co (amu f).
@@ -50,19 +50,18 @@ Definition mu {A} (f : A -> eR) : cotree bool A -> eR :=
 Proof.
   apply monotone_fold.
   { intros; eRauto. }
-  { apply monotone_id. }
   intros g g' Hg; apply eRplus_le_compat; apply Hg.
 Qed.
 #[global] Hint Resolve monotone_amu : mu.
 
 Definition atree_lang {A} : atree bool A -> cotree bool (list bool) :=
-  fold cobot (const (coleaf [])) id (fun k => conode (fun b => cotree_map (cons b) (k b))).
+  fold cobot (const (coleaf [])) (fun k => conode (fun b => cotree_map (cons b) (k b))).
 
 Definition cotree_lang {A} : cotree bool A -> cotree bool (list bool) :=
   co atree_lang.
 
 Definition cotree_preimage {A} (P : A -> bool) : cotree bool A -> cotree bool (list bool) :=
-  cotree_lang ∘ cotree_filter' P.
+  cotree_lang ∘ cotree_filter P.
 
 (** Computation lemmas for cotree_lang. *)
 
@@ -80,19 +79,6 @@ Proof.
   apply cotree_equ_eq.
   unfold cotree_lang, atree_lang.
   rewrite co_fold_leaf; try reflexivity; constructor.
-Qed.
-
-Lemma cotree_lang_tau {A} (t : cotree bool A) :
-  cotree_lang (cotau t) = cotree_lang t.
-Proof.
-  apply cotree_equ_eq.
-  unfold cotree_lang, atree_lang.
-  rewrite co_fold_tau; try reflexivity; auto with order.
-  2: { intros; constructor. }
-  intros a b Hab; constructor; intro b'.
-  apply leq_cotree_le.
-  apply monotone_co; auto.
-  apply monotone_atree_cotree_map.
 Qed.
 
 Lemma cotree_lang_node {A} (k : bool -> cotree bool A) :
@@ -121,7 +107,7 @@ Lemma cotree_preimage_bot {A} (P : A -> bool) :
 Proof.
   apply cotree_equ_eq.
   unfold cotree_preimage, compose.
-  rewrite cotree_filter'_bot, cotree_lang_bot; reflexivity.
+  rewrite cotree_filter_bot, cotree_lang_bot; reflexivity.
 Qed.
 
 Lemma cotree_preimage_leaf {A} (P : A -> bool) (x : A) :
@@ -129,18 +115,10 @@ Lemma cotree_preimage_leaf {A} (P : A -> bool) (x : A) :
 Proof.
   apply cotree_equ_eq.
   unfold cotree_preimage, compose.
-  rewrite cotree_filter'_leaf.
+  rewrite cotree_filter_leaf.
   destruct (P x).
   - rewrite cotree_lang_leaf; reflexivity.
   - rewrite cotree_lang_bot; reflexivity.
-Qed.
-
-Lemma cotree_preimage_tau {A} (P : A -> bool) (t : cotree bool A) :
-  cotree_preimage P (cotau t) = cotree_preimage P t.
-Proof.
-  apply cotree_equ_eq.
-  unfold cotree_preimage, compose.
-  rewrite cotree_filter'_tau, cotree_lang_tau; reflexivity.
 Qed.
 
 Lemma cotree_preimage_node {A} (P : A -> bool) (k : bool -> cotree bool A) :
@@ -149,7 +127,7 @@ Lemma cotree_preimage_node {A} (P : A -> bool) (k : bool -> cotree bool A) :
 Proof.
   apply cotree_equ_eq.
   unfold cotree_preimage, compose.
-  rewrite cotree_filter'_node, cotree_lang_node; reflexivity.
+  rewrite cotree_filter_node, cotree_lang_node; reflexivity.
 Qed.
 
 Lemma amu_scalar {A} (f : A -> eR) (t : atree bool A) (c : eR) :
@@ -171,7 +149,6 @@ Proof.
   induction Hab; intros f' g' Hfg.
   - reflexivity.
   - apply Hfg; auto.
-  - apply IHHab; auto.
   - unfold amu in *; simpl; unfold compose; erewrite 2!H0; eauto.
 Qed.
 
@@ -180,12 +157,10 @@ Lemma monotone_atree_lang {A} :
 Proof.
   apply monotone_fold.
   { intros; constructor. }
-  { apply monotone_id. }
   intros a b Hab.
   apply monotone_conode; intro x.
   apply monotone_co; auto; apply monotone_fold.
   { intros; constructor. }
-  { apply monotone_cotau. }
   { apply monotone_conode. }
 Qed.
 #[global] Hint Resolve monotone_atree_lang : mu.
@@ -209,10 +184,8 @@ Proof
     apply equ_eR; rewrite co_fold_bot; reflexivity.
   - unfold atree_lang, amu, const; simpl; apply equ_eR.
     rewrite co_fold_leaf; simpl; eRauto.
-  - apply IHa.
   - unfold amu, atree_lang; simpl; apply equ_eR.
     rewrite co_fold_node; auto.
-    2: { apply monotone_id. }
     2: { apply wcontinuous_sum; apply wcontinuous_apply. }
     2: { intros; eRauto. }
     2: { eRauto. }
@@ -257,7 +230,7 @@ Theorem cotwp_mu_preimage {A} (P : A -> bool) :
     mu (fun bs => 1 / 2 ^ length bs) ∘ cotree_preimage P.
 Proof.
   rewrite cotwp_filter.
-  unfold mu, cotree_preimage, cotree_lang, cotree_filter'.
+  unfold mu, cotree_preimage, cotree_lang, cotree_filter.
   rewrite <- Combinators.compose_assoc.
   apply Proper_compose_l.
   { apply Proper_monotone_equ, monotone_co, monotone_btwp. }
@@ -303,7 +276,6 @@ Proof.
   revert i; induction t; intros i.
   - destruct i; constructor.
   - destruct i; constructor.
-  - apply IHt.
   - destruct i.
     + constructor.
     + simpl; unfold flip; simpl.
@@ -336,7 +308,7 @@ Theorem disjoint_cotree_preimage {A} (P : A -> bool) (t : cotree bool A) :
 Proof.
   unfold cotree_disjoint, cotree_preimage.
   unfold compose.
-  unfold cotree_filter', cotree_lang.
+  unfold cotree_filter, cotree_lang.
   apply co_coopP; eauto with cotree order mu aCPO.
   { apply cocontinuous_coop; eauto with cotree order. }
   cointro.
