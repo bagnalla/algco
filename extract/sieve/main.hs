@@ -22,5 +22,5 @@ instance Show Z where
 
 main :: IO ()
 main = do
-  let primes = list_of_colist sieve'
+  let primes = list_of_colist sieve''
   forM_ primes (\n -> putStrLn (show n))

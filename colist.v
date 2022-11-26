@@ -1278,36 +1278,53 @@ Qed.
 Definition colist_length {A} : colist A -> conat :=
   co alist_length.
 
-(* Definition morph {A B} (z : colist B) (f : colist B -> colist B) *)
-(*   (g : A -> colist B -> colist B) : colist A -> colist B := *)
-(*   co (afold z f g). *)
-
-(* Definition morph {A B} `{o: OType B} (z : B) (f : A -> B -> B) : colist A -> B := *)
-(*   co (afold z f). *)
-
-Definition morph {A B} `{o: PType B} (f : A -> B -> B) : colist A -> B :=
+Definition cofold {A B} `{o: PType B} (f : A -> B -> B) : colist A -> B :=
   co (afold ⊥ f).
 
-Lemma morph_nil {A B} `{o : OType B} `{@PType B o} `{@dCPO B o} (f : A -> B -> B) :
-  morph f conil === ⊥.
+Definition coopfold {A B} `{o: TType B} (f : A -> B -> B) : colist A -> B :=
+  coop (afold ⊤ f).
+
+Lemma cofold_nil {A B} `{o : OType B} `{@PType B o} `{@dCPO B o} (f : A -> B -> B) :
+   cofold f conil === ⊥.
 Proof. apply co_fold_nil. Qed.
 
-Lemma morph_cons {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+Lemma cofold_cons {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
   (f : A -> B -> B) (a : A) (l : colist A) :
   (forall x, continuous (f x)) ->
-  morph f (cocons a l) === f a (morph f l).
+  cofold f (cocons a l) === f a (cofold f l).
 Proof. intro Hf; apply co_fold_cons; auto; try intro; apply bot_le. Qed.
 
-Lemma morph_nil' {A B} `{o : OType B} `{@ExtType _ o} `{@PType B o} `{@dCPO B o}
+Lemma cofold_nil' {A B} `{o : OType B} `{@ExtType _ o} `{@PType B o} `{@dCPO B o}
   (f : A -> B -> B) :
-  morph f conil = ⊥.
+  cofold f conil = ⊥.
 Proof. apply ext, co_fold_nil. Qed.
 
-Lemma morph_cons' {A B} `{o : OType B} `{@ExtType _ o} `{@PType B o} `{@dCPO B o}
+Lemma cofold_cons' {A B} `{o : OType B} `{@ExtType _ o} `{@PType B o} `{@dCPO B o}
   (f : A -> B -> B) (a : A) (l : colist A) :
   (forall x, continuous (f x)) ->
-  morph f (cocons a l) = f a (morph f l).
+  cofold f (cocons a l) = f a (cofold f l).
 Proof. intro Hf; apply ext, co_fold_cons; auto; try intro; apply bot_le. Qed.
+
+Lemma coopfold_nil {A B} `{o : OType B} `{@TType B o} `{@lCPO B o} (f : A -> B -> B) :
+   coopfold f conil === ⊤.
+Proof. apply coop_fold_nil. Qed.
+
+Lemma coopfold_cons {A B} `{o : OType B} `{@TType B o} `{@ldCPO B o}
+  (f : A -> B -> B) (a : A) (l : colist A) :
+  (forall x, dec_continuous (f x)) ->
+  coopfold f (cocons a l) === f a (coopfold f l).
+Proof. intro Hf; apply coop_fold_cons; auto; try intro; apply le_top. Qed.
+
+Lemma coopfold_nil' {A B} `{o : OType B} `{@ExtType _ o} `{@TType B o} `{@ldCPO B o}
+  (f : A -> B -> B) :
+  coopfold f conil = ⊤.
+Proof. apply ext, coop_fold_nil. Qed.
+
+Lemma coopfold_cons' {A B} `{o : OType B} `{@ExtType _ o} `{@TType B o} `{@ldCPO B o}
+  (f : A -> B -> B) (a : A) (l : colist A) :
+  (forall x, dec_continuous (f x)) ->
+  coopfold f (cocons a l) = f a (coopfold f l).
+Proof. intro Hf; apply ext, coop_fold_cons; auto; try intro; apply le_top. Qed.
 
 (** These should all be equivalent. *)
 
@@ -1324,11 +1341,11 @@ Definition generative''' {A} (l : colist A) : Prop :=
   omega ⊑ colist_length l.
 
 (** Only safe for generative colists (no occurrences of nil). *)
-Extract Constant morph => "
-  \ o f l ->
+Extract Constant cofold => "
+  \ o p f l ->
     case l of
-      Conil -> error ""Conil""
-      Cocons a l' -> f a (morph o z f l')
+      Conil -> Prelude.error ""Conil""
+      Cocons a l' -> f a (morph o p f l')
 ".
 
 Lemma colist_length_inj {A} (l : colist A) (n : nat) :
@@ -1557,13 +1574,13 @@ Definition afilter {A} (f : A -> bool) : alist A -> colist A :=
 
 (** Filter comorphism. *)
 Definition cofilter {A} (f : A -> bool) : colist A -> colist A :=
-  morph (filter_f f).
+  cofold (filter_f f).    
 
 (** Filter computation rule. *)
 Lemma cofilter_cons {A} (f : A -> bool) (a : A) (l : colist A) :
   cofilter f (cocons a l) = if f a then cocons a (cofilter f l) else cofilter f l.
 Proof.
-  unfold cofilter; rewrite morph_cons'; auto.
+  unfold cofilter; rewrite cofold_cons'; auto.
   intro x; apply continuous_ite; eauto with colist order.
 Qed.
 
@@ -1578,14 +1595,13 @@ Lemma continuous_cofilter {A} (f : A -> bool) :
   continuous (cofilter f).
 Proof.
   apply continuous_co, monotone_afold; eauto with order colist.
-  intro; apply bot_le.
 Qed.
 #[global] Hint Resolve continuous_cofilter : colist.
 
 Lemma cofilter_comm {A} (P Q : A -> bool) (l : colist A) :
   cofilter P (cofilter Q l) = cofilter Q (cofilter P l).
 Proof with eauto with colist order aCPO.
-  unfold cofilter, morph.
+  unfold cofilter, cofold.
   rewrite co_co_ext with (x:=l)...
   rewrite co_co_ext with (f:=afilter P)...
   unfold afilter.
@@ -1608,8 +1624,8 @@ Lemma cofilter_inj_filter {A} (P : A -> bool) (l : alist A) :
 Proof with eauto with colist order.
   unfold cofilter, filter_f, filter.
   induction l; simpl.
-  - rewrite morph_nil'; auto.
-  - rewrite morph_cons', IHl...
+  - rewrite cofold_nil'; auto.
+  - rewrite cofold_cons', IHl...
     destruct (P a); auto.
 Qed.
 
@@ -1633,7 +1649,7 @@ Proof with eauto with colist order aCPO.
   apply ext.
   split.
   - apply colist_le_colist_le'.
-    unfold cofilter, morph.
+    unfold cofilter, cofold.
     apply co_coopP...
     { intros ch Hch a Ha; unfold compose.
       apply apply_infimum, cocontinuous_coop... }
@@ -1658,13 +1674,13 @@ Proof with eauto with colist order aCPO.
     induction k; intros l Hk; inv Hk.
     + specialize (IHi l0); destruct IHi as [j Hj].
       unfold cofilter, filter_f, filter.
-      rewrite morph_cons'...
+      rewrite cofold_cons'...
       exists (S j); simpl.
       rewrite H.
       f_equal; eauto.
     + apply IHk in H1.
       unfold cofilter, filter_f, filter.
-      rewrite morph_cons'...
+      rewrite cofold_cons'...
       destruct (P a) eqn:HPa; try congruence.
       clear H0.
       destruct H1 as [j Hj].
@@ -1730,7 +1746,7 @@ Lemma ordered_cofilter {A} (R : A -> A -> Prop) (P : A -> bool) (l : colist A) :
   ordered R (cofilter P l).
 Proof with eauto with colist order aCPO.
   intro Hord.
-  unfold cofilter, morph.
+  unfold cofilter, cofold.
   apply co_coopP...
   { apply cocontinuous_coop... }
   apply coop_intro.
@@ -1784,7 +1800,7 @@ Qed.
 
 (** Map comorphism. *)
 Definition comap {A B} (f : A -> B) : colist A -> colist B :=
-  morph (map_f f).
+  cofold (map_f f).
 
 Lemma continuous_comap {A B} (f : A -> B) :
   continuous (comap f).
@@ -1794,7 +1810,7 @@ Proof. apply continuous_co, monotone_amap. Qed.
 Lemma comap_cons {A B} (f : A -> B) (a : A) (l : colist A) :
   comap f (cocons a l) = cocons (f a) (comap f l).
 Proof.
-  unfold comap; rewrite morph_cons'; auto.
+  unfold comap; rewrite cofold_cons'; auto.
   intro x; apply continuous_cocons.
 Qed.
 
@@ -1811,7 +1827,7 @@ Proof. apply monotone_afold; eauto with eR order colist. Qed.
 
 (** Map comorphism. *)
 Definition cosum : colist eR -> eR :=
-  co (afold 0 eRplus).
+  cofold eRplus.
 
 Lemma continuous_cosum :
   continuous cosum.
@@ -1821,7 +1837,32 @@ Proof. apply continuous_co, monotone_asum. Qed.
 Lemma cosum_cons (a : eR) (l : colist eR) :
   cosum (cocons a l) = a + cosum l.
 Proof.
-  unfold cosum.
+  unfold cosum, cofold.
   rewrite co_fold_cons'; auto with eR.
   apply continuous_eRplus.
+Qed.
+
+Lemma cofilter_false_nil {A} (f : A -> bool) (l : colist A) :
+  colist_forall (fun x => f x = false) l ->
+  cofilter f l = conil.
+Proof with eauto with colist order aCPO.
+  intro Hall.
+  apply ext; split; try constructor.
+  apply colist_le_colist_le'.
+  apply coop_intro2...
+  intro i.
+  simpl; unfold flip.
+  generalize (prefix_cofilter f l i); intros [j Hj].
+  rewrite Hj; clear Hj i.
+  apply coop_elim with (i:=j) in Hall...
+  simpl in Hall; unfold flip in Hall.
+  revert Hall.
+  generalize (prefix j l) as l'.
+  clear l j.
+  unfold filter.
+  intro l; induction l; simpl; intro Hall.
+  { constructor. }
+  destruct Hall as [H0 H1].
+  rewrite H0.
+  apply IHl; auto.
 Qed.

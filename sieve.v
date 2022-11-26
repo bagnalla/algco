@@ -83,7 +83,7 @@ Proof with eauto with order colist aCPO.
   destruct l.
   { destruct Hex. }
   unfold cofilter, filter_f.
-  rewrite morph_cons'...
+  rewrite cofold_cons'...
   destruct Hex as [?|Hex]; subst.
   - rewrite Ha.
     destruct j; try lia.
@@ -525,7 +525,7 @@ Definition sieve_f : Z -> colist Z -> colist Z :=
   fun n l' => cocons n (cofilter (fun m => negb (Z.eqb (Z.modulo m n) 0)) l').
 
 Definition sieve' : colist Z -> colist Z :=
-  morph sieve_f.
+  cofold sieve_f.
 
 Definition sieve'' : colist Z := sieve' (nats 2).
 
@@ -534,13 +534,13 @@ Proof. reflexivity. Qed.
 
 From Coq Require Import ExtrHaskellBasic.
 Extraction Language Haskell.
-Extraction "extract/sieve/Sieve.hs" sieve'.
+Extraction "extract/sieve/Sieve.hs" sieve''.
 
 Lemma sieve_cons a l :
   sieve' (cocons a l) = sieve_f a (sieve' l).
 Proof with eauto with colist order aCPO.
   unfold sieve'.
-  rewrite morph_cons'; auto.
+  rewrite cofold_cons'; auto.
   intro x; unfold sieve_f.
   apply continuous_compose...
 Qed.

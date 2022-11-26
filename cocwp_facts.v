@@ -55,16 +55,16 @@ Lemma cotree_bind_map_sum {A} t g :
 Proof.
   apply cotree_ext, equ_cotree_eq.
   replace t with (co inj t) by apply co_inj_t.
-  unfold cotree_bind, cotree_map.
+  unfold cotree_bind, cotree_map, cofold.
   rewrite co_co''; eauto with cotree order.
   apply Proper_co'.
   { apply monotone_compose; eauto with cotree order aCPO.
-    apply monotone_co; eauto with cotree. }
+    apply monotone_co; eauto with cotree order. }
   { apply Proper_inj. }
   2: { rewrite co_inj_t; reflexivity. }
   unfold compose.
   apply equ_arrow; intro a.
-  unfold atree_cotree_map, atree_cotree_bind, morph; simpl.
+  unfold atree_cotree_map, atree_cotree_bind; simpl.
   induction a; unfold compose; simpl.
   - rewrite co_fold_bot; reflexivity.
   - rewrite co_fold_leaf; try reflexivity; constructor.
@@ -218,7 +218,7 @@ Lemma cotwp_bind {A B} (f : B -> eR) (t : cotree bool A) (k : A -> cotree bool B
   cotwp f (cotree_bind t k) = cotwp (cotwp f ∘ k) t.
 Proof.
   unfold cotwp.
-  unfold cotree_bind.
+  unfold cotree_bind, cofold.
   apply equ_eR.
   set (g := btwp f).
   set (h := atree_cotree_bind k).
@@ -230,6 +230,7 @@ Proof.
                 eR _ _ _ _ _ _ _ _ _ _ h (co g) Hh Hg).
   intro H.
   apply equ_arrow with (x:=t) in H.
+  unfold compose, h in H.
   unfold compose in H; rewrite H; clear H.
   revert t.
   apply equ_arrow.
@@ -249,7 +250,7 @@ Proof.
   - apply cotwp_bot.
   - reflexivity.
   - apply equ_eR.
-    unfold btwp, atree_cotree_bind, morph in *; simpl.
+    unfold btwp, atree_cotree_bind in *; simpl.
     rewrite co_fold_node; eRauto.
     { apply equ_eR; unfold compose; rewrite 2!H; reflexivity. }
     { apply wcontinuous_avg. }
@@ -311,7 +312,7 @@ Proof.
                 eR _ _ _ _ _ _ _ _ _ _ h (coop g) Hh Hg).
   intro H.
   apply equ_arrow with (x:=t) in H.
-  unfold compose in H; rewrite H; clear H.
+  unfold compose, h in H; rewrite H; clear H.
   revert t.
   apply equ_arrow.
   apply Proper_coop.
@@ -336,7 +337,7 @@ Proof.
   - apply cotwlp_bot.
   - reflexivity.
   - apply equ_eR.
-    unfold btwlp, atree_cotree_bind, morph in *; simpl.
+    unfold btwlp, atree_cotree_bind in *; simpl.
     rewrite coop_fold_node; eRauto.
     { apply equ_eR; unfold compose; rewrite 2!H; auto; reflexivity. }
     { apply dec_wcontinuous_avg. }
@@ -349,7 +350,7 @@ Qed.
 Lemma cotwp_filter {A} (P : A -> bool) (f : A -> eR) :
   cotwp (fun x => if P x then f x else 0) === cotwp f ∘ cotree_filter P.
 Proof.
-  unfold cotwp, cotree_filter.
+  unfold cotwp, cotree_filter, cofold.
   rewrite co_co; eauto with cotcwp cotree order.
   apply Proper_co; eauto with cotcwp order.
   { apply monotone_compose; eauto with cotree order.
@@ -357,16 +358,16 @@ Proof.
   apply equ_arrow; intro a.
   unfold compose.
   revert P f; induction a; intros P f; simpl.
-  - unfold atree_cotree_filter, morph. simpl.
+  - unfold atree_cotree_filter. simpl.
     unfold btwp; simpl.
     rewrite co_fold_bot.
     reflexivity.
   - unfold btwp; simpl.
-    unfold atree_cotree_filter, morph; simpl.
+    unfold atree_cotree_filter; simpl.
     destruct (P a).
     + rewrite co_fold_leaf; eRauto.
     + rewrite co_fold_bot; reflexivity.
-  - unfold btwp, atree_cotree_filter, morph in *; simpl.
+  - unfold btwp, atree_cotree_filter in *; simpl.
     unfold id, compose in *.
     rewrite co_fold_node; eRauto.
     { unfold compose; apply equ_eR.

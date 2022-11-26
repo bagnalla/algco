@@ -1047,32 +1047,70 @@ Proof.
   apply equ_arrow; intro i; reflexivity.
 Qed.
 
-(** Computable comorphisms. *)
-Definition morph {I A B} `{PType B} (f : A -> B) (g : (I -> B) -> B) : atree I A -> B :=
-  fold ⊥ f g.
+Definition cofold {A B} `{PType B} (f : A -> B) (g : (bool -> B) -> B)
+  : cotree bool A -> B :=
+  co (fold ⊥ f g).
 
-#[global]
-  Instance monotone_morph {I A B} `{PType B} (f : A -> B) (g : (I -> B) -> B)
-  { Hg : Proper (leq ==> leq) g}
-  : Proper (leq ==> leq) (morph f g).
-Proof. apply monotone_fold; auto; intro; apply bot_le. Qed.
-#[global] Hint Resolve monotone_morph : cotree.
-
-(** Extraction primitive for morph. Only safe for generative cotrees
+(** Extraction primitive for cofold. Only safe for generative cotrees
     (no occurrences of nil). *)
-Extract Constant morph => "
-  \ o f g t ->
+Extract Constant cofold => "
+  \ o p f g t ->
     case t of
-      Cobot -> error ""Cobot""
+      Cobot -> Prelude.error ""Cobot""
       Coleaf a -> f a
-      Conode k -> g (morph o f g . k)
+      Conode k -> g (morph o p f g . k)
 ".
 
+(* Lemma morph_bot {A B} `{dCPO B} (f : A -> B) (g : (bool -> B) -> B) : *)
+(*   morph f g cobot === ⊥. *)
+(* Proof. *)
+(*   apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity. *)
+(* Qed. *)
+
+(* Lemma co_fold_leaf {A B} `{dCPO B} *)
+(*   (z : B) (f : A -> B) (h : (bool -> B) -> B) (x : A) : *)
+(*   z ⊑ f x -> *)
+(*   co (fold z f h) (coleaf x) === f x. *)
+(* Proof. *)
+(*   intro Hz. *)
+(*   apply supremum_sup. *)
+(*   apply supremum_eventually_constant_at. *)
+(*   { intros []; simpl; auto; reflexivity. } *)
+(*   exists (S O); intros n Hn; destruct n; try lia; reflexivity. *)
+(* Qed. *)
+
+(* Lemma co_fold_node {A B} `{dCPO B} *)
+(*   (z : B) (f : A -> B) (h : (bool -> B) -> B) (k : bool -> cotree bool A) : *)
+(*   wcontinuous h -> *)
+(*   (forall b, z ⊑ fold z f h b) -> *)
+(*   z ⊑ h (fun _ => z) -> *)
+(*   co (fold z f h) (conode k) === h (co (fold z f h) ∘ k). *)
+(* Proof. *)
+(*   intros Hh Hz Hhz. *)
+(*   assert (Hh': monotone h). *)
+(*   { apply wcontinuous_monotone; auto. } *)
+(*   apply supremum_sup. *)
+(*   apply shift_supremum'' with *)
+(*     (f := fun i => h (fun x => fold z f h (ideal (k x) i))); auto. *)
+(*   { apply Hh. *)
+(*     { apply monotone_chain. *)
+(*       - intros i j Hij b; simpl; unfold flip. *)
+(*         apply monotone_fold; auto. *)
+(*         apply tprefix_monotone'; auto. *)
+(*       - apply chain_id. } *)
+(*     { apply supremum_apply; intro x. *)
+(*       apply dsup_spec. *)
+(*       { apply monotone_directed; auto with cotree order. *)
+(*         apply chain_directed, chain_ideal. } } } *)
+(*   apply equ_arrow; intro i; reflexivity. *)
+(* Qed. *)
+
 Definition atree_cotree_bind {I A B} (k : A -> cotree I B) : atree I A -> cotree I B :=
-  morph k (@conode I B).
+  fold ⊥ k (@conode I B).
 
 Definition cotree_bind {A B} (t : cotree bool A) (k : A -> cotree bool B) : cotree bool B :=
-  co (atree_cotree_bind k) t.
+  (* co (atree_cotree_bind k) t. *)
+  cofold k (@conode bool B) t.
 
 #[global]
   Instance monotone_atree_cotree_bind {I A B} (k : A -> cotree I B) :
@@ -1090,7 +1128,7 @@ Lemma cotree_bind_bot {A B} (k : A -> cotree bool B) :
   cotree_bind cobot k = cobot.
 Proof.
   apply cotree_ext, equ_cotree_eq.
-  unfold cotree_bind, atree_cotree_bind, morph.
+  unfold cotree_bind, cofold.
   rewrite co_fold_bot; reflexivity.
 Qed.
 
@@ -1098,7 +1136,7 @@ Lemma cotree_bind_leaf {A B} (k : A -> cotree bool B) (x : A) :
   cotree_bind (coleaf x) k = k x.
 Proof.
   apply cotree_ext, equ_cotree_eq.
-  unfold cotree_bind, atree_cotree_bind, morph.
+  unfold cotree_bind, cofold.
   rewrite co_fold_leaf; try reflexivity; constructor.
 Qed.
 
@@ -1106,16 +1144,16 @@ Lemma cotree_bind_node {A B} (k : A -> cotree bool B) (f : bool -> cotree bool A
   cotree_bind (conode f) k = conode (fun x => cotree_bind (f x) k).
 Proof.
   apply cotree_ext, equ_cotree_eq.
-  unfold cotree_bind, atree_cotree_bind, morph.
+  unfold cotree_bind, cofold.
   rewrite co_fold_node; auto with cotree order;
     try reflexivity; intros; constructor.
 Qed.
 
 Definition atree_cotree_map {I A B} (f : A -> B) : atree I A -> cotree I B :=
-  morph (@coleaf I B ∘ f) (@conode I B).
+  fold ⊥ (@coleaf I B ∘ f) (@conode I B).
 
 Definition cotree_map {A B} (f : A -> B) (t : cotree bool A) : cotree bool B :=
-  co (atree_cotree_map f) t.
+  cofold (@coleaf bool B ∘ f) (@conode bool B) t.
 
 #[global]
   Instance monotone_atree_cotree_map {I A B} (f : A -> B) :
@@ -1129,10 +1167,10 @@ Qed.
 #[global] Hint Resolve monotone_atree_cotree_map : cotree.
 
 Definition atree_cotree_filter {I A} (P : A -> bool) : atree I A -> cotree I A :=
-  morph (fun x => if P x then coleaf x else cobot) (@conode I A).
+  fold ⊥ (fun x => if P x then coleaf x else cobot) (@conode I A).
 
 Definition cotree_filter {A} (P : A -> bool) : cotree bool A -> cotree bool A :=
-  co (atree_cotree_filter P).
+  cofold (fun x => if P x then coleaf x else cobot) (@conode bool A).
 
 #[global]
   Instance monotone_atree_cotree_filter {I A} (P : A -> bool) :
@@ -1339,7 +1377,7 @@ Lemma cotree_map_bot {A B} (f : A -> B) :
   @cotree_map A B f cobot = cobot.
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_map, atree_cotree_map, morph.
+  unfold cotree_map, cofold.
   rewrite co_fold_bot; reflexivity.
 Qed.
 
@@ -1347,7 +1385,7 @@ Lemma cotree_map_leaf {A B} (f : A -> B) (x : A) :
   @cotree_map A B f (coleaf x) = coleaf (f x).
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_map, atree_cotree_map, morph.
+  unfold cotree_map, cofold.
   rewrite co_fold_leaf; try reflexivity; constructor.
 Qed.
 
@@ -1355,7 +1393,7 @@ Lemma cotree_map_node {A B} (f : A -> B) (k : bool -> cotree bool A) :
   cotree_map f (conode k) = conode (cotree_map f ∘ k).
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_map, atree_cotree_map, morph.
+  unfold cotree_map, cofold.
   rewrite co_fold_node; auto with cotree order;
     try reflexivity; intros; constructor.
 Qed.
@@ -1366,7 +1404,7 @@ Lemma cotree_filter_bot {A} (P : A -> bool) :
   @cotree_filter A P cobot = cobot.
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_filter, atree_cotree_filter, morph.
+  unfold cotree_filter, cofold.
   rewrite co_fold_bot; reflexivity.
 Qed.
 
@@ -1374,7 +1412,7 @@ Lemma cotree_filter_leaf {A} (P : A -> bool) (x : A) :
   @cotree_filter A P (coleaf x) = if P x then coleaf x else cobot.
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_filter, atree_cotree_filter, morph.
+  unfold cotree_filter, cofold.
   rewrite co_fold_leaf; try reflexivity; intros; constructor.
 Qed.
 
@@ -1382,7 +1420,7 @@ Lemma cotree_filter_node {A} (P : A -> bool) (k : bool -> cotree bool A) :
   cotree_filter P (conode k) = conode (cotree_filter P ∘ k).
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_filter, atree_cotree_filter, morph.
+  unfold cotree_filter, cofold.
   rewrite co_fold_node; auto with cotree order;
     try reflexivity; intros; constructor.
 Qed.
@@ -1548,7 +1586,7 @@ Lemma atree_cotree_bind_assoc {A B C}
   cotree_bind (atree_cotree_bind f t) g ===
     atree_cotree_bind (fun x : A => cotree_bind (f x) g) t.
 Proof.
-  unfold atree_cotree_bind, morph.
+  unfold atree_cotree_bind.
   revert f g; induction t; intros f g; simpl.
   - rewrite cotree_bind_bot; reflexivity.
   - reflexivity.
@@ -1562,11 +1600,11 @@ Lemma cotree_bind_assoc {A B C}
   cotree_bind (cotree_bind t f) g = cotree_bind t (fun x => cotree_bind (f x) g).
 Proof.
   apply ext.
-  unfold cotree_bind.
+  unfold cotree_bind, cofold.
   rewrite co_co''; eauto with cotree order.
   apply Proper_co'; eauto with cotree order; try reflexivity.
   { apply monotone_compose; eauto with cotree order.
-    apply monotone_co; eauto with cotree. }
+    apply monotone_co; eauto with cotree order. }
   apply equ_arrow; unfold compose; intro a.
   apply atree_cotree_bind_assoc.
 Qed.
@@ -1574,7 +1612,7 @@ Qed.
 Lemma atree_cotree_bind_inj {A} :
   atree_cotree_bind (@coleaf bool A) = inj.
 Proof.
-  unfold atree_cotree_bind, morph.
+  unfold atree_cotree_bind.
   ext t; induction t; simpl; auto.
   f_equal; ext b; unfold compose; rewrite H; reflexivity.
 Qed.
@@ -1587,7 +1625,9 @@ Proof.
   replace t with (id t) by reflexivity.
   symmetry.
   apply co_unique'; eauto with cotree order.
-  rewrite atree_cotree_bind_inj; reflexivity.
+  intro b.
+  unfold id, incl; simpl.
+  rewrite <- atree_cotree_bind_inj; reflexivity.
 Qed.
 
 #[global]
