@@ -930,16 +930,16 @@ Fixpoint tfold {I A B}
 (*   fold cobot f (@cotau I B) (@conode I B) t. *)
 
 #[global]
-  Instance monotone_tfold {I A B} `{OType B} (z : B) (f : A -> B) (h : (I -> B) -> B)
-  {Hz : forall b, z ⊑ tfold z f h b}
-  {Hh : Proper (leq ==> leq) h}
-  : Proper (leq ==> leq) (tfold z f h).
+  Instance monotone_tfold {I A B} `{OType B} (z : B) (f : A -> B) (g : (I -> B) -> B)
+  {Hz : forall b, z ⊑ tfold z f g b}
+  {Hg : Proper (leq ==> leq) g}
+  : Proper (leq ==> leq) (tfold z f g).
 Proof.
-  intro a; revert Hz Hh; revert f;
-    induction a; intros f Hz Hh b Hab; inv Hab; simpl.
+  intro a; revert Hz Hg; revert f;
+    induction a; intros f Hz Hg b Hab; inv Hab; simpl.
   - apply Hz.
   - reflexivity.
-  - apply Hh; intro x; apply H0; auto; apply H2.
+  - apply Hg; intro x; apply H0; auto; apply H2.
 Qed.
 #[global] Hint Resolve monotone_tfold : cotree.
 
@@ -1047,18 +1047,18 @@ Proof.
   apply equ_arrow; intro i; reflexivity.
 Qed.
 
-Definition cotfold {A B} `{PType B} (f : A -> B) (g : (bool -> B) -> B)
+Definition tcofold {A B} `{PType B} (f : A -> B) (g : (bool -> B) -> B)
   : cotree bool A -> B :=
   co (tfold ⊥ f g).
 
-(** Extraction primitive for cotfold. Only safe for generative cotrees
+(** Extraction primitive for tcofold. Only safe for generative cotrees
     (no occurrences of nil). *)
-Extract Constant cotfold => "
+Extract Constant tcofold => "
   \ o p f g t ->
     case t of
       Cobot -> Prelude.error ""Cobot""
       Coleaf a -> f a
-      Conode k -> g (cotfold o p f g . k)
+      Conode k -> g (tcofold o p f g . k)
 ".
 
 Definition atree_cotree_bind {I A B} (k : A -> cotree I B) : atree I A -> cotree I B :=
@@ -1066,7 +1066,7 @@ Definition atree_cotree_bind {I A B} (k : A -> cotree I B) : atree I A -> cotree
 
 Definition cotree_bind {A B} (t : cotree bool A) (k : A -> cotree bool B) : cotree bool B :=
   (* co (atree_cotree_bind k) t. *)
-  cotfold k (@conode bool B) t.
+  tcofold k (@conode bool B) t.
 
 #[global]
   Instance monotone_atree_cotree_bind {I A B} (k : A -> cotree I B) :
@@ -1084,7 +1084,7 @@ Lemma cotree_bind_bot {A B} (k : A -> cotree bool B) :
   cotree_bind cobot k = cobot.
 Proof.
   apply cotree_ext, equ_cotree_eq.
-  unfold cotree_bind, cotfold.
+  unfold cotree_bind, tcofold.
   rewrite co_tfold_bot; reflexivity.
 Qed.
 
@@ -1092,7 +1092,7 @@ Lemma cotree_bind_leaf {A B} (k : A -> cotree bool B) (x : A) :
   cotree_bind (coleaf x) k = k x.
 Proof.
   apply cotree_ext, equ_cotree_eq.
-  unfold cotree_bind, cotfold.
+  unfold cotree_bind, tcofold.
   rewrite co_tfold_leaf; try reflexivity; constructor.
 Qed.
 
@@ -1100,7 +1100,7 @@ Lemma cotree_bind_node {A B} (k : A -> cotree bool B) (f : bool -> cotree bool A
   cotree_bind (conode f) k = conode (fun x => cotree_bind (f x) k).
 Proof.
   apply cotree_ext, equ_cotree_eq.
-  unfold cotree_bind, cotfold.
+  unfold cotree_bind, tcofold.
   rewrite co_tfold_node; auto with cotree order;
     try reflexivity; intros; constructor.
 Qed.
@@ -1109,7 +1109,7 @@ Definition atree_cotree_map {I A B} (f : A -> B) : atree I A -> cotree I B :=
   tfold ⊥ (@coleaf I B ∘ f) (@conode I B).
 
 Definition cotree_map {A B} (f : A -> B) (t : cotree bool A) : cotree bool B :=
-  cotfold (@coleaf bool B ∘ f) (@conode bool B) t.
+  tcofold (@coleaf bool B ∘ f) (@conode bool B) t.
 
 #[global]
   Instance monotone_atree_cotree_map {I A B} (f : A -> B) :
@@ -1126,7 +1126,7 @@ Definition atree_cotree_filter {I A} (P : A -> bool) : atree I A -> cotree I A :
   tfold ⊥ (fun x => if P x then coleaf x else cobot) (@conode I A).
 
 Definition cotree_filter {A} (P : A -> bool) : cotree bool A -> cotree bool A :=
-  cotfold (fun x => if P x then coleaf x else cobot) (@conode bool A).
+  tcofold (fun x => if P x then coleaf x else cobot) (@conode bool A).
 
 #[global]
   Instance monotone_atree_cotree_filter {I A} (P : A -> bool) :
@@ -1333,7 +1333,7 @@ Lemma cotree_map_bot {A B} (f : A -> B) :
   @cotree_map A B f cobot = cobot.
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_map, cotfold.
+  unfold cotree_map, tcofold.
   rewrite co_tfold_bot; reflexivity.
 Qed.
 
@@ -1341,7 +1341,7 @@ Lemma cotree_map_leaf {A B} (f : A -> B) (x : A) :
   @cotree_map A B f (coleaf x) = coleaf (f x).
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_map, cotfold.
+  unfold cotree_map, tcofold.
   rewrite co_tfold_leaf; try reflexivity; constructor.
 Qed.
 
@@ -1349,7 +1349,7 @@ Lemma cotree_map_node {A B} (f : A -> B) (k : bool -> cotree bool A) :
   cotree_map f (conode k) = conode (cotree_map f ∘ k).
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_map, cotfold.
+  unfold cotree_map, tcofold.
   rewrite co_tfold_node; auto with cotree order;
     try reflexivity; intros; constructor.
 Qed.
@@ -1360,7 +1360,7 @@ Lemma cotree_filter_bot {A} (P : A -> bool) :
   @cotree_filter A P cobot = cobot.
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_filter, cotfold.
+  unfold cotree_filter, tcofold.
   rewrite co_tfold_bot; reflexivity.
 Qed.
 
@@ -1368,7 +1368,7 @@ Lemma cotree_filter_leaf {A} (P : A -> bool) (x : A) :
   @cotree_filter A P (coleaf x) = if P x then coleaf x else cobot.
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_filter, cotfold.
+  unfold cotree_filter, tcofold.
   rewrite co_tfold_leaf; try reflexivity; intros; constructor.
 Qed.
 
@@ -1376,7 +1376,7 @@ Lemma cotree_filter_node {A} (P : A -> bool) (k : bool -> cotree bool A) :
   cotree_filter P (conode k) = conode (cotree_filter P ∘ k).
 Proof.
   apply cotree_equ_eq.
-  unfold cotree_filter, cotfold.
+  unfold cotree_filter, tcofold.
   rewrite co_tfold_node; auto with cotree order;
     try reflexivity; intros; constructor.
 Qed.
@@ -1556,7 +1556,7 @@ Lemma cotree_bind_assoc {A B C}
   cotree_bind (cotree_bind t f) g = cotree_bind t (fun x => cotree_bind (f x) g).
 Proof.
   apply ext.
-  unfold cotree_bind, cotfold.
+  unfold cotree_bind, tcofold.
   rewrite co_co''; eauto with cotree order.
   apply Proper_co'; eauto with cotree order; try reflexivity.
   { apply monotone_compose; eauto with cotree order.

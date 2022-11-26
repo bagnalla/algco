@@ -55,7 +55,7 @@ Lemma cotree_bind_map_sum {A} t g :
 Proof.
   apply cotree_ext, equ_cotree_eq.
   replace t with (co inj t) by apply co_inj_t.
-  unfold cotree_bind, cotree_map, cotfold.
+  unfold cotree_bind, cotree_map, tcofold.
   rewrite co_co''; eauto with cotree order.
   apply Proper_co'.
   { apply monotone_compose; eauto with cotree order aCPO.
@@ -218,7 +218,7 @@ Lemma cotwp_bind {A B} (f : B -> eR) (t : cotree bool A) (k : A -> cotree bool B
   cotwp f (cotree_bind t k) = cotwp (cotwp f ∘ k) t.
 Proof.
   unfold cotwp.
-  unfold cotree_bind, cotfold.
+  unfold cotree_bind, tcofold.
   apply equ_eR.
   set (g := btwp f).
   set (h := atree_cotree_bind k).
@@ -350,7 +350,7 @@ Qed.
 Lemma cotwp_filter {A} (P : A -> bool) (f : A -> eR) :
   cotwp (fun x => if P x then f x else 0) === cotwp f ∘ cotree_filter P.
 Proof.
-  unfold cotwp, cotree_filter, cotfold.
+  unfold cotwp, cotree_filter, tcofold.
   rewrite co_co; eauto with cotcwp cotree order.
   apply Proper_co; eauto with cotcwp order.
   { apply monotone_compose; eauto with cotree order.
