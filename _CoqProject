@@ -8,6 +8,7 @@ colist.v
 conat.v
 cotree.v
 cpo.v
+equidistribution.v
 eR.v
 geometric_series.v
 inf_primes.v

@@ -167,7 +167,7 @@ Proof with eauto with colist order aCPO.
   apply IHi; lia.
 Qed.
 
-Theorem prime_exists_sieve (n : Z) :
+Theorem sieve_complete (n : Z) :
   is_prime n ->
   colist_exists (eq n) sieve.
 Proof with eauto with colist order aCPO.
@@ -221,7 +221,7 @@ Proof.
   constructor; auto.
 Qed.
 
-Theorem sieve_forall :
+Theorem sieve_sound :
   colist_forall is_prime sieve.
 Proof with eauto with colist order aCPO.
   unfold sieve, sieve_aux.
@@ -248,7 +248,7 @@ Proof with eauto with colist order aCPO.
 Qed.
 
 Lemma generative_nats (n : Z) :
-  generative (nats n).
+  productive (nats n).
 Proof.
   intro i; revert n; induction i; intro n; simpl.
   { split.
@@ -361,17 +361,17 @@ Proof.
   apply Forall_alist_of_list; auto.
 Qed.
 
-Theorem generative_sieve :
-  generative'' sieve.
+Theorem productive_sieve :
+  productive'' sieve.
 Proof with eauto with colist order aCPO.
-  unfold generative''.
+  unfold productive''.
   destruct (@conat_finite_or_omega (colist_length sieve)); auto.
   exfalso.
   destruct H as [m H].
   apply colist_length_inj in H.
   destruct H as [al H].
   generalize (exists_larger_prime_alist al); intros [n [Hn Hall]].
-  apply prime_exists_sieve in Hn.
+  apply sieve_complete in Hn.
   rewrite H in Hn.
   apply colist_exists_inj_alist_exists in Hn.
   clear H m.
@@ -545,4 +545,19 @@ Proof with eauto with colist order aCPO.
   apply continuous_compose...
 Qed.
 
-Print Assumptions prime_exists_sieve.
+Corollary sieve_correct :
+  (forall n, is_prime n -> colist_exists (eq n) sieve) /\
+    colist_forall is_prime sieve /\
+    sorted sieve /\
+    nodup sieve /\
+    productive'' sieve.
+Proof.
+  repeat split.
+  - intros n Hn'; apply sieve_complete; auto.
+  - apply sieve_sound.
+  - apply sorted_sieve.
+  - apply nodup_sieve.
+  - apply productive_sieve.
+Qed.
+
+Print Assumptions sieve_correct.

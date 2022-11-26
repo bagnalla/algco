@@ -1328,19 +1328,19 @@ Proof. intro Hf; apply ext, coop_fold_cons; auto; try intro; apply le_top. Qed.
 
 (** These should all be equivalent. *)
 
-Definition generative {A} (l : colist A) : Prop :=
+Definition productive {A} (l : colist A) : Prop :=
   forall i, prefix i l ⊏ prefix (S i) l.
 
-Definition generative' {A} (l : colist A) : Prop :=
+Definition productive' {A} (l : colist A) : Prop :=
   forall n, nth' (const True) n l.
 
-Definition generative'' {A} (l : colist A) : Prop :=
+Definition productive'' {A} (l : colist A) : Prop :=
   colist_length l = omega.
 
-Definition generative''' {A} (l : colist A) : Prop :=
+Definition productive''' {A} (l : colist A) : Prop :=
   omega ⊑ colist_length l.
 
-(** Only safe for generative colists (no occurrences of nil). *)
+(** Only safe for productive colists (no occurrences of nil). *)
 Extract Constant cofold => "
   \ o p f l ->
     case l of
@@ -1383,10 +1383,10 @@ Proof.
   revert n; induction l; intros n Hn; inv Hn; constructor; auto.
 Qed.
 
-Lemma generative'_generative'' {A} (l : colist A) :
-  generative' l <-> generative'' l.
+Lemma productive'_productive'' {A} (l : colist A) :
+  productive' l <-> productive'' l.
 Proof with eauto with colist conat order aCPO.
-  unfold generative', generative''; split; intro H.
+  unfold productive', productive''; split; intro H.
   - destruct (@conat_finite_or_omega (colist_length l)); auto.
     destruct H0 as [m Hm].
     exfalso.
@@ -1410,10 +1410,10 @@ Proof with eauto with colist conat order aCPO.
       inv Hl; auto.
 Qed.
 
-Lemma generative''_generative''' {A} (l : colist A) :
-  generative'' l <-> generative''' l.
+Lemma productive''_productive''' {A} (l : colist A) :
+  productive'' l <-> productive''' l.
 Proof.
-  unfold generative'', generative'''.
+  unfold productive'', productive'''.
   split.
   - intro Heq; rewrite Heq; reflexivity.
   - intro Hle.
@@ -1421,19 +1421,19 @@ Proof.
     apply le_omega.
 Qed.
 
-Lemma not_generative_conil {A} :
-  ~ generative'' (@conil A).
+Lemma not_productive_conil {A} :
+  ~ productive'' (@conil A).
 Proof.
-  unfold generative''.
+  unfold productive''.
   unfold colist_length, alist_length.
   rewrite co_fold_nil'; intro HC.
   rewrite (@conat.unf_eq omega) in HC; inv HC.
 Qed.
 
-Lemma generative_cons {A} (a : A) (l : colist A) :
-  generative'' (cocons a l) -> generative'' l.
+Lemma productive_cons {A} (a : A) (l : colist A) :
+  productive'' (cocons a l) -> productive'' l.
 Proof with eauto with colist conat order aCPO.
-  unfold generative''.
+  unfold productive''.
   intro Hgen.
   rewrite (@conat.unf_eq omega) in Hgen.
   unfold colist_length, alist_length in Hgen.
