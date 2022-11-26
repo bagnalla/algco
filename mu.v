@@ -40,7 +40,7 @@ Local Open Scope eR_scope.
 Create HintDb mu.
 
 Definition amu {A} (f : A -> eR) : atree bool A -> eR :=
-  fold 0 f (fun f => f false + f true).
+  tfold 0 f (fun f => f false + f true).
 
 Definition mu {A} (f : A -> eR) : cotree bool A -> eR :=
   co (amu f).
@@ -48,14 +48,14 @@ Definition mu {A} (f : A -> eR) : cotree bool A -> eR :=
 #[global]
   Instance monotone_amu {A} (f : A -> eR) : Proper (leq ==> leq) (amu f).
 Proof.
-  apply monotone_fold.
+  apply monotone_tfold.
   { intros; eRauto. }
   intros g g' Hg; apply eRplus_le_compat; apply Hg.
 Qed.
 #[global] Hint Resolve monotone_amu : mu.
 
 Definition atree_lang {A} : atree bool A -> cotree bool (list bool) :=
-  fold cobot (const (coleaf [])) (fun k => conode (fun b => cotree_map (cons b) (k b))).
+  tfold cobot (const (coleaf [])) (fun k => conode (fun b => cotree_map (cons b) (k b))).
 
 Definition cotree_lang {A} : cotree bool A -> cotree bool (list bool) :=
   co atree_lang.
@@ -70,7 +70,7 @@ Lemma cotree_lang_bot {A} :
 Proof.
   apply cotree_equ_eq.
   unfold cotree_lang, atree_lang.
-  rewrite co_fold_bot; reflexivity.
+  rewrite co_tfold_bot; reflexivity.
 Qed.
 
 Lemma cotree_lang_leaf {A} (x : A) :
@@ -78,7 +78,7 @@ Lemma cotree_lang_leaf {A} (x : A) :
 Proof.
   apply cotree_equ_eq.
   unfold cotree_lang, atree_lang.
-  rewrite co_fold_leaf; try reflexivity; constructor.
+  rewrite co_tfold_leaf; try reflexivity; constructor.
 Qed.
 
 Lemma cotree_lang_node {A} (k : bool -> cotree bool A) :
@@ -87,7 +87,7 @@ Lemma cotree_lang_node {A} (k : bool -> cotree bool A) :
 Proof.
   apply cotree_equ_eq.
   unfold cotree_lang, atree_lang.
-  rewrite co_fold_node; try reflexivity; auto with order.
+  rewrite co_tfold_node; try reflexivity; auto with order.
   intros ch Hch s Hs.
   unfold compose.
   apply conode_supremum.
@@ -155,11 +155,11 @@ Qed.
 Lemma monotone_atree_lang {A} :
   monotone (@atree_lang A).
 Proof.
-  apply monotone_fold.
+  apply monotone_tfold.
   { intros; constructor. }
   intros a b Hab.
   apply monotone_conode; intro x.
-  apply monotone_co; auto; apply monotone_fold.
+  apply monotone_co; auto; apply monotone_tfold.
   { intros; constructor. }
   { apply monotone_conode. }
 Qed.
@@ -181,11 +181,11 @@ Proof
   unfold btwp, amu.
   induction a; simpl.
   - unfold atree_lang; simpl; unfold amu.
-    apply equ_eR; rewrite co_fold_bot; reflexivity.
+    apply equ_eR; rewrite co_tfold_bot; reflexivity.
   - unfold atree_lang, amu, const; simpl; apply equ_eR.
-    rewrite co_fold_leaf; simpl; eRauto.
+    rewrite co_tfold_leaf; simpl; eRauto.
   - unfold amu, atree_lang; simpl; apply equ_eR.
-    rewrite co_fold_node; auto.
+    rewrite co_tfold_node; auto.
     2: { apply wcontinuous_sum; apply wcontinuous_apply. }
     2: { intros; eRauto. }
     2: { eRauto. }

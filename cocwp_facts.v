@@ -55,7 +55,7 @@ Lemma cotree_bind_map_sum {A} t g :
 Proof.
   apply cotree_ext, equ_cotree_eq.
   replace t with (co inj t) by apply co_inj_t.
-  unfold cotree_bind, cotree_map, cofold.
+  unfold cotree_bind, cotree_map, cotfold.
   rewrite co_co''; eauto with cotree order.
   apply Proper_co'.
   { apply monotone_compose; eauto with cotree order aCPO.
@@ -66,9 +66,9 @@ Proof.
   apply equ_arrow; intro a.
   unfold atree_cotree_map, atree_cotree_bind; simpl.
   induction a; unfold compose; simpl.
-  - rewrite co_fold_bot; reflexivity.
-  - rewrite co_fold_leaf; try reflexivity; constructor.
-  - rewrite co_fold_node; auto with cotree order;
+  - rewrite co_tfold_bot; reflexivity.
+  - rewrite co_tfold_leaf; try reflexivity; constructor.
+  - rewrite co_tfold_node; auto with cotree order;
       try solve [intros; constructor].
     apply cotree_eq_equ; constructor; intro b; apply equ_cotree_eq, H.
 Qed.
@@ -104,7 +104,7 @@ Qed.
 #[global]
   Instance monotone_btwp {A} (f : A -> eR) : Proper (leq ==> leq) (btwp f).
 Proof.
-  apply monotone_fold.
+  apply monotone_tfold.
   - intros; eRauto.
   - intros g g' Hg; simpl.
     apply eRle_div, eRplus_le_compat; apply Hg.
@@ -113,7 +113,7 @@ Qed.
 
 Lemma fold_avg_bounded {A} (f : A -> eR) (t : atree bool A) :
   bounded f 1 ->
-  fold 1 f (fun k : bool -> eR => (k false + k true) / 2) t ⊑ 1.
+  tfold 1 f (fun k : bool -> eR => (k false + k true) / 2) t ⊑ 1.
 Proof.
   revert f; induction t; intros f Hf; simpl; eRauto.
   unfold compose.
@@ -136,7 +136,7 @@ Qed.
   Instance antimonotone_btwlp {A} (f : A -> eR) {Hf: bounded f 1}
   : Proper (leq ==> flip leq) (btwlp f).
 Proof.
-  apply antimonotone_fold.
+  apply antimonotone_tfold.
   - intro a; apply fold_avg_bounded; auto.
   - apply monotone_avg.
 Qed.
@@ -191,7 +191,7 @@ Lemma cotwp_bot {A} (f : A -> eR) :
 Proof.
   apply equ_eR.
   unfold cotwp, btwp.
-  rewrite co_fold_bot; reflexivity.
+  rewrite co_tfold_bot; reflexivity.
 Qed.
 
 Lemma cotwp_leaf {A} (f : A -> eR) (x : A) :
@@ -199,7 +199,7 @@ Lemma cotwp_leaf {A} (f : A -> eR) (x : A) :
 Proof.
   apply equ_eR.
   unfold cotwp, btwp.
-  rewrite co_fold_leaf; eRauto.
+  rewrite co_tfold_leaf; eRauto.
 Qed.
 
 Lemma cotwp_node {A} (f : A -> eR) (k : bool -> cotree bool A) :
@@ -207,7 +207,7 @@ Lemma cotwp_node {A} (f : A -> eR) (k : bool -> cotree bool A) :
 Proof.
   apply equ_eR.
   unfold cotwp, btwp.
-  rewrite co_fold_node; eRauto.
+  rewrite co_tfold_node; eRauto.
   apply wcontinuous_avg.
 Qed.
 
@@ -218,7 +218,7 @@ Lemma cotwp_bind {A B} (f : B -> eR) (t : cotree bool A) (k : A -> cotree bool B
   cotwp f (cotree_bind t k) = cotwp (cotwp f ∘ k) t.
 Proof.
   unfold cotwp.
-  unfold cotree_bind, cofold.
+  unfold cotree_bind, cotfold.
   apply equ_eR.
   set (g := btwp f).
   set (h := atree_cotree_bind k).
@@ -251,7 +251,7 @@ Proof.
   - reflexivity.
   - apply equ_eR.
     unfold btwp, atree_cotree_bind in *; simpl.
-    rewrite co_fold_node; eRauto.
+    rewrite co_tfold_node; eRauto.
     { apply equ_eR; unfold compose; rewrite 2!H; reflexivity. }
     { apply wcontinuous_avg. }
 Qed.
@@ -262,7 +262,7 @@ Lemma cotwlp_bot {A} (f : A -> eR) :
 Proof.
   apply equ_eR.
   unfold cotwlp, btwlp.
-  rewrite coop_fold_bot; reflexivity.
+  rewrite coop_tfold_bot; reflexivity.
 Qed.
 
 Lemma cotwlp_leaf {A} (f : A -> eR) (x : A) :
@@ -271,7 +271,7 @@ Lemma cotwlp_leaf {A} (f : A -> eR) (x : A) :
 Proof.
   intro Hf; apply equ_eR.
   unfold cotwlp, btwlp.
-  rewrite coop_fold_leaf; eRauto; apply Hf.
+  rewrite coop_tfold_leaf; eRauto; apply Hf.
 Qed.
 
 Lemma cotwlp_node {A} (f : A -> eR) (k : bool -> cotree bool A) :
@@ -280,7 +280,7 @@ Lemma cotwlp_node {A} (f : A -> eR) (k : bool -> cotree bool A) :
 Proof.
   intro Hf; apply equ_eR.
   unfold cotwlp, btwlp.
-  rewrite coop_fold_node; eRauto.
+  rewrite coop_tfold_node; eRauto.
   { apply dec_wcontinuous_avg. }
   { intro a; apply fold_avg_bounded; auto. }
   { unfold eRdiv, eRmult; simpl.
@@ -338,7 +338,7 @@ Proof.
   - reflexivity.
   - apply equ_eR.
     unfold btwlp, atree_cotree_bind in *; simpl.
-    rewrite coop_fold_node; eRauto.
+    rewrite coop_tfold_node; eRauto.
     { apply equ_eR; unfold compose; rewrite 2!H; auto; reflexivity. }
     { apply dec_wcontinuous_avg. }
     { intro; apply fold_avg_bounded; auto. }
@@ -350,7 +350,7 @@ Qed.
 Lemma cotwp_filter {A} (P : A -> bool) (f : A -> eR) :
   cotwp (fun x => if P x then f x else 0) === cotwp f ∘ cotree_filter P.
 Proof.
-  unfold cotwp, cotree_filter, cofold.
+  unfold cotwp, cotree_filter, cotfold.
   rewrite co_co; eauto with cotcwp cotree order.
   apply Proper_co; eauto with cotcwp order.
   { apply monotone_compose; eauto with cotree order.
@@ -360,16 +360,16 @@ Proof.
   revert P f; induction a; intros P f; simpl.
   - unfold atree_cotree_filter. simpl.
     unfold btwp; simpl.
-    rewrite co_fold_bot.
+    rewrite co_tfold_bot.
     reflexivity.
   - unfold btwp; simpl.
     unfold atree_cotree_filter; simpl.
     destruct (P a).
-    + rewrite co_fold_leaf; eRauto.
-    + rewrite co_fold_bot; reflexivity.
+    + rewrite co_tfold_leaf; eRauto.
+    + rewrite co_tfold_bot; reflexivity.
   - unfold btwp, atree_cotree_filter in *; simpl.
     unfold id, compose in *.
-    rewrite co_fold_node; eRauto.
+    rewrite co_tfold_node; eRauto.
     { unfold compose; apply equ_eR.
       f_equal; f_equal; apply equ_eR, H. }
     { apply wcontinuous_avg. }
