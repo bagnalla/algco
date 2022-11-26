@@ -164,9 +164,9 @@ Proof.
 Qed.
 
 CoInductive cotree_le {I A} : cotree I A -> cotree I A -> Prop :=
-| cotree_le_cobot : forall t, cotree_le cobot t
-| cotree_le_coleaf : forall x, cotree_le (coleaf x) (coleaf x)
-| cotree_le_conode : forall f g,
+| cotree_le_bot : forall t, cotree_le cobot t
+| cotree_le_leaf : forall x, cotree_le (coleaf x) (coleaf x)
+| cotree_le_node : forall f g,
     (forall x, cotree_le (f x) (g x)) ->
     cotree_le (conode f) (conode g).
 
@@ -222,9 +222,9 @@ Lemma leq_cotree_le {I A} (a b : cotree I A) :
 Proof. auto. Qed.
 
 CoInductive cotree_eq {I A} : cotree I A -> cotree I A -> Prop :=
-| cotree_eq_cobot : cotree_eq cobot cobot
-| cotree_eq_coleaf : forall x, cotree_eq (coleaf x) (coleaf x)
-| cotree_eq_conode : forall f g,
+| cotree_eq_bot : cotree_eq cobot cobot
+| cotree_eq_leaf : forall x, cotree_eq (coleaf x) (coleaf x)
+| cotree_eq_node : forall f g,
     (forall x, cotree_eq (f x) (g x)) ->
     cotree_eq (conode f) (conode g).
 
