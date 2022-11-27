@@ -1051,6 +1051,43 @@ Definition tcofold {A B} `{PType B} (f : A -> B) (g : (bool -> B) -> B)
   : cotree bool A -> B :=
   co (tfold ⊥ f g).
 
+Lemma tcofold_bot {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+  (f : A -> B) (g : (bool -> B) -> B) :
+  tcofold f g cobot === ⊥.
+Proof.
+  apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity.
+Qed.
+
+Lemma tcofold_leaf {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+  (f : A -> B) (g : (bool -> B) -> B) (x : A) :
+  tcofold f g (coleaf x) === f x.
+Proof. apply co_tfold_leaf, bot_le. Qed.
+
+Lemma tcofold_node {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+  (f : A -> B) (g : (bool -> B) -> B) (k : bool -> cotree bool A) :
+  wcontinuous g ->
+  tcofold f g (conode k) === g (tcofold f g ∘ k).
+Proof.
+  intros Hg.
+  assert (Hg': monotone g).
+  { apply wcontinuous_monotone; auto. }
+  apply supremum_sup.
+  apply shift_supremum'' with
+    (f := fun i => g (fun x => tfold ⊥ f g (ideal (k x) i))).
+  { apply bot_le. }
+  { apply Hg.
+    { apply monotone_chain.
+      - intros i j Hij b; simpl; unfold flip.
+        apply monotone_tfold; auto with order.
+        apply tprefix_monotone'; auto.
+      - apply chain_id. }
+    { apply supremum_apply; intro x.
+      apply dsup_spec.
+      { apply monotone_directed; auto with cotree order.
+        apply chain_directed, chain_ideal. } } }
+  apply equ_arrow; intro i; reflexivity.
+Qed.
+
 (** Extraction primitive for tcofold. Only safe for generative cotrees
     (no occurrences of nil). *)
 Extract Constant tcofold => "
