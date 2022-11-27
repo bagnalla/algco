@@ -1037,7 +1037,7 @@ Proof.
   { apply dec_wcontinuous_monotone; auto. }
   apply infimum_inf.
   apply shift_infimum'' with
-    (f := fun i => h (fun x => tfold z f h (ideal (k x) i))); auto.  
+    (f := fun i => h (fun x => tfold z f h (ideal (k x) i))); auto.
   { apply Hh.
     { intros i b; apply antimonotone_tfold; auto; apply chain_ideal. }
     { apply infimum_apply; intro x.
@@ -1054,9 +1054,7 @@ Definition tcofold {A B} `{PType B} (f : A -> B) (g : (bool -> B) -> B)
 Lemma tcofold_bot {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
   (f : A -> B) (g : (bool -> B) -> B) :
   tcofold f g cobot === ⊥.
-Proof.
-  apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity.
-Qed.
+Proof. apply co_tfold_bot. Qed.
 
 Lemma tcofold_leaf {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
   (f : A -> B) (g : (bool -> B) -> B) (x : A) :
@@ -1067,26 +1065,27 @@ Lemma tcofold_node {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
   (f : A -> B) (g : (bool -> B) -> B) (k : bool -> cotree bool A) :
   wcontinuous g ->
   tcofold f g (conode k) === g (tcofold f g ∘ k).
-Proof.
-  intros Hg.
-  assert (Hg': monotone g).
-  { apply wcontinuous_monotone; auto. }
-  apply supremum_sup.
-  apply shift_supremum'' with
-    (f := fun i => g (fun x => tfold ⊥ f g (ideal (k x) i))).
-  { apply bot_le. }
-  { apply Hg.
-    { apply monotone_chain.
-      - intros i j Hij b; simpl; unfold flip.
-        apply monotone_tfold; auto with order.
-        apply tprefix_monotone'; auto.
-      - apply chain_id. }
-    { apply supremum_apply; intro x.
-      apply dsup_spec.
-      { apply monotone_directed; auto with cotree order.
-        apply chain_directed, chain_ideal. } } }
-  apply equ_arrow; intro i; reflexivity.
-Qed.
+Proof. intro Hg; apply co_tfold_node; auto with order. Qed.
+
+Definition tcoopfold {A B} `{TType B} (f : A -> B) (g : (bool -> B) -> B)
+  : cotree bool A -> B :=
+  coop (tfold ⊤ f g).
+
+Lemma tcoopfold_bot {A B} `{o : OType B} `{@TType B o} `{@ldCPO B o}
+  (f : A -> B) (g : (bool -> B) -> B) :
+  tcoopfold f g cobot === ⊤.
+Proof. apply coop_tfold_bot. Qed.
+
+Lemma tcoopfold_leaf {A B} `{o : OType B} `{@TType B o} `{@ldCPO B o}
+  (f : A -> B) (g : (bool -> B) -> B) (x : A) :
+  tcoopfold f g (coleaf x) === f x.
+Proof. apply coop_tfold_leaf; apply le_top. Qed.
+
+Lemma tcoopfold_node {A B} `{o : OType B} `{@TType B o} `{@ldCPO B o}
+  (f : A -> B) (g : (bool -> B) -> B) (k : bool -> cotree bool A) :
+  dec_wcontinuous g ->
+  tcoopfold f g (conode k) === g (tcoopfold f g ∘ k).
+Proof. intro Hg; apply coop_tfold_node; auto with order. Qed.
 
 (** Extraction primitive for tcofold. Only safe for generative cotrees
     (no occurrences of nil). *)
