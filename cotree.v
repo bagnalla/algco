@@ -1122,6 +1122,50 @@ Proof.
 Qed.
 #[global] Hint Resolve monotone_atree_cotree_map : cotree.
 
+(* Fixpoint afilter {A} (P : A -> bool) (t : atree bool A) : cotree bool A := *)
+(*   match t with *)
+(*   | abot => cobot *)
+(*   | aleaf x => coleaf x *)
+(*   | anode k => let l := afilter P (k true) in *)
+(*               let r := afilter P (k false) in *)
+(*               match (l, r) with *)
+(*               | (coleaf x, coleaf y) => *)
+(*                   if P x then *)
+(*                     if P y then conode (fun b : bool => if b then l else r) else l *)
+(*                   else *)
+(*                     if P y then r else cobot *)
+(*               | (cobot, _) => r *)
+(*               | (_, cobot) => l *)
+(*               | (coleaf x, _) => if P x then conode (fun b : bool => if b then l else r) else r *)
+(*               | (_, coleaf y) => if P y then conode (fun b : bool => if b then l else r) else l *)
+(*               | _ => conode (fun b : bool => if b then l else r) *)
+(*               end *)
+(*   end. *)
+
+(* #[global] *)
+(*   Instance monotone_afilter {A} (P : A -> bool) : *)
+(*   Proper (leq ==> leq) (afilter P). *)
+(* Proof. *)
+(*   intros a; induction a; intros b Hab; inv Hab; simpl. *)
+(*   { constructor. } *)
+(*   { constructor. } *)
+(*   pose proof (H1 true) as H0. *)
+(*   pose proof (H1 false) as H2. *)
+(*   destruct (g false) eqn:Hgf; simpl. *)
+(*   - inv H2; simpl. *)
+(*     destruct (g true) eqn:Hgt. *)
+(*     + inv H0; simpl. *)
+(*       constructor; intros []; constructor. *)
+(*     + inv H0; constructor. *)
+(*     + inv H0. *)
+(*       * constructor. *)
+(*       * simpl. *)
+(*       rewrite <- Hgt. *)
+(*       simpl. constructor. *)
+(*       * constructor. *)
+(*   destruct (afilter P (a true)) eqn:Ha. *)
+(*   { simpl. *)
+
 Definition atree_cotree_filter {I A} (P : A -> bool) : atree I A -> cotree I A :=
   tfold ⊥ (fun x => if P x then coleaf x else cobot) (@conode I A).
 
@@ -1383,6 +1427,7 @@ Qed.
 
 (** These could be implemented as co-folds to gain access to the
     computation lemmas. *)
+(** TODO: this ^ *)
 Inductive atree_some {I A} (P : A -> Prop) : atree I A -> Prop :=
 | atree_some_leaf : forall x, P x -> atree_some P (aleaf x)
 | atree_some_node : forall f x,
@@ -1396,10 +1441,10 @@ Inductive atree_all {I A} (P : A -> Prop) : atree I A -> Prop :=
     (forall i, atree_all P (f i)) ->
     atree_all P (anode f).
 
-Definition cotree_some' {A} (P : A -> Prop) : cotree bool A -> Prop :=
+Definition cotree_some {A} (P : A -> Prop) : cotree bool A -> Prop :=
   co (atree_some P).
 
-Definition cotree_all' {A} (P : A -> Prop) : cotree bool A -> Prop :=
+Definition cotree_all {A} (P : A -> Prop) : cotree bool A -> Prop :=
   coop (atree_all P).
 
 #[global]
@@ -1411,8 +1456,18 @@ Proof.
 Qed.
 #[global] Hint Resolve monotone_atree_some : cotree.
 
-Corollary continuous_cotree_some' {A} (P : A -> Prop) :
-  continuous (cotree_some' P).
+(* (** Introduction rule 1 for colist_exists. *) *)
+(* Lemma colist_exists_intro1 {A} (P : A -> Prop) (a : A) (t : cotree bool A) : *)
+(*   P a -> *)
+(*   cotree_some P (coleaf a). *)
+(* Proof with eauto with order colist. *)
+(*   unfold cotree_some. *)
+(*   rewrite co_fold_cons... *)
+(*   intro; apply continuous_disj. *)
+(* Qed. *)
+
+Corollary continuous_cotree_some {A} (P : A -> Prop) :
+  continuous (cotree_some P).
 Proof. apply continuous_co, monotone_atree_some. Qed.
 
 #[global]
@@ -1425,8 +1480,8 @@ Proof.
 Qed.
 #[global] Hint Resolve antimonotone_atree_all : cotree.
 
-Corollary cocontinuous_cotree_all' {A} (P : A -> Prop) :
-  cocontinuous (cotree_all' P).
+Corollary cocontinuous_cotree_all {A} (P : A -> Prop) :
+  cocontinuous (cotree_all P).
 Proof. apply cocontinuous_coop, antimonotone_atree_all. Qed.
 
 Lemma atree_some_exists {I A} (P : A -> Prop) (t : atree I A) :
@@ -1645,3 +1700,38 @@ Qed.
 Corollary snip_bind {A B} (t : cotree bool (unit + A)) (k : unit + A -> cotree bool (unit + B)) :
   snip (cotree_bind t k) = cotree_bind t (snip ∘ k).
 Proof. apply cotree_bind_assoc. Qed.
+
+(** TODO: inductive predicate for existence of bottom. [total] is
+    negation of it. *)
+
+Inductive exists_bot {I A} : cotree I A -> Prop :=
+| exists_bot_bot : exists_bot cobot
+| exists_bot_node : forall k i,
+    exists_bot (k i) ->
+    exists_bot (conode k).
+
+(** This still allows trees with infinite nodes and no leaves. *)
+Definition total {I A} (t : cotree I A) : Prop :=
+  ~ exists_bot t.
+
+(* Inductive productive {I A} : atree I A -> Prop := *)
+(* | productive_bot : productive abot *)
+(* | productive_leaf : forall a, productive (aleaf a) *)
+(* | productive_node : forall k, *)
+(*     (forall i, atree_some (const True) (k i)) -> *)
+(*     (forall i, productive (k i)) -> *)
+(*     productive (anode k). *)
+
+(* #[global] *)
+(*   Instance antimonotone_productive {I A} : Proper (leq ==> flip leq) (@productive I A). *)
+(* Proof. *)
+(*   intro a; induction a; intros b Hab Hsome; inv Hsome; inv Hab; constructor. *)
+(*   - intro i; eapply monotone_atree_some. *)
+(*   intro i; eapply H. *)
+(*   - apply H3. *)
+(*   - apply H0. *)
+(* Qed. *)
+(* #[global] Hint Resolve antimonotone_productive : cotree. *)
+
+(* Definition coproductive {A} : cotree bool A -> Prop := *)
+(*   coop productive. *)

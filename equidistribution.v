@@ -59,7 +59,7 @@ Definition freq {A} (P : A -> Prop) (l : list A) :=
   INeR (count P l) / INeR (length l).
 
 Definition in_Sigma01 (U : Sigma01) (s : Stream bool) : Prop :=
-  cotree_some' (fun l => is_stream_prefix l s) U.
+  cotree_some (fun l => is_stream_prefix l s) U.
 
 Definition uniform (bitstreams : nat -> Stream bool) : Prop :=
   forall U : Sigma01,
@@ -134,7 +134,7 @@ Proof.
         apply atree_some_exists; exists l'; split; eauto.
         apply Hsome. }
     + unfold is_true; intro HPx.
-      unfold cotree_some'.
+      unfold cotree_some.
       apply IHproduces in HPx.
       apply co_elim in HPx; eauto with cotree order.
       destruct HPx as [i Hi].
