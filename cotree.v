@@ -1481,18 +1481,52 @@ Qed.
 
 #[global]
   Instance monotone_atree_some {I A} (P : A -> Prop) : Proper (leq ==> leq) (@atree_some I A P).
-Proof. apply monotone_tfold; auto with cotree order;  intros ? []. Qed.
+Proof. apply monotone_tfold; auto with cotree order; intros ? []. Qed.
 #[global] Hint Resolve monotone_atree_some : cotree.
 
-(* (** Introduction rule 1 for colist_exists. *) *)
-(* Lemma colist_exists_intro1 {A} (P : A -> Prop) (a : A) (t : cotree bool A) : *)
-(*   P a -> *)
-(*   cotree_some P (coleaf a). *)
-(* Proof with eauto with order colist. *)
-(*   unfold cotree_some. *)
-(*   rewrite co_fold_cons... *)
-(*   intro; apply continuous_disj. *)
-(* Qed. *)
+(** Introduction rule 1 for cotree_some. *)
+Lemma cotree_some_intro_leaf {A} (P : A -> Prop) (a : A) :
+  P a ->
+  cotree_some P (coleaf a).
+Proof with eauto with order cotree.
+  unfold cotree_some, atree_some.
+  rewrite co_tfold_leaf...
+  intros [].
+Qed.
+
+(** Introduction rule 2 for cotree_some. *)
+Lemma cotree_some_intro_node {A} (P : A -> Prop) (b : bool) (k : bool -> cotree bool A) :
+  cotree_some P (k b) ->
+  cotree_some P (conode k).
+Proof with eauto with order cotree.
+  unfold cotree_some, atree_some.
+  rewrite co_tfold_node...
+  { apply continuous_wcontinuous, continuous_exists. }
+  { intros ? []. }
+  intros [].
+Qed.
+
+(** Elimination rule 1 for cotree_some. *)
+Lemma cotree_some_elim_leaf {A} (P : A -> Prop) (a : A) :
+  cotree_some P (coleaf a) ->
+  P a.
+Proof with eauto with order cotree.
+  unfold cotree_some, atree_some.
+  rewrite co_tfold_leaf...
+  intros [].
+Qed.
+
+(** Elimination rule 2 for cotree_some. *)
+Lemma cotree_some_elim_node {A} (P : A -> Prop) (k : bool -> cotree bool A) :
+  cotree_some P (conode k) ->
+  exists b, cotree_some P (k b).
+Proof with eauto with order cotree.
+  unfold cotree_some, atree_some.
+  rewrite co_tfold_node...
+  { apply continuous_wcontinuous, continuous_exists. }
+  { intros ? []. }
+  intros [].
+Qed.
 
 Corollary continuous_cotree_some {A} (P : A -> Prop) :
   continuous (cotree_some P).

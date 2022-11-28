@@ -63,6 +63,8 @@ Class PType (A : Type) `{o : OType A} : Type :=
   { bot : A
   ; bot_le : forall x, bot ⊑ x }.
 
+#[global] Hint Resolve bot_le : order.
+
 Notation "⊥" := bot.
 
 Lemma bot_leq {A} `{PType A} :
@@ -1128,6 +1130,15 @@ Proof.
       eapply Hglb.
       2: { apply x. }
       intros i y; apply HR; auto.
+Qed.
+
+Lemma continuous_exists {I} :
+  continuous (fun f : I -> Prop => exists i : I, f i).
+Proof.
+  intros ch Hch f [Hub Hlub]; unfold compose; split.
+  - intros i [j Hj]; exists j; eapply Hub; eauto.
+  - intros x Hx [j Hj]; eapply Hlub; eauto.
+    intros k l Hkl; eapply Hx; exists l; eauto.
 Qed.
 
 Lemma continuous_const {A B} `{OType A} `{OType B} (b : B) :
