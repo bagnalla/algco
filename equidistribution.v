@@ -111,22 +111,22 @@ Proof.
       inv H2.
       { destruct i; simpl in Hsome.
         - inv Hsome.
-        - inv Hsome.
-          unfold compose in H1. simpl in H1.
-          rewrite tprefix_map in H1.
-          apply atree_some_map in H1.
-          unfold compose in H1.
-          apply atree_some_exists in H1.
-          destruct H1 as [l [H1 Heq]].
+        - destruct Hsome as [c H0].
+          unfold compose in H0. simpl in H0.
+          rewrite tprefix_map in H0.
+          apply atree_some_map in H0.
+          unfold compose in H0.
+          apply atree_some_exists in H0.
+          destruct H0 as [l [H0 Heq]].
           inv Heq. }
       destruct i.
       { inv Hsome. }
       { simpl in Hsome; unfold flip in Hsome; simpl in Hsome.
         unfold compose in Hsome.
-        inv Hsome.
+        destruct Hsome as [c H1].
+        unfold compose in H1.
         rewrite tprefix_map in H1.
         apply atree_some_map in H1.
-        unfold compose in H1.
         apply atree_some_exists in H1.
         destruct H1 as [l' [Hsome Hl']].
         inv Hl'.

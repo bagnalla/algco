@@ -122,6 +122,16 @@ Definition downward_directed {I A : Type} `{OType A} (f : I -> A) : Prop :=
 Next Obligation. constructor; intuition. Qed.
 
 #[global]
+  Program
+  Instance PType_Prop : PType Prop := {| bot := False |}.
+Next Obligation. intros []. Qed.
+
+#[global]
+  Program
+  Instance TType_Prop : TType Prop := {| top := True |}.
+Next Obligation. intro; apply I. Qed.
+
+#[global]
   Program Instance OType_arrow A B {oB : OType B} : OType (A -> B) :=
   {| leq := fun f g => forall x, leq (f x) (g x) |}.
 Next Obligation.
