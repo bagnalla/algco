@@ -54,14 +54,14 @@ Lemma cotree_bind_map_sum {A} t g :
                              end) = t.
 Proof.
   apply cotree_ext, equ_cotree_eq.
-  replace t with (co inj t) by apply co_inj_t.
+  replace t with (co tinj t) by apply co_tinj_t.
   unfold cotree_bind, cotree_map, tcofold.
   rewrite co_co''; eauto with cotree order.
   apply Proper_co'.
   { apply monotone_compose; eauto with cotree order aCPO.
     apply monotone_co; eauto with cotree order. }
-  { apply Proper_inj. }
-  2: { rewrite co_inj_t; reflexivity. }
+  { apply Proper_tinj. }
+  2: { rewrite co_tinj_t; reflexivity. }
   unfold compose.
   apply equ_arrow; intro a.
   unfold atree_cotree_map, atree_cotree_bind; simpl.

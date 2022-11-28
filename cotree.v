@@ -148,15 +148,15 @@ Fixpoint coprefix {I A} (n : nat) (t : cotree I A) : cotree I A :=
             end
   end.
 
-Fixpoint inj {I A} (t : atree I A) : cotree I A :=
+Fixpoint tinj {I A} (t : atree I A) : cotree I A :=
   match t with
   | abot => cobot
   | aleaf x => coleaf x
-  | anode f => conode (inj ∘ f)
+  | anode f => conode (tinj ∘ f)
   end.
 
-Lemma inj_tprefix_coprefix {I A} (t : cotree I A) (n : nat) :
-  inj (tprefix n t) = coprefix n t.
+Lemma tinj_tprefix_coprefix {I A} (t : cotree I A) (n : nat) :
+  tinj (tprefix n t) = coprefix n t.
 Proof.
   revert t; induction n; intro t; simpl; auto.
   destruct t; simpl; auto.
@@ -691,7 +691,7 @@ Proof.
 Qed.
 
 Lemma cotree_le_atree_le {I A} (a b : atree I A) :
-  cotree_le (inj a) (inj b) ->
+  cotree_le (tinj a) (tinj b) ->
   atree_le a b.
 Proof.
   revert b; induction a; simpl; intros b Hab.
@@ -702,7 +702,7 @@ Qed.
 
 Lemma atree_le_cotree_le {I A} (a b : atree I A) :
   atree_le a b ->
-  cotree_le (inj a) (inj b).
+  cotree_le (tinj a) (tinj b).
 Proof.
   revert b; induction a; simpl; intros b Hab.
   - constructor.
@@ -827,7 +827,7 @@ Proof. constructor; intros a f Hf Ha; apply bintree_compact; auto. Qed.
 
 #[global]
   Instance Dense_cotree {I A} : Dense (cotree I A) (atree I A) :=
-  { incl := inj
+  { incl := tinj
   ; ideal := flip tprefix }.
 
 #[global]
@@ -841,9 +841,9 @@ Proof.
   - intros a b Hab i; apply tprefix_monotone; auto.
   - apply tprefix_continuous.
   - intro a; simpl; unfold compose, flip.
-    replace (fun i => inj (tprefix i a)) with (fun i => coprefix i a).
+    replace (fun i => tinj (tprefix i a)) with (fun i => coprefix i a).
     + apply coprefix_supremum.
-    + ext i; rewrite inj_tprefix_coprefix; reflexivity.
+    + ext i; rewrite tinj_tprefix_coprefix; reflexivity.
 Qed.
 
 Inductive atree_cotree_le {I A} : atree I A -> cotree I A -> Prop :=
@@ -1278,8 +1278,8 @@ Proof.
 Qed.
 #[global] Hint Resolve monotone_cotree_iter_F : cotree.
 
-Lemma co_inj_t {A} (t : cotree bool A) :
-  co inj t = t.
+Lemma co_tinj_t {A} (t : cotree bool A) :
+  co tinj t = t.
 Proof.
   cut (co incl t === t).
   { intro H; apply cotree_ext, equ_cotree_eq; apply H. }
@@ -1656,8 +1656,8 @@ Proof.
   apply atree_cotree_bind_assoc.
 Qed.
 
-Lemma atree_cotree_bind_inj {A} :
-  atree_cotree_bind (@coleaf bool A) = inj.
+Lemma atree_cotree_bind_tinj {A} :
+  atree_cotree_bind (@coleaf bool A) = tinj.
 Proof.
   unfold atree_cotree_bind.
   ext t; induction t; simpl; auto.
@@ -1674,11 +1674,11 @@ Proof.
   apply co_unique'; eauto with cotree order.
   intro b.
   unfold id, incl; simpl.
-  rewrite <- atree_cotree_bind_inj; reflexivity.
+  rewrite <- atree_cotree_bind_tinj; reflexivity.
 Qed.
 
 #[global]
-  Instance Proper_inj {I A} : Proper (leq ==> leq) (@inj I A).
+  Instance Proper_tinj {I A} : Proper (leq ==> leq) (@tinj I A).
 Proof. intros a b Hab; induction Hab; simpl; constructor; auto. Qed.
 
 (* (* Monotone wrt the usual (disjunctive) ordering. A cotree is total *)
