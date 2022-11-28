@@ -1141,6 +1141,19 @@ Proof.
     intros k l Hkl; eapply Hx; exists l; eauto.
 Qed.
 
+Lemma dec_continuous_forall {I} :
+  dec_continuous (fun f : I -> Prop => forall i : I, f i).
+Proof.
+  intros ch Hch f [Hlb Hglb]; unfold compose; split.
+  - intros n H i; apply Hlb; auto.
+  - intros P HP H i.
+    unfold lower_bound in HP; simpl in HP; unfold impl in HP.
+    eapply Hglb.
+    + intros m j Hj.
+      apply HP; auto.
+    + apply (HP O); auto.
+Qed.
+
 Lemma continuous_const {A B} `{OType A} `{OType B} (b : B) :
   continuous (fun _ : A => b).
 Proof.

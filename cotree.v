@@ -1545,6 +1545,51 @@ Proof.
 Qed.
 #[global] Hint Resolve antimonotone_atree_all : cotree.
 
+(** Introduction rule 1 for cotree_all. *)
+Lemma cotree_all_intro_leaf {A} (P : A -> Prop) (a : A) :
+  P a ->
+  cotree_all P (coleaf a).
+Proof with eauto with order cotree.
+  unfold cotree_all, atree_all.
+  rewrite coop_tfold_leaf...
+  intro; apply I.
+Qed.
+
+(** Introduction rule 2 for cotree_all. *)
+Lemma cotree_all_intro_node {A} (P : A -> Prop) (k : bool -> cotree bool A) :
+  (forall b, cotree_all P (k b)) ->
+  cotree_all P (conode k).
+Proof with eauto with order cotree.
+  unfold cotree_all, atree_all.
+  rewrite coop_tfold_node...
+  { apply dec_continuous_dec_wcontinuous, dec_continuous_forall. }
+  { intros ? ?; apply I. }
+  intro; apply I.
+Qed.
+
+(** Elimination rule 1 for cotree_all. *)
+Lemma cotree_all_elim_leaf {A} (P : A -> Prop) (a : A) :
+  cotree_all P (coleaf a) ->
+  P a.
+Proof with eauto with order cotree.
+  unfold cotree_all, atree_all.
+  rewrite coop_tfold_leaf...
+  intro; apply I.
+Qed.
+
+(** Elimination rule 2 for cotree_all. *)
+Lemma cotree_all_elim_node {A} (P : A -> Prop) (k : bool -> cotree bool A) (b : bool) :
+  cotree_all P (conode k) ->
+  cotree_all P (k b).
+Proof with eauto with order cotree.
+  unfold cotree_all, atree_all.
+  rewrite coop_tfold_node...
+  { intro H; apply H. }
+  { apply dec_continuous_dec_wcontinuous, dec_continuous_forall. }
+  { intros ? ?; apply I. }
+  intro; apply I.
+Qed.
+
 Corollary cocontinuous_cotree_all {A} (P : A -> Prop) :
   cocontinuous (cotree_all P).
 Proof. apply cocontinuous_coop, antimonotone_atree_all. Qed.
