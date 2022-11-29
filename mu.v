@@ -10,6 +10,7 @@ From Coq Require Import
   Lia
   List
   Equivalence
+  PropExtensionality
 .
 Import ListNotations.
 Local Open Scope equiv_scope.
@@ -33,12 +34,103 @@ From algco Require Import
   R
   eR
   tactics
+  (* set *)
 .
 
 Local Open Scope eR_scope.
+(* Local Open Scope set_scope. *)
 
 Create HintDb mu.
 
+(* Definition aset {I A T} `{ToSet A T} : atree I A -> set T := *)
+(*   tfold ∅ to_set big_union. *)
+
+(* #[global] *)
+(*   Instance monotone_aset {I A T} `{ToSet A T} : Proper (leq ==> leq) (@aset I A T _). *)
+(* Proof. *)
+(*   unfold aset. *)
+(*   intro a; induction a; intros b Hab x Hx; inv Hab; simpl in *; auto. *)
+(*   { inv Hx. } *)
+(*   destruct Hx as [i Hi]. *)
+(*   exists i; eapply H0; eauto. *)
+(* Qed. *)
+(* #[global] Hint Resolve monotone_aset : mu. *)
+
+(* Definition coset {A T} `{ToSet A T} : cotree bool A -> set T := *)
+(*   co aset. *)
+
+(* #[global] *)
+(*   Instance ToSet_cotree {A T} `{ToSet A T} : ToSet (cotree bool A) T := *)
+(*   { to_set := coset }. *)
+
+(* #[global] *)
+(*   Program *)
+(*   Instance UnionSet_cotree {A T} `{UnionSet A T} : UnionSet (cotree bool A) T := *)
+(*   { union := fun x y => conode (fun b  : bool => if b then x else y) }. *)
+(* Next Obligation. *)
+(*   ext a. *)
+(*   apply propositional_extensionality; split. *)
+(*   - intro Ha. *)
+(*     unfold coset in Ha. *)
+(*     apply co_elim2 in Ha; eauto with mu order. *)
+(*     + destruct Ha as [i Ha]. *)
+(*       destruct i; simpl in Ha; unfold flip in Ha; simpl in Ha. *)
+(*       { inv Ha. } *)
+(*       unfold compose in Ha. *)
+(*       unfold aset in Ha; simpl in Ha. *)
+(*       destruct Ha as [b Ha]. *)
+(*       unfold compose in Ha. *)
+(*       destruct b. *)
+(*       * left; apply co_intro2 with (i:=i); eauto with mu order. *)
+(*       * right; apply co_intro2 with (i:=i); eauto with mu order. *)
+(*   - intros [Hx|Hy]. *)
+(*     + unfold coset. *)
+(*       unfold coset in Hx. *)
+(*       apply co_elim2 in Hx; eauto with mu order. *)
+(*       destruct Hx as [i Hi]. *)
+(*       apply co_intro2 with (i := S i); eauto with mu order. *)
+(*       simpl; unfold flip; simpl; unfold compose. *)
+(*       unfold aset. simpl. *)
+(*       exists true; auto. *)
+(*     + unfold coset. *)
+(*       unfold coset in Hy. *)
+(*       apply co_elim2 in Hy; eauto with mu order. *)
+(*       destruct Hy as [i Hi]. *)
+(*       apply co_intro2 with (i := S i); eauto with mu order. *)
+(*       simpl; unfold flip; simpl; unfold compose. *)
+(*       unfold aset. simpl. *)
+(*       exists false; auto. *)
+(* Qed. *)
+
+(* Inductive atree_disjoint {I A T} `{ToSet A T} : atree I A -> Prop := *)
+(* | atree_disjoint_bot : atree_disjoint abot *)
+(* | atree_disjoint_leaf : forall x, atree_disjoint (aleaf x) *)
+(* | atree_disjoint_node : forall f, *)
+(*     (forall i, atree_disjoint (f i)) -> *)
+(*     (forall i j, i <> j -> *)
+(*             forall x, atree_some (eq x) (f i) -> *)
+(*                  atree_all (fun y => disjoint [[ x ]] [[ y ]]) (f j)) -> *)
+(*     atree_disjoint (anode f). *)
+
+(* #[global] *)
+(*   Instance antimonotone_atree_disjoint {I A T} `{ToSet A T} *)
+(*   : Proper (leq ==> flip leq) (@atree_disjoint I A T _). *)
+(* Proof. *)
+(*   intro a; induction a; simpl; intros b Hab Hb; inv Hab; auto. *)
+(*   - constructor. *)
+(*   - inv Hb; constructor. *)
+(*     + intro i; eapply H0; eauto; apply H2. *)
+(*     + intros i j Hij x Hx; unfold compose. *)
+(*       eapply antimonotone_atree_all. *)
+(*       { apply H2. } *)
+(*       eapply H4; eauto. *)
+(*       eapply monotone_atree_some; eauto; apply H2. *)
+(* Qed. *)
+(* #[global] Hint Resolve antimonotone_atree_disjoint : cotree. *)
+
+(* Definition cotree_disjoint {A T} `{ToSet A T} : cotree bool A -> Prop := *)
+(*   coop (atree_disjoint). *)
+  
 Definition amu {A} (f : A -> eR) : atree bool A -> eR :=
   tfold 0 f (fun f => f false + f true).
 
@@ -53,6 +145,10 @@ Proof.
   intros g g' Hg; apply eRplus_le_compat; apply Hg.
 Qed.
 #[global] Hint Resolve monotone_amu : mu.
+
+(* Lemma fgdfg {A T} `{UnionSet A T} (f : A -> eR) : *)
+(*   (forall x y, disjoint [[ x ]] [[ y ]] -> f (union x y) = f x + f y) -> *)
+(*   True. *)
 
 Definition atree_lang {A} : atree bool A -> cotree bool (list bool) :=
   tfold cobot (const (coleaf [])) (fun k => conode (fun b => cotree_map (cons b) (k b))).
@@ -246,29 +342,99 @@ Proof.
   apply equ_eR; revert t; apply equ_arrow, cotwp_mu_preimage.
 Qed.
 
+(* Lemma atree_disjoint_map {A} (t : atree bool (list A)) (a : A) : *)
+(*   atree_disjoint t -> *)
+(*   atree_disjoint (atree_map (cons a) t). *)
+(* Proof. *)
+(*   revert a; induction t; intros a' Hdisj; simpl; inv Hdisj; constructor; auto. *)
+(*   - intro b; apply H; auto. *)
+(*   - intros b b' Hneq bs Hsome. *)
+(*     unfold compose in *. *)
+(*     apply atree_some_map in Hsome. *)
+(*     apply atree_all_map. *)
+(*     destruct bs. *)
+(*     { apply atree_some_exists in Hsome. *)
+(*       destruct Hsome as [? [? HC]]; inv HC. } *)
+(*     eapply H2 with (x:=bs) in Hneq. *)
+(*     { eapply atree_all_impl. *)
+(*       2: { apply Hneq. } *)
+(*       intros bs' Hbs'; unfold compose. *)
+(*       intros [HC|HC]; inv HC; auto. } *)
+(*     eapply atree_some_impl. *)
+(*     2: { apply Hsome. } *)
+(*     intros bs' Hbs'. *)
+(*     inv Hbs'; reflexivity. *)
+(* Qed. *)
+
+Lemma incomparable_cons {A} (a : A) (b c : list A) :
+  incomparable b c ->
+  incomparable (a :: b) (a :: c).
+Proof.
+  unfold incomparable.
+  intros Hinc []; inv H; apply Hinc.
+  - left; auto.
+  - right; auto.
+Qed.
+
+Lemma itree_all_incomparable_map_cons {A} (t : atree bool (list A)) l a :
+  atree_all (incomparable l) t ->
+  atree_all (incomparable (a :: l)) (atree_map (cons a) t).
+Proof.
+  unfold atree_all.
+  revert l a; induction t; simpl; intros l b Hall.
+  - constructor.
+  - apply incomparable_cons; auto.
+  - intros []; apply H, Hall.
+Qed.
+
 Lemma atree_disjoint_map {A} (t : atree bool (list A)) (a : A) :
   atree_disjoint t ->
   atree_disjoint (atree_map (cons a) t).
 Proof.
   revert a; induction t; intros a' Hdisj; simpl; inv Hdisj; constructor; auto.
   - intro b; apply H; auto.
-  - intros b b' Hneq bs Hsome.
+  - intros b b' Hneq.
     unfold compose in *.
-    apply atree_some_map in Hsome.
     apply atree_all_map.
-    destruct bs.
-    { apply atree_some_exists in Hsome.
-      destruct Hsome as [? [? HC]]; inv HC. }
-    eapply H2 with (x:=bs) in Hneq.
-    { eapply atree_all_impl.
-      2: { apply Hneq. }
-      intros bs' Hbs'; unfold compose.
-      intros [HC|HC]; inv HC; auto. }
-    eapply atree_some_impl.
-    2: { apply Hsome. }
-    intros bs' Hbs'.
-    inv Hbs'; reflexivity.
+    unfold compose.
+    eapply atree_all_impl.
+    2: { apply H2; eauto. }
+    simpl; intros l Hl.
+    apply itree_all_incomparable_map_cons; auto.
 Qed.
+
+(* Lemma atree_disjoint_lang {A} (t : atree bool A) (i : nat ) : *)
+(*   atree_disjoint (ideal (atree_lang t) i). *)
+(* Proof. *)
+(*   revert i; induction t; intros i. *)
+(*   - destruct i; constructor. *)
+(*   - destruct i; constructor. *)
+(*   - destruct i. *)
+(*     + constructor. *)
+(*     + simpl; unfold flip; simpl. *)
+(*       constructor; intro b. *)
+(*       * unfold compose. *)
+(*         specialize (H b i). *)
+(*         unfold ideal in H; simpl in H; unfold flip in H. *)
+(*         rewrite tprefix_map. *)
+(*         apply atree_disjoint_map; auto. *)
+(*       * unfold compose; intros b' Hneq bs Hsome. *)
+(*         rewrite tprefix_map in Hsome. *)
+(*         rewrite tprefix_map. *)
+(*         apply atree_some_map in Hsome. *)
+(*         apply atree_all_map. *)
+(*         apply atree_some_exists in Hsome. *)
+(*         destruct Hsome as [bs' [Hsome Hbs']]. *)
+(*         unfold compose in Hbs'. *)
+(*         inv Hbs'. *)
+(*         clear H0. *)
+(*         apply atree_all_impl with (const True). *)
+(*         { intros bs _. *)
+(*           unfold compose. *)
+(*           unfold incomparable. *)
+(*           intros [HC|HC]; inv HC; congruence. } *)
+(*         apply atree_all_true. *)
+(* Qed. *)
 
 Lemma atree_disjoint_lang {A} (t : atree bool A) (i : nat ) :
   atree_disjoint (ideal (atree_lang t) i).
@@ -285,22 +451,11 @@ Proof.
         unfold ideal in H; simpl in H; unfold flip in H.
         rewrite tprefix_map.
         apply atree_disjoint_map; auto.
-      * unfold compose; intros b' Hneq bs Hsome.
-        rewrite tprefix_map in Hsome.
-        rewrite tprefix_map.
-        apply atree_some_map in Hsome.
-        apply atree_all_map.
-        apply atree_some_exists in Hsome.
-        destruct Hsome as [bs' [Hsome Hbs']].
-        unfold compose in Hbs'.
-        inv Hbs'.
-        clear H0.
-        apply atree_all_impl with (const True).
-        { intros bs _.
-          unfold compose.
-          unfold incomparable.
-          intros [HC|HC]; inv HC; congruence. }
-        apply atree_all_true.
+      * unfold compose; intros b' Hneq.
+        rewrite 2!tprefix_map.
+        apply atree_all_map, atree_all_true'.
+        intro bs; apply atree_all_map, atree_all_true'.
+        intros bs' [HC|HC]; inv HC; congruence.
 Qed.
 
 Theorem disjoint_cotree_preimage {A} (P : A -> bool) (t : cotree bool A) :

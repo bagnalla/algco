@@ -981,6 +981,23 @@ Proof.
   exists (S O); intros n Hn; destruct n; try lia; reflexivity.
 Qed.
 
+(* Lemma co_tfold_node {A B} `{dCPO B} *)
+(*   (z : B) (f : A -> B) (g : (bool -> B) -> B) (k : bool -> cotree bool A) : *)
+(*   Proper (leq ==> leq) g -> *)
+(*   (forall b, z ⊑ tfold z f g b) -> *)
+(*   z ⊑ g (fun _ => z) -> *)
+(*   co (tfold z f g) (conode k) === g (co (tfold z f g) ∘ k). *)
+(* Proof. *)
+(*   intros Hg Hz Hz'. *)
+(*   split. *)
+(*   - apply ge_dsup. *)
+(*     + apply monotone_directed; eauto with cotree order. *)
+(*       apply chain_directed, chain_ideal. *)
+(*     + intro i; unfold compose. *)
+(*       simpl; unfold flip. *)
+(*       destruct i. *)
+(*       * simpl. *)
+
 Lemma co_tfold_node {A B} `{dCPO B}
   (z : B) (f : A -> B) (h : (bool -> B) -> B) (k : bool -> cotree bool A) :
   wcontinuous h ->
@@ -1006,6 +1023,14 @@ Proof.
         apply chain_directed, chain_ideal. } } }
   apply equ_arrow; intro i; reflexivity.
 Qed.
+
+Lemma co_tfold_node' {A B} `{o : OType B} `{@dCPO B o} `{@ExtType B o}
+  (z : B) (f : A -> B) (g : (bool -> B) -> B) (k : bool -> cotree bool A) :
+  wcontinuous g ->
+  (forall b, z ⊑ tfold z f g b) ->
+  z ⊑ g (fun _ => z) ->
+  co (tfold z f g) (conode k) = g (co (tfold z f g) ∘ k).
+Proof. intros Hg Hz Hg'; apply ext, co_tfold_node; auto. Qed.
 
 (** Computation lemmas for coop tfolds. *)
 Lemma coop_tfold_bot {A B} `{ldCPO B} (z : B) (f : A -> B) (h : (bool -> B) -> B) :
@@ -1061,6 +1086,49 @@ Lemma tcofold_leaf {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
   (f : A -> B) (g : (bool -> B) -> B) (x : A) :
   tcofold f g (coleaf x) === f x.
 Proof. apply co_tfold_leaf, bot_le. Qed.
+
+Lemma tcofold_leaf' {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+  `{@ExtType B o} (f : A -> B) (g : (bool -> B) -> B) (x : A) :
+  tcofold f g (coleaf x) = f x.
+Proof. apply ext, co_tfold_leaf, bot_le. Qed.
+
+Lemma tfold_le_tcofold {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+  (t : cotree bool A) i (f : A -> B) g :
+  Proper (leq ==> leq) g ->
+  tfold ⊥ f g (tprefix i t) ⊑ tcofold f g t.
+Proof.
+  revert f g t; induction i; intros f g t Hg; simpl.
+  { apply bot_le. }
+  destruct t; simpl.
+  - apply bot_le.
+  - rewrite tcofold_leaf; reflexivity.
+  - unfold compose. simpl.
+    apply le_dsup with (i := S i).
+    + apply monotone_directed; eauto with cotree order.
+      apply chain_directed, chain_ideal.
+    + reflexivity.
+Qed.
+
+Fixpoint cotree_fold {I A B}
+  (z : B) (f : A -> B) (g : (I -> B) -> B) (n : nat) (t : cotree I A) : B :=
+  match n with
+  | O => z
+  | S n' =>
+      match t with
+      | cobot => z
+      | coleaf x => f x
+      | conode k => g (cotree_fold z f g n' ∘ k)
+      end
+  end.
+
+Lemma tfold_cotree_fold {I A B} (z : B) (f : A -> B) (g : (I -> B) -> B) (n : nat) (t : cotree I A) :
+  tfold z f g (tprefix n t) = cotree_fold z f g n t.
+Proof.
+  revert z f g t; induction n; intros z f g t; simpl; auto.
+  destruct t; simpl; auto.
+  unfold compose.
+  f_equal; ext i; auto.
+Qed.
 
 Lemma tcofold_node {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
   (f : A -> B) (g : (bool -> B) -> B) (k : bool -> cotree bool A) :
@@ -1158,6 +1226,78 @@ Proof.
 Qed.
 #[global] Hint Resolve monotone_atree_cotree_map : cotree.
 
+(* Fixpoint aremove_bot {A} (t : atree bool A) : atree bool A := *)
+(*   match t with *)
+(*   | abot => abot *)
+(*   | aleaf x => aleaf x *)
+(*   | anode k => let l := aremove_bot (k true) in *)
+(*               let r := aremove_bot (k false) in *)
+(*               match (l, r) with *)
+(*               | (abot, _) => r *)
+(*               | (_, abot) => l *)
+(*               | _ => anode (fun b : bool => if b then l else r) *)
+(*               end *)
+(*   end. *)
+
+(* #[global] *)
+(*   Instance monotone_aremove_bot {A} : Proper (leq ==> leq) (@aremove_bot A). *)
+(* Proof. *)
+(*   intro a; induction a; simpl; intros b Hab. *)
+(*   { constructor. } *)
+(*   { inv Hab; constructor. } *)
+(*   inv Hab. *)
+(*   simpl. *)
+(*   assert (H0: aremove_bot (a true) ⊑ aremove_bot (g true)). *)
+(*   { apply H, H1. } *)
+(*   assert (H2: aremove_bot (a false) ⊑ aremove_bot (g false)). *)
+(*   { apply H, H1. } *)
+(*   destruct (aremove_bot (g true)) eqn:HGt. *)
+(*   { inv H0; auto. } *)
+(*   { inv H0. *)
+(*     - destruct (aremove_bot (g false)) eqn:Hgf. *)
+(*       { inv H2; constructor. } *)
+(*       { inv H2. *)
+(*         - constructor. *)
+(*         -  *)
+
+(* Fixpoint afilter {A} (P : A -> bool) (t : atree bool A) : cotree bool A := *)
+(*   match t with *)
+(*   | abot => cobot *)
+(*   | aleaf x => coleaf x *)
+(*   | anode k => let l := afilter P (k true) in *)
+(*               let r := afilter P (k false) in *)
+(*               match (l, r) with *)
+(*               | (coleaf x, _) => if P x then conode (fun b : bool => if b then l else r) else r *)
+(*               | (_, coleaf y) => if P y then conode (fun b : bool => if b then l else r) else l *)
+(*               | _ => conode (fun b : bool => if b then l else r) *)
+(*               end *)
+(*   end. *)
+
+(* #[global] *)
+(*   Instance monotone_afilter {A} (P : A -> bool) : *)
+(*   Proper (leq ==> leq) (afilter P). *)
+(* Proof. *)
+(*   intros a; induction a; intros b Hab; inv Hab; simpl. *)
+(*   { constructor. } *)
+(*   { constructor. } *)
+(*   pose proof (H1 true) as H0. *)
+(*   pose proof (H1 false) as H2. *)
+(*   destruct (g false) eqn:Hgf; simpl. *)
+(*   - inv H2; simpl. *)
+(*     destruct (g true) eqn:Hgt. *)
+(*     + inv H0; simpl. *)
+(*       constructor; intros []; constructor. *)
+(*     + inv H0; simpl. *)
+(*     + inv H0. *)
+(*       * constructor. *)
+(*       * simpl. *)
+(*       rewrite <- Hgt. *)
+(*       simpl. constructor. *)
+(*       * constructor. *)
+(*   destruct (afilter P (a true)) eqn:Ha. *)
+(*   { simpl. *)
+
+
 (* Fixpoint afilter {A} (P : A -> bool) (t : atree bool A) : cotree bool A := *)
 (*   match t with *)
 (*   | abot => cobot *)
@@ -1195,12 +1335,14 @@ Qed.
 (*     + inv H0; constructor. *)
 (*     + inv H0. *)
 (*       * constructor. *)
-(*       * simpl. *)
-(*       rewrite <- Hgt. *)
-(*       simpl. constructor. *)
-(*       * constructor. *)
-(*   destruct (afilter P (a true)) eqn:Ha. *)
-(*   { simpl. *)
+(*       * rewrite H2. *)
+(*         rewrite <- Hgt. *)
+(*         destruct (afilter P (a true)) eqn:HPa. *)
+(*         { constructor. } *)
+(*         destruct (afilter P (g true)) eqn:HPg. *)
+(*         { rewrite Hgt in HPg. *)
+(*           admit. } *)
+(*         {  *)
 
 Definition atree_cotree_filter {I A} (P : A -> bool) : atree I A -> cotree I A :=
   tfold ⊥ (fun x => if P x then coleaf x else cobot) (@conode I A).
@@ -1651,13 +1793,30 @@ Proof.
   revert P f; induction t; simpl; firstorder.
 Qed.
 
+(* Inductive atree_disjoint {I A} `{OType A} : atree I A -> Prop := *)
+(* | atree_disjoint_bot : atree_disjoint abot *)
+(* | atree_disjoint_leaf : forall x, atree_disjoint (aleaf x) *)
+(* | atree_disjoint_node : forall f, *)
+(*     (forall i, atree_disjoint (f i)) -> *)
+(*     (forall i j, i <> j -> forall x, atree_some (eq x) (f i) -> *)
+(*                          atree_all (incomparable x) (f j)) -> *)
+(*     atree_disjoint (anode f). *)
+
+Lemma atree_all_impl {I A} (t : atree I A) (P Q : A -> Prop) :
+  (forall x, P x -> Q x) ->
+  atree_all P t ->
+  atree_all Q t.
+Proof.
+  unfold atree_all.
+  revert P Q; induction t; simpl; firstorder.
+Qed.
+
 Inductive atree_disjoint {I A} `{OType A} : atree I A -> Prop :=
 | atree_disjoint_bot : atree_disjoint abot
 | atree_disjoint_leaf : forall x, atree_disjoint (aleaf x)
 | atree_disjoint_node : forall f,
     (forall i, atree_disjoint (f i)) ->
-    (forall i j, i <> j -> forall x, atree_some (eq x) (f i) ->
-                         atree_all (incomparable x) (f j)) ->
+    (forall i j, i <> j -> atree_all (fun x => atree_all (incomparable x) (f j)) (f i)) ->
     atree_disjoint (anode f).
 
 Definition cotree_disjoint {A} `{OType A} : cotree bool A -> Prop :=
@@ -1671,26 +1830,40 @@ Proof.
   - constructor.
   - inv Hb; constructor.
     + intro i; eapply H0; eauto; apply H2.
-    + intros i j Hij x Hx; unfold compose.
+    + intros i j Hij.
       eapply antimonotone_atree_all.
       { apply H2. }
-      eapply H4; eauto.
-      eapply monotone_atree_some; eauto; apply H2.
+      eapply atree_all_impl.
+      2: { eapply H4; eauto. }
+      simpl; intros x Hx.
+      eapply antimonotone_atree_all; eauto; apply H2.
 Qed.
 #[global] Hint Resolve antimonotone_atree_disjoint : cotree.
 
-Lemma atree_all_impl {I A} (t : atree I A) (P Q : A -> Prop) :
-  (forall x, P x -> Q x) ->
-  atree_all P t ->
-  atree_all Q t.
-Proof.
-  unfold atree_all.
-  revert P Q; induction t; simpl; firstorder.
-Qed.
+(* #[global] *)
+(*   Instance antimonotone_atree_disjoint {I A} `{OType A} *)
+(*   : Proper (leq ==> flip leq) (@atree_disjoint I A _). *)
+(* Proof. *)
+(*   intro a; induction a; simpl; intros b Hab Hb; inv Hab; auto. *)
+(*   - constructor. *)
+(*   - inv Hb; constructor. *)
+(*     + intro i; eapply H0; eauto; apply H2. *)
+(*     + intros i j Hij x Hx; unfold compose. *)
+(*       eapply antimonotone_atree_all. *)
+(*       { apply H2. } *)
+(*       eapply H4; eauto. *)
+(*       eapply monotone_atree_some; eauto; apply H2. *)
+(* Qed. *)
+(* #[global] Hint Resolve antimonotone_atree_disjoint : cotree. *)
 
 Lemma atree_all_true {I A} (t : atree I A) :
   atree_all (const True) t.
 Proof. unfold const; induction t; firstorder. Qed.
+
+Lemma atree_all_true' {I A} (P : A -> Prop) (t : atree I A) :
+  (forall x, P x) ->
+  atree_all P t.
+Proof. intro; induction t; firstorder. Qed.
 
 Lemma atree_cotree_bind_assoc {A B C}
   (t : atree bool A) (f : A -> cotree bool B) (g : B -> cotree bool C) :

@@ -68,7 +68,7 @@ Class PType (A : Type) `{o : OType A} : Type :=
 Notation "⊥" := bot.
 
 Lemma bot_leq {A} `{PType A} :
-  forall a, ⊥ ⊑ a.
+  forall a : A, ⊥ ⊑ a.
 Proof. intro; apply bot_le. Qed.
 #[global] Hint Resolve bot_leq : order.
 
@@ -80,7 +80,7 @@ Class TType (A : Type) `{o : OType A} : Type :=
 Notation "⊤" := top.
 
 Lemma leq_top {A} `{TType A} :
-  forall a, a ⊑ ⊤.
+  forall a : A, a ⊑ ⊤.
 Proof. intro; apply le_top. Qed.
 #[global] Hint Resolve leq_top : order.
 
@@ -141,6 +141,16 @@ Next Obligation.
   - intros f x; reflexivity.
   - intros ?; etransitivity; eauto.
 Qed.
+
+#[global]
+  Program Instance PType_arrow A B `{PType B} : PType (A -> B) :=
+  {| bot := const bot |}.
+Next Obligation. apply bot_le. Qed.
+
+#[global]
+  Program Instance TType_arrow A B `{TType B} : TType (A -> B) :=
+  {| top := const top |}.
+Next Obligation. apply le_top. Qed.
 
 #[global]
   Instance OType_nat : OType nat := {| leq := Nat.le |}.
