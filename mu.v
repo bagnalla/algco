@@ -28,6 +28,7 @@ From algco Require Import
   aCPO
   cocwp
   cocwp_facts
+  colist
   cotree
   misc
   order
@@ -61,13 +62,14 @@ Create HintDb mu.
 
 (* #[global] *)
 (*   Instance ToSet_cotree {A T} `{ToSet A T} : ToSet (cotree bool A) T := *)
-(*   { to_set := coset }. *)
+(*   { to_set := fun t x => cotree_some (fun y => [[ y ]] x) t }. *)
 
 (* #[global] *)
-(*   Program *)
-(*   Instance UnionSet_cotree {A T} `{UnionSet A T} : UnionSet (cotree bool A) T := *)
-(*   { union := fun x y => conode (fun b  : bool => if b then x else y) }. *)
-(* Next Obligation. *)
+(*   Instance ToSet_cotree {A T} `{ToSet A T} : ToSet (cotree bool A) T := *)
+(*   { to_set := coset }. *)
+
+(* Lemma coset_conode {A T} `{ToSet A T} (x y : cotree bool A) : *)
+(*   coset (conode (fun b : bool => if b then x else y)) = set_union (coset x) (coset y). *)
 (*   ext a. *)
 (*   apply propositional_extensionality; split. *)
 (*   - intro Ha. *)
@@ -102,6 +104,13 @@ Create HintDb mu.
 (*       exists false; auto. *)
 (* Qed. *)
 
+(* #[global] *)
+(*   Program *)
+(*   Instance UnionSet_cotree {A T} `{ToSet A T} : UnionSet (cotree bool A) T := *)
+(*   { union := fun x y => conode (fun b  : bool => if b then x else y) }. *)
+(* (* Next Obligation. apply coset_conode. Qed. *) *)
+(* Next Obligation. Admitted. *)
+
 (* Inductive atree_disjoint {I A T} `{ToSet A T} : atree I A -> Prop := *)
 (* | atree_disjoint_bot : atree_disjoint abot *)
 (* | atree_disjoint_leaf : forall x, atree_disjoint (aleaf x) *)
@@ -131,20 +140,20 @@ Create HintDb mu.
 (* Definition cotree_disjoint {A T} `{ToSet A T} : cotree bool A -> Prop := *)
 (*   coop (atree_disjoint). *)
   
-Definition amu {A} (f : A -> eR) : atree bool A -> eR :=
+Definition asum {A} (f : A -> eR) : atree bool A -> eR :=
   tfold 0 f (fun f => f false + f true).
 
-Definition mu {A} (f : A -> eR) : cotree bool A -> eR :=
-  co (amu f).
+Definition tcosum {A} (f : A -> eR) : cotree bool A -> eR :=
+  co (asum f).
 
 #[global]
-  Instance monotone_amu {A} (f : A -> eR) : Proper (leq ==> leq) (amu f).
+  Instance monotone_asum {A} (f : A -> eR) : Proper (leq ==> leq) (asum f).
 Proof.
   apply monotone_tfold.
   { intros; eRauto. }
   intros g g' Hg; apply eRplus_le_compat; apply Hg.
 Qed.
-#[global] Hint Resolve monotone_amu : mu.
+#[global] Hint Resolve monotone_asum : mu.
 
 (* Lemma fgdfg {A T} `{UnionSet A T} (f : A -> eR) : *)
 (*   (forall x y, disjoint [[ x ]] [[ y ]] -> f (union x y) = f x + f y) -> *)
@@ -226,11 +235,11 @@ Proof.
   rewrite cotree_filter_node, cotree_lang_node; reflexivity.
 Qed.
 
-Lemma amu_scalar {A} (f : A -> eR) (t : atree bool A) (c : eR) :
-  c * amu f t = amu (fun x => c * f x) t.
+Lemma asum_scalar {A} (f : A -> eR) (t : atree bool A) (c : eR) :
+  c * asum f t = asum (fun x => c * f x) t.
 Proof.
   revert f c; induction t; intros f c; simpl; eRauto.
-  unfold amu in *; simpl; unfold compose.
+  unfold asum in *; simpl; unfold compose.
   rewrite eRmult_plus_distr_l; rewrite 2!H; reflexivity.
 Qed.
 
@@ -238,14 +247,14 @@ Lemma atreeR_amu {A B} (f : A -> eR) (g : B -> eR) (R : A -> B -> Prop)
   (a : atree bool A) (b : atree bool B) :
   (forall x y, R x y -> f x = g y) ->
   atreeR R a b ->
-  amu f a = amu g b.
+  asum f a = asum g b.
 Proof.
   intros Hfg Hab.
   revert Hfg; revert f g.
   induction Hab; intros f' g' Hfg.
   - reflexivity.
   - apply Hfg; auto.
-  - unfold amu in *; simpl; unfold compose; erewrite 2!H0; eauto.
+  - unfold asum in *; simpl; unfold compose; erewrite 2!H0; eauto.
 Qed.
 
 Lemma monotone_atree_lang {A} :
@@ -262,25 +271,25 @@ Qed.
 #[global] Hint Resolve monotone_atree_lang : mu.
 
 Theorem cotwp_mu_lang {A} :
-  @cotwp A (const 1) = mu (fun bs => 1 / 2 ^ length bs) ∘ cotree_lang.
+  @cotwp A (const 1) = tcosum (fun bs => 1 / 2 ^ length bs) ∘ cotree_lang.
 Proof
   with eauto with aCPO cotcwp order mu.
-  unfold cotwp, mu, cotree_lang.
+  unfold cotwp, tcosum, cotree_lang.
   apply equ_f_eR.  
   rewrite co_co...
   apply Proper_co...
   { apply monotone_compose...
-    apply monotone_co, monotone_amu. }
+    apply monotone_co, monotone_asum. }
   unfold compose.
   apply equ_arrow; intro a.
   apply equ_eR.
-  unfold btwp, amu.
+  unfold btwp, asum.
   induction a; simpl.
-  - unfold atree_lang; simpl; unfold amu.
+  - unfold atree_lang; simpl; unfold asum.
     apply equ_eR; rewrite co_tfold_bot; reflexivity.
-  - unfold atree_lang, amu, const; simpl; apply equ_eR.
+  - unfold atree_lang, asum, const; simpl; apply equ_eR.
     rewrite co_tfold_leaf; simpl; eRauto.
-  - unfold amu, atree_lang; simpl; apply equ_eR.
+  - unfold asum, atree_lang; simpl; apply equ_eR.
     rewrite co_tfold_node; auto.
     2: { apply wcontinuous_sum; apply wcontinuous_apply. }
     2: { intros; eRauto. }
@@ -289,15 +298,15 @@ Proof
     rewrite 2!H.
     rewrite <- eRplus_combine_fract.
     unfold atree_lang.
-    assert (Heq: forall b, mu (fun bs => 1 / 2 ^ length bs) (atree_lang (a b)) / 2 =
-                        mu (fun bs => 1 / 2 ^ length bs)
+    assert (Heq: forall b, tcosum (fun bs => 1 / 2 ^ length bs) (atree_lang (a b)) / 2 =
+                        tcosum (fun bs => 1 / 2 ^ length bs)
                           (cotree_map (cons b) (atree_lang (a b)))).
-    { intro b; unfold mu, co, eRdiv.
+    { intro b; unfold tcosum, co, eRdiv.
       rewrite eRmult_comm.
       rewrite sup_scalar.
       f_equal; ext i.
       unfold compose.
-      rewrite amu_scalar.
+      rewrite asum_scalar.
       apply atreeR_amu with
         (R := fun x y => cons b x = y).
       * intros bs bs' Hbs; simpl in *; subst; simpl.
@@ -314,19 +323,19 @@ Proof
       * unfold ideal; simpl; unfold flip.
         rewrite tprefix_map.
         apply atreeR_map. }
-    unfold mu in Heq.
+    unfold tcosum in Heq.
     unfold compose.
     unfold atree_lang in Heq.
     rewrite 2!Heq; reflexivity.
-  - apply continuous_wcontinuous, continuous_co, monotone_amu.
+  - apply continuous_wcontinuous, continuous_co, monotone_asum.
 Qed.
 
 Theorem cotwp_mu_preimage {A} (P : A -> bool) :
   cotwp (fun x => if P x then 1 else 0) ===
-    mu (fun bs => 1 / 2 ^ length bs) ∘ cotree_preimage P.
+    tcosum (fun bs => 1 / 2 ^ length bs) ∘ cotree_preimage P.
 Proof.
   rewrite cotwp_filter.
-  unfold mu, cotree_preimage, cotree_lang, cotree_filter.
+  unfold tcosum, cotree_preimage, cotree_lang, cotree_filter.
   rewrite <- Combinators.compose_assoc.
   apply Proper_compose_l.
   { apply Proper_monotone_equ, monotone_co, monotone_btwp. }
@@ -337,7 +346,7 @@ Qed.
 (* Pointwise variant. *)
 Corollary cotwp_mu_preimage' {A} (P : A -> bool) (t : cotree bool A) :
   cotwp (fun x => if P x then 1 else 0) t =
-    mu (fun bs => 1 / 2 ^ length bs) (cotree_preimage P t).
+    tcosum (fun bs => 1 / 2 ^ length bs) (cotree_preimage P t).
 Proof.
   apply equ_eR; revert t; apply equ_arrow, cotwp_mu_preimage.
 Qed.
@@ -387,21 +396,32 @@ Proof.
   - intros []; apply H, Hall.
 Qed.
 
-Lemma atree_disjoint_map {A} (t : atree bool (list A)) (a : A) :
-  atree_disjoint t ->
-  atree_disjoint (atree_map (cons a) t).
+Lemma atree_partition_map {A} (t : atree bool (list A)) (a : A) :
+  atree_partition t ->
+  atree_partition (atree_map (cons a) t).
 Proof.
   revert a; induction t; intros a' Hdisj; simpl; inv Hdisj; constructor; auto.
   - intro b; apply H; auto.
-  - intros b b' Hneq.
-    unfold compose in *.
-    apply atree_all_map.
-    unfold compose.
-    eapply atree_all_impl.
-    2: { apply H2; eauto. }
-    simpl; intros l Hl.
-    apply itree_all_incomparable_map_cons; auto.
+  - destruct H2 as [Ht Hf]; split; apply atree_all_map; unfold compose;
+      eapply atree_all_impl; eauto; intro;
+      apply itree_all_incomparable_map_cons; auto.
 Qed.
+
+(* Lemma atree_disjoint_map {A} (t : atree bool (list A)) (a : A) : *)
+(*   atree_disjoint t -> *)
+(*   atree_disjoint (atree_map (cons a) t). *)
+(* Proof. *)
+(*   revert a; induction t; intros a' Hdisj; simpl; inv Hdisj; constructor; auto. *)
+(*   - intro b; apply H; auto. *)
+(*   - intros b b' Hneq. *)
+(*     unfold compose in *. *)
+(*     apply atree_all_map. *)
+(*     unfold compose. *)
+(*     eapply atree_all_impl. *)
+(*     2: { apply H2; eauto. } *)
+(*     simpl; intros l Hl. *)
+(*     apply itree_all_incomparable_map_cons; auto. *)
+(* Qed. *)
 
 (* Lemma atree_disjoint_lang {A} (t : atree bool A) (i : nat ) : *)
 (*   atree_disjoint (ideal (atree_lang t) i). *)
@@ -436,8 +456,8 @@ Qed.
 (*         apply atree_all_true. *)
 (* Qed. *)
 
-Lemma atree_disjoint_lang {A} (t : atree bool A) (i : nat ) :
-  atree_disjoint (ideal (atree_lang t) i).
+Lemma atree_partition_lang {A} (t : atree bool A) (i : nat ) :
+  atree_partition (ideal (atree_lang t) i).
 Proof.
   revert i; induction t; intros i.
   - destruct i; constructor.
@@ -445,33 +465,67 @@ Proof.
   - destruct i.
     + constructor.
     + simpl; unfold flip; simpl.
-      constructor; intro b.
-      * unfold compose.
+      constructor.
+      * intro b; unfold compose.
         specialize (H b i).
         unfold ideal in H; simpl in H; unfold flip in H.
         rewrite tprefix_map.
-        apply atree_disjoint_map; auto.
-      * unfold compose; intros b' Hneq.
+        apply atree_partition_map; auto.
+      * unfold compose.
         rewrite 2!tprefix_map.
-        apply atree_all_map, atree_all_true'.
-        intro bs; apply atree_all_map, atree_all_true'.
-        intros bs' [HC|HC]; inv HC; congruence.
+        split; apply atree_all_map, atree_all_true'; intro bs;
+          apply atree_all_map, atree_all_true';
+          intros bs' [HC|HC]; inv HC; congruence.
 Qed.
 
-Theorem disjoint_cotree_preimage {A} (P : A -> bool) (t : cotree bool A) :
-  cotree_disjoint (cotree_preimage P t).
-Proof.
-  unfold cotree_disjoint, cotree_preimage.
-  unfold compose.
-  unfold cotree_filter, cotree_lang.
-  apply co_coopP; eauto with cotree order mu aCPO.
-  { apply cocontinuous_coop; eauto with cotree order. }
+(* Lemma atree_disjoint_lang {A} (t : atree bool A) (i : nat ) : *)
+(*   atree_disjoint (ideal (atree_lang t) i). *)
+(* Proof. *)
+(*   revert i; induction t; intros i. *)
+(*   - destruct i; constructor. *)
+(*   - destruct i; constructor. *)
+(*   - destruct i. *)
+(*     + constructor. *)
+(*     + simpl; unfold flip; simpl. *)
+(*       constructor; intro b. *)
+(*       * unfold compose. *)
+(*         specialize (H b i). *)
+(*         unfold ideal in H; simpl in H; unfold flip in H. *)
+(*         rewrite tprefix_map. *)
+(*         apply atree_disjoint_map; auto. *)
+(*       * unfold compose; intros b' Hneq. *)
+(*         rewrite 2!tprefix_map. *)
+(*         apply atree_all_map, atree_all_true'. *)
+(*         intro bs; apply atree_all_map, atree_all_true'. *)
+(*         intros bs' [HC|HC]; inv HC; congruence. *)
+(* Qed. *)
+
+(* Theorem disjoint_cotree_preimage {A} (P : A -> bool) (t : cotree bool A) : *)
+(*   cotree_disjoint (cotree_preimage P t). *)
+(* Proof. *)
+(*   unfold cotree_disjoint, cotree_preimage. *)
+(*   unfold compose. *)
+(*   unfold cotree_filter, cotree_lang. *)
+(*   apply co_coopP; eauto with cotree order mu aCPO. *)
+(*   { apply cocontinuous_coop; eauto with cotree order. } *)
+(*   cointro. *)
+(*   { apply monotone_antimonotone_compose; eauto with cotree order aCPO mu. *)
+(*     apply antimonotone_coop; eauto with cotree order. } *)
+(*   intro i. *)
+(*   cointro; eauto with cotree order. *)
+(*   intro j. *)
+(*   cointro; eauto with cotree order. *)
+(*   apply atree_disjoint_lang. *)
+(* Qed. *)
+
+Theorem partition_cotree_preimage {A} (P : A -> bool) (t : cotree bool A) :
+  cotree_partition (cotree_preimage P t).
+Proof with eauto with cotree order mu aCPO.
+  unfold cotree_disjoint, cotree_preimage, compose, cotree_filter, cotree_lang.
+  apply co_coopP...
   cointro.
-  { apply monotone_antimonotone_compose; eauto with cotree order aCPO mu.
-    apply antimonotone_coop; eauto with cotree order. }
-  intro i.
-  cointro; eauto with cotree order.
-  intro j.
-  cointro; eauto with cotree order.
-  apply atree_disjoint_lang.
+  { apply monotone_antimonotone_compose... }
+  intro i; cointro...
+  intro j; cointro...
+  apply atree_partition_lang.
 Qed.

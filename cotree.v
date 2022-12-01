@@ -472,6 +472,7 @@ Proof.
   constructor; intros ch Hch.
   exists (cotree_sup ch); apply cotree_sup_supremum; auto.
 Qed.
+#[global] Hint Resolve dCPO_cotree : cotree.
 
 Lemma supremum_coleaf {I A} (x : A) (ch : nat -> cotree I A) :
   supremum (coleaf x) ch ->
@@ -827,7 +828,11 @@ Qed.
 
 #[global]
   Instance Compact_atree {A} : Compact (atree bool A).
-Proof. constructor; intros a f Hf Ha; apply bintree_compact; auto. Qed.
+Proof.
+  constructor; intros a f Hf Ha.
+  apply bintree_compact in Ha; auto.
+  destruct Ha as [i Ha]; subst; exists i; reflexivity.
+Qed.
 
 #[global]
   Instance Dense_cotree {I A} : Dense (cotree I A) (atree I A) :=
@@ -969,6 +974,11 @@ Proof.
   apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
+Lemma co_tfold_bot' {A B} `{o : OType B} `{@dCPO B o} `{@ExtType B o}
+  (z : B) (f : A -> B) (h : (bool -> B) -> B) :
+  co (tfold z f h) cobot = z.
+Proof. apply ext, co_tfold_bot. Qed.
+
 Lemma co_tfold_leaf {A B} `{dCPO B}
   (z : B) (f : A -> B) (h : (bool -> B) -> B) (x : A) :
   z ⊑ f x ->
@@ -980,6 +990,12 @@ Proof.
   { intros []; simpl; auto; reflexivity. }
   exists (S O); intros n Hn; destruct n; try lia; reflexivity.
 Qed.
+
+Lemma co_tfold_leaf' {A B} `{o : OType B} `{@dCPO B o} `{@ExtType B o}
+  (z : B) (f : A -> B) (h : (bool -> B) -> B) (x : A) :
+  z ⊑ f x ->
+  co (tfold z f h) (coleaf x) = f x.
+Proof. intro Hz; apply ext, co_tfold_leaf; auto. Qed.
 
 (* Lemma co_tfold_node {A B} `{dCPO B} *)
 (*   (z : B) (f : A -> B) (g : (bool -> B) -> B) (k : bool -> cotree bool A) : *)
@@ -1626,6 +1642,13 @@ Qed.
 Proof. apply monotone_tfold; auto with cotree order; intros ? []. Qed.
 #[global] Hint Resolve monotone_atree_some : cotree.
 
+Lemma cotree_some_bot {A} (P : A -> Prop) :
+  ~ cotree_some P cobot.
+Proof.
+  intro HC; apply co_elim in HC; eauto with cotree order.
+  destruct HC as [[] []].
+Qed.
+
 (** Introduction rule 1 for cotree_some. *)
 Lemma cotree_some_intro_leaf {A} (P : A -> Prop) (a : A) :
   P a ->
@@ -1811,34 +1834,49 @@ Proof.
   revert P Q; induction t; simpl; firstorder.
 Qed.
 
-Inductive atree_disjoint {I A} `{OType A} : atree I A -> Prop :=
-| atree_disjoint_bot : atree_disjoint abot
-| atree_disjoint_leaf : forall x, atree_disjoint (aleaf x)
-| atree_disjoint_node : forall f,
-    (forall i, atree_disjoint (f i)) ->
-    (forall i j, i <> j -> atree_all (fun x => atree_all (incomparable x) (f j)) (f i)) ->
-    atree_disjoint (anode f).
+Definition atree_disjoint {I A} `{OType A} (a b : atree I A) : Prop :=
+  atree_all (fun x => atree_all (incomparable x) b) a /\
+    atree_all (fun x => atree_all (incomparable x) a) b.
 
-Definition cotree_disjoint {A} `{OType A} : cotree bool A -> Prop :=
-  coop (atree_disjoint).
+Definition cotree_disjoint {A} `{OType A} (a b : cotree bool A) : Prop :=
+  cotree_all (fun x => cotree_all (incomparable x) b) a /\
+    cotree_all (fun x => cotree_all (incomparable x) a) b.
+
+(** Can technically be generalized to arbitrary index type but it's
+    cleaner this way for our use case.*)
+Inductive atree_partition {A} `{OType A} : atree bool A -> Prop :=
+| atree_partition_bot : atree_partition abot
+| atree_partition_leaf : forall x, atree_partition (aleaf x)
+| atree_partition_node : forall f,
+    (forall i, atree_partition (f i)) ->
+    atree_disjoint (f true) (f false) ->
+    atree_partition (anode f).
+
+Definition cotree_partition {A} `{OType A} : cotree bool A -> Prop :=
+  coop (atree_partition).
 
 #[global]
-  Instance antimonotone_atree_disjoint {I A} `{OType A}
-  : Proper (leq ==> flip leq) (@atree_disjoint I A _).
+  Instance antimonotone_atree_partition {A} `{OType A}
+  : Proper (leq ==> flip leq) (@atree_partition A _).
 Proof.
   intro a; induction a; simpl; intros b Hab Hb; inv Hab; auto.
   - constructor.
   - inv Hb; constructor.
     + intro i; eapply H0; eauto; apply H2.
-    + intros i j Hij.
-      eapply antimonotone_atree_all.
-      { apply H2. }
-      eapply atree_all_impl.
-      2: { eapply H4; eauto. }
-      simpl; intros x Hx.
-      eapply antimonotone_atree_all; eauto; apply H2.
+    + destruct H4 as [H4 H4'].
+      split.
+      * eapply antimonotone_atree_all.
+        { apply H2. }
+        eapply atree_all_impl; eauto.
+        simpl; intros x Hx.
+        eapply antimonotone_atree_all; eauto; apply H2.
+      * eapply antimonotone_atree_all.
+        { apply H2. }
+        eapply atree_all_impl; eauto.
+        simpl; intros x Hx.
+        eapply antimonotone_atree_all; eauto; apply H2.
 Qed.
-#[global] Hint Resolve antimonotone_atree_disjoint : cotree.
+#[global] Hint Resolve antimonotone_atree_partition : cotree.
 
 (* #[global] *)
 (*   Instance antimonotone_atree_disjoint {I A} `{OType A} *)
@@ -1848,11 +1886,13 @@ Qed.
 (*   - constructor. *)
 (*   - inv Hb; constructor. *)
 (*     + intro i; eapply H0; eauto; apply H2. *)
-(*     + intros i j Hij x Hx; unfold compose. *)
+(*     + intros i j Hij. *)
 (*       eapply antimonotone_atree_all. *)
 (*       { apply H2. } *)
-(*       eapply H4; eauto. *)
-(*       eapply monotone_atree_some; eauto; apply H2. *)
+(*       eapply atree_all_impl. *)
+(*       2: { eapply H4; eauto. } *)
+(*       simpl; intros x Hx. *)
+(*       eapply antimonotone_atree_all; eauto; apply H2. *)
 (* Qed. *)
 (* #[global] Hint Resolve antimonotone_atree_disjoint : cotree. *)
 

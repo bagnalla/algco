@@ -158,9 +158,47 @@ Next Obligation. apply le_top. Qed.
 #[global]
   Instance OType_Z : OType Z := {| leq := Z.le |}.
 
+Definition prod_le {A B} `{OType A} `{OType B} (x y : A * B) : Prop :=
+  fst x ⊑ fst y /\ snd x ⊑ snd y.
+
 #[global]
-  Instance OType_list A : OType (list A) :=
-  {| leq := is_prefix |}.
+  Instance Reflexive_prod_le {A B} `{OType A} `{OType B} : Reflexive (@prod_le A B _ _).
+Proof. constructor; reflexivity. Qed.
+
+#[global]
+  Instance Transitive_prod_le {A B} `{OType A} `{OType B} : Transitive (@prod_le A B _ _).
+Proof. intros [] [] [] [] []; constructor; etransitivity; eauto. Qed.
+
+#[global]
+  Instance PreOrder_prod_le {A B} `{OType A} `{OType B} : PreOrder (@prod_le A B _ _).
+Proof. constructor; typeclasses eauto. Qed.
+
+#[global]
+  Instance OType_prod {A B} `{OType A} `{OType B} : OType (A * B) :=
+  {| leq := prod_le |}.
+
+Definition sum_le {A B} `{OType A} `{OType B} (x y : A + B) : Prop :=
+  match (x, y) with
+  | (inl a, inl a') => a ⊑ a'
+  | (inr b, inr b') => b ⊑ b'
+  | _ => False
+  end.
+
+#[global]
+  Instance Reflexive_sum_le {A B} `{OType A} `{OType B} : Reflexive (@sum_le A B _ _).
+Proof. unfold sum_le; intros []; reflexivity. Qed.
+
+#[global]
+  Instance Transitive_sum_le {A B} `{OType A} `{OType B} : Transitive (@sum_le A B _ _).
+Proof. unfold sum_le; intros [a1|b1] [a2|b2] [a3|b3]; firstorder; etransitivity; eauto. Qed.
+
+#[global]
+  Instance PreOrder_sum_le {A B} `{OType A} `{OType B} : PreOrder (@sum_le A B _ _).
+Proof. constructor; typeclasses eauto. Qed.
+
+#[global]
+  Instance OType_sum {A B} `{OType A} `{OType B} : OType (A + B) :=
+  {| leq := sum_le |}.
 
 Definition equ {A : Type} `{OType A} (x y : A) := x ⊑ y /\ y ⊑ x.
 
@@ -328,6 +366,13 @@ Lemma monotone_antimonotone_compose {A B C : Type} `{OType A} `{OType B} `{OType
   (f : A -> B) (g : B -> C) :
   monotone f ->
   antimonotone g ->
+  antimonotone (g ∘ f).
+Proof. intros Hf Hg x y Hleq; apply Hg, Hf; auto. Qed.
+
+Lemma antimonotone_monotone_compose {A B C : Type} `{OType A} `{OType B} `{OType C}
+  (f : A -> B) (g : B -> C) :
+  antimonotone f ->
+  monotone g ->
   antimonotone (g ∘ f).
 Proof. intros Hf Hg x y Hleq; apply Hg, Hf; auto. Qed.
 
@@ -1085,6 +1130,21 @@ Proof.
     eapply HQ; eauto.
 Qed.
 
+Lemma supremum_Prop' (P : Prop) (f : nat -> Prop) :
+  supremum P f ->
+  (P <-> exists i, f i).
+Proof.
+  intros [Hub Hlub]; split.
+  - intro pf.
+    contra H.
+    assert (Hf: forall i, ~ f i).
+    { intros i HC; apply H; exists i; auto. }
+    clear H.
+    eapply Hlub; auto.
+  - intros [i Hi].
+    eapply Hub; eauto.
+Qed.
+
 Lemma infimum_Prop (P : Prop) (f : nat -> Prop) :
   (P <-> forall i, f i) ->
   infimum P f.
@@ -1094,9 +1154,9 @@ Proof.
   - intros Q HQ HP; apply H1; intro i; apply HQ; auto.
 Qed.
 
-Lemma equ_list {A} (l1 l2 : list A) :
-  l1 === l2 -> l1 = l2.
-Proof. intros []; apply is_prefix_antisym; auto. Qed.
+(* Lemma equ_list {A} (l1 l2 : list A) : *)
+(*   l1 === l2 -> l1 = l2. *)
+(* Proof. intros []; apply is_prefix_antisym; auto. Qed. *)
 
 Lemma continuous_ite {A B} `{OType A} `{OType B} (b : bool) (f g : A -> B) :
   continuous f ->
@@ -1168,4 +1228,205 @@ Lemma continuous_const {A B} `{OType A} `{OType B} (b : B) :
   continuous (fun _ : A => b).
 Proof.
   intros ? ? ? ?; apply supremum_const.
+Qed.    
+
+#[global]
+  Instance monotone_fst {A B} `{OType A} `{OType B}
+  : Proper (leq ==> leq) (@fst A B).
+Proof. intros [] [] []; auto. Qed.
+#[global] Hint Resolve monotone_fst : prod.
+
+#[global]
+  Instance monotone_snd {A B} `{OType A} `{OType B}
+  : Proper (leq ==> leq) (@snd A B).
+Proof. intros [] [] []; auto. Qed.
+#[global] Hint Resolve monotone_snd : prod.
+
+Lemma supremum_fst {A B} `{OType A} `{OType B} (a : A) (b : B) (f : nat -> A * B) :
+  supremum (a, b) f ->
+  supremum a (fst ∘ f).
+Proof.
+  intros [Hub Hlub]; split.
+  - intro i; specialize (Hub i); inv Hub; auto.
+  - unfold compose; intros x Hx.
+    specialize (Hlub (x, b)).
+    apply Hlub.
+    intro i; specialize (Hx i); simpl in Hx.
+    specialize (Hub i).
+    inv Hub.
+    destruct (f i); constructor; auto.
+Qed.
+
+Lemma infimum_fst {A B} `{OType A} `{OType B} (a : A) (b : B) (f : nat -> A * B) :
+  infimum (a, b) f ->
+  infimum a (fst ∘ f).
+Proof.
+  intros [Hub Hlub]; split.
+  - intro i; specialize (Hub i); inv Hub; auto.
+  - unfold compose; intros x Hx.
+    specialize (Hlub (x, b)).
+    apply Hlub.
+    intro i; specialize (Hx i); simpl in Hx.
+    specialize (Hub i).
+    inv Hub.
+    destruct (f i); constructor; auto.
+Qed.
+
+Lemma supremum_snd {A B} `{OType A} `{OType B} (a : A) (b : B) (f : nat -> A * B) :
+  supremum (a, b) f ->
+  supremum b (snd ∘ f).
+Proof.
+  intros [Hub Hlub]; split.
+  - intro i; specialize (Hub i); inv Hub; auto.
+  - unfold compose; intros x Hx.
+    specialize (Hlub (a, x)).
+    apply Hlub.
+    intro i; specialize (Hx i); simpl in Hx.
+    specialize (Hub i).
+    inv Hub.
+    destruct (f i); constructor; auto.
+Qed.
+
+Lemma infimum_snd {A B} `{OType A} `{OType B} (a : A) (b : B) (f : nat -> A * B) :
+  infimum (a, b) f ->
+  infimum b (snd ∘ f).
+Proof.
+  intros [Hub Hlub]; split.
+  - intro i; specialize (Hub i); inv Hub; auto.
+  - unfold compose; intros x Hx.
+    specialize (Hlub (a, x)).
+    apply Hlub.
+    intro i; specialize (Hx i); simpl in Hx.
+    specialize (Hub i).
+    inv Hub.
+    destruct (f i); constructor; auto.
+Qed.
+
+Lemma directed_fst {A B} `{OType A} `{OType B} (f : nat -> A * B) :
+  directed f ->
+  directed (fst ∘ f).
+Proof.
+  intros Hf i j; specialize (Hf i j); destruct Hf as [k [Hk Hk']].
+  exists k; split; apply monotone_fst; auto.
+Qed.
+
+Lemma directed_snd {A B} `{OType A} `{OType B} (f : nat -> A * B) :
+  directed f ->
+  directed (snd ∘ f).
+Proof.
+  intros Hf i j; specialize (Hf i j); destruct Hf as [k [Hk Hk']].
+  exists k; split; apply monotone_snd; auto.
+Qed.
+
+Lemma supremum_prod {A B} `{OType A} `{OType B} (a : A) (b : B) (f : nat -> A * B) :
+  supremum a (fst ∘ f) ->
+  supremum b (snd ∘ f) ->
+  supremum (a, b) f.
+Proof.
+  intros [Ha Ha'] [Hb Hb']; split.
+  - intro i; specialize (Ha i); specialize (Hb i).
+    unfold compose in *; destruct (f i); split; auto.
+  - intros [x y] Hxy; split; simpl.
+    + apply Ha'; intro i; specialize (Hxy i); unfold compose;
+        destruct (f i); destruct Hxy; auto.
+    + apply Hb'; intro i; specialize (Hxy i); unfold compose;
+        destruct (f i); destruct Hxy; auto.
+Qed.
+
+Lemma infimum_prod {A B} `{OType A} `{OType B} (a : A) (b : B) (f : nat -> A * B) :
+  infimum a (fst ∘ f) ->
+  infimum b (snd ∘ f) ->
+  infimum (a, b) f.
+Proof.
+  intros [Ha Ha'] [Hb Hb']; split.
+  - intro i; specialize (Ha i); specialize (Hb i).
+    unfold compose in *; destruct (f i); split; auto.
+  - intros [x y] Hxy; split; simpl.
+    + apply Ha'; intro i; specialize (Hxy i); unfold compose;
+        destruct (f i); destruct Hxy; auto.
+    + apply Hb'; intro i; specialize (Hxy i); unfold compose;
+        destruct (f i); destruct Hxy; auto.
+Qed.
+
+Lemma infimum_conj (f g : nat -> Prop) (P Q : Prop) :
+  infimum P f ->
+  infimum Q g ->
+  infimum (P /\ Q) (fun i => f i /\ g i).
+Proof.
+  intros [HP HP'] [HQ HQ']; split.
+  - intro i; intros [a b]; split.
+    + apply HP; auto.
+    + apply HQ; auto.
+  - intros R HR z; split.
+    + eapply HP'.
+      2: { apply z. }
+      intros i r; apply HR; auto.
+    + eapply HQ'.
+      2: { apply z. }
+      intros i r; apply HR; auto.
+Qed.
+
+Lemma inl_supremum {A B} `{OType A} `{OType B} (a : A) (f : nat -> A + B) :
+  supremum (inl a) f ->
+  supremum a (fun i : nat => match f i with
+                        | inl x => x
+                        | inr _ => a
+                        end).
+Proof.
+  intros [Hub Hlub]; split.
+  - intro i; destruct (f i) eqn:Hfi.
+    + specialize (Hub i); rewrite Hfi in Hub; apply Hub.
+    + reflexivity.
+  - intros x Hx.
+    assert (Hxf: upper_bound (inl x) f).
+    { intro i; specialize (Hx i); simpl in *.
+      unfold sum_le.
+      destruct (f i) eqn:Hfi; auto.
+      assert (HC: inr b ⊑ inl a).
+      { rewrite <- Hfi; apply Hub. }
+      inv HC. }
+    apply Hlub in Hxf; apply Hxf.
+Qed.
+
+Lemma inr_supremum {A B} `{OType A} `{OType B} (b : B) (f : nat -> A + B) :
+  supremum (inr b) f ->
+  supremum b (fun i : nat => match f i with
+                        | inl _ => b
+                        | inr y => y
+                        end).
+  intros [Hub Hlub]; split.
+  - intro i; destruct (f i) eqn:Hfi.
+    + reflexivity.
+    + specialize (Hub i); rewrite Hfi in Hub; apply Hub.
+  - intros x Hx.
+    assert (Hxf: upper_bound (inr x) f).
+    { intro i; specialize (Hx i); simpl in *.
+      unfold sum_le.
+      destruct (f i) eqn:Hfi; auto.
+      assert (HC: inl a ⊑ inr b).
+      { rewrite <- Hfi; apply Hub. }
+      inv HC. }
+    apply Hlub in Hxf; apply Hxf.
+Qed.
+
+Lemma supremum_inl {A B} `{OType A} `{OType B} (ch : nat -> A) (a : A) :
+  supremum a ch ->
+  supremum (inl a) (fun i : nat => inl (ch i)).
+Proof.
+  intros [Hub Hlub]; split.
+  - intro i; apply Hub.
+  - intros [a'|b] Ha'.
+    + eapply Hlub; auto.
+    + destruct (Ha' O).
+Qed.
+
+Lemma supremum_inr {A B} `{OType A} `{OType B} (ch : nat -> B) (b : B) :
+  supremum b ch ->
+  supremum (@inr A B b) (fun i : nat => inr (ch i)).
+Proof.
+  intros [Hub Hlub]; split.
+  - intro i; apply Hub.
+  - intros [a|b'] Hb'.
+    + destruct (Hb' O).
+    + eapply Hlub; auto.
 Qed.

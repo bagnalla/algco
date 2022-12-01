@@ -58,8 +58,7 @@ Proof.
   unfold cotree_bind, cotree_map, tcofold.
   rewrite co_co''; eauto with cotree order.
   apply Proper_co'.
-  { apply monotone_compose; eauto with cotree order aCPO.
-    apply monotone_co; eauto with cotree order. }
+  { apply monotone_compose; eauto with cotree order aCPO. }
   { apply Proper_tinj. }
   2: { rewrite co_tinj_t; reflexivity. }
   unfold compose.

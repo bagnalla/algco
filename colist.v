@@ -30,9 +30,9 @@ Local Open Scope order_scope.
 
 Create HintDb colist.
 
-Inductive alist (A : Type) : Type :=
-| anil : alist A
-| acons : A -> alist A -> alist A.
+(* Inductive list (A : Type) : Type := *)
+(* | [] : list A *)
+(* | acons : A -> list A -> list A. *)
 
 CoInductive colist (A : Type) : Type :=
 | conil : colist A (* bottom / divergence *)
@@ -122,12 +122,12 @@ Proof.
   constructor; intros a b Hab; apply colist_ext, equ_colist_eq; auto.
 Qed.
 
-Fixpoint prefix {A} (n : nat) (l : colist A) : alist A :=
+Fixpoint prefix {A} (n : nat) (l : colist A) : list A :=
   match n with
-  | O => anil
+  | O => []
   | S n' => match l with
-           | conil => anil
-           | cocons x xs => acons x (prefix n' xs)
+           | conil => []
+           | cocons x xs => x :: prefix n' xs
            end
   end.
 
@@ -171,19 +171,19 @@ Proof.
 Qed.
 #[global] Hint Resolve continuous_cocons : colist.
 
-Inductive alist_le {A} : alist A -> alist A -> Prop :=
-| alist_le_nil : forall l, alist_le anil l
-| alist_le_cons : forall x l1 l2,
-    alist_le l1 l2 ->
-    alist_le (acons x l1) (acons x l2).
-#[global] Hint Constructors alist_le : colist.
+Inductive list_le {A} : list A -> list A -> Prop :=
+| list_le_nil : forall l, list_le [] l
+| list_le_cons : forall x l1 l2,
+    list_le l1 l2 ->
+    list_le (x :: l1) (x :: l2).
+#[global] Hint Constructors list_le : colist.
 
 #[global]
-  Instance Reflexive_alist_le {A} : Reflexive (@alist_le A).
+  Instance Reflexive_list_le {A} : Reflexive (@list_le A).
 Proof. intro l; induction l; constructor; auto. Qed.
 
 #[global]
-  Instance Transitive_alist_le {A} : Transitive (@alist_le A).
+  Instance Transitive_list_le {A} : Transitive (@list_le A).
 Proof.
   intro a; induction a; intros b c Hab Hbc.
   - constructor.
@@ -191,26 +191,26 @@ Proof.
 Qed.
 
 #[global]
-  Instance PreOrder_alist_le {A} : PreOrder (@alist_le A).
+  Instance PreOrder_list_le {A} : PreOrder (@list_le A).
 Proof. constructor; typeclasses eauto. Qed.
 
 #[global]
-  Instance OType_alist {A} : OType (alist A) :=
-  { leq := alist_le }.
+  Instance OType_list {A} : OType (list A) :=
+  { leq := list_le }.
 
-Lemma anil_le {A} (l : alist A) :
-  anil ⊑ l.
+Lemma nil_le {A} (l : list A) :
+  [] ⊑ l.
 Proof. constructor. Qed.
-#[global] Hint Resolve anil_le : colist.
+#[global] Hint Resolve nil_le : colist.
 
 #[global]
   Program
-  Instance PType_alist {A} : PType (alist A) :=
-  { bot := anil }.
-Next Obligation. apply anil_le. Qed.
+  Instance PType_list {A} : PType (list A) :=
+  { bot := [] }.
+Next Obligation. apply nil_le. Qed.
 
 #[global]
-  Instance ExtType_alist {A} : ExtType (alist A).
+  Instance ExtType_list {A} : ExtType (list A).
 Proof.
   constructor; intro a; induction a; intros b [H0 H1]; inv H0; inv H1; auto.
   - f_equal; apply IHa; split; auto.
@@ -259,9 +259,9 @@ Definition not_conil {A} (l : colist A) : Prop :=
   | _ => True
   end.
 
-Definition not_anil {A} (l : alist A) : Prop :=
+Definition not_nil {A} (l : list A) : Prop :=
   match l with
-  | anil => False
+  | [] => False
   | _ => True
   end.
 
@@ -272,7 +272,7 @@ Proof.
   - left; constructor.
 Qed.
 
-Lemma not_anil_dec {A} (t : alist A) : { not_anil t } + { ~ not_anil t }.
+Lemma not_nil_dec {A} (t : list A) : { not_nil t } + { ~ not_nil t }.
 Proof.
   destruct t.
   - right; intro HC; inv HC.
@@ -285,10 +285,10 @@ Definition step {A} (l : colist A) : colist A :=
   | cocons _ xs => xs
   end.
 
-Definition lstep {A} (l : alist A) : alist A :=
+Definition lstep {A} (l : list A) : list A :=
   match l with
-  | anil => anil
-  | acons _ xs => xs
+  | [] => []
+  | _ :: xs => xs
   end.
 
 (** The supremum of a chain of colists. Uses strong LPO. *)
@@ -331,7 +331,7 @@ Proof.
   exists k; split; apply monotone_step; auto.
 Qed.
 
-Lemma directed_lstep {A} (ch : nat -> alist A) :
+Lemma directed_lstep {A} (ch : nat -> list A) :
   directed ch ->
   directed (lstep ∘ ch).
 Proof.
@@ -340,7 +340,7 @@ Proof.
   exists k; split; apply monotone_lstep; auto.
 Qed.
 
-Lemma chain_lstep {A} (ch : nat -> alist A) :
+Lemma chain_lstep {A} (ch : nat -> list A) :
   chain ch ->
   chain (lstep ∘ ch).
 Proof.
@@ -441,10 +441,10 @@ Proof.
 Qed.
 #[global] Hint Resolve dCPO_colist : colist.
 
-Fixpoint inj {A} (l : alist A) : colist A :=
+Fixpoint inj {A} (l : list A) : colist A :=
   match l with
-  | anil => conil
-  | acons x xs => cocons x (inj xs)
+  | [] => conil
+  | x :: xs => cocons x (inj xs)
   end.
 
 Lemma inj_prefix_coprefix {A} (t : colist A) (n : nat) :
@@ -454,20 +454,20 @@ Proof.
   destruct t; simpl; auto; rewrite IHn; auto.
 Qed.
 
-Lemma list_le_antisym {A} (a b : alist A) :
+Lemma list_le_antisym {A} (a b : list A) :
   a ⊑ b ->
   b ⊑ a ->
   a = b.
 Proof.
-  intro H; induction H; intro Hle; inv Hle; auto; rewrite IHalist_le; auto.
+  intro H; induction H; intro Hle; inv Hle; auto; rewrite IHlist_le; auto.
 Qed.
 
-Lemma equ_alist {A} (a b : alist A) :
+Lemma equ_list {A} (a b : list A) :
   a === b -> a = b.
 Proof. intro Heq; apply list_le_antisym; apply Heq. Qed.
 
-Lemma supremum_lstep_cons {A} (a : A) (l : alist A) (ch : nat -> alist A) :
-  supremum (acons a l) ch ->
+Lemma supremum_lstep_cons {A} (a : A) (l : list A) (ch : nat -> list A) :
+  supremum (a :: l) ch ->
   supremum l (lstep ∘ ch).
 Proof.
   intros [Hub Hlub]; split.
@@ -476,7 +476,7 @@ Proof.
   - unfold compose; intros y Hy.
     unfold upper_bound in Hy.
     simpl in Hy.
-    assert (H: upper_bound (acons a y) ch).
+    assert (H: upper_bound (a :: y) ch).
     { intro i.
       specialize (Hy i); simpl in Hy.
       destruct (ch i) eqn:Hchi.
@@ -486,18 +486,18 @@ Proof.
     apply Hlub in H; inv H; auto.
 Qed.
 
-Lemma supremum_acons' {A} (a : A) (l : alist A) (ch : nat -> alist A) :
-  supremum (acons a l) ch ->
-  exists i l', ch i = acons a l' /\ l' ⊑ l.
+Lemma supremum_acons' {A} (a : A) (l : list A) (ch : nat -> list A) :
+  supremum (a :: l) ch ->
+  exists i l', ch i = a :: l' /\ l' ⊑ l.
 Proof.
   intros [Hub Hlub].
-  destruct (strong_LPO (fun n => not_anil_dec (ch n))).
+  destruct (strong_LPO (fun n => not_nil_dec (ch n))).
   - destruct e as [n H].
     specialize (Hub n).
     inv Hub.
     + rewrite <- H1 in H; inv H.
     + exists n, l1; auto.
-  - assert (H: upper_bound anil ch).
+  - assert (H: upper_bound [] ch).
     { intro i; specialize (Hub i); destruct (ch i) eqn:Hchi.
       + constructor.
       + exfalso; apply n; exists i; rewrite Hchi; constructor. }
@@ -522,13 +522,13 @@ Proof.
     apply Hlub in H; inv H.
 Qed.
 
-Lemma alist_compact {A} (l : alist A) (ch : nat -> alist A) :
+Lemma list_compact {A} (l : list A) (ch : nat -> list A) :
   directed ch ->
   supremum l ch ->
   exists i, ch i = l.
 Proof.
   revert ch; induction l; intros ch Hch Hl.
-  - exists O; apply equ_alist; split; try constructor; apply Hl.
+  - exists O; apply equ_list; split; try constructor; apply Hl.
   - pose proof Hl as Hl'.
     apply supremum_lstep_cons in Hl.
     apply IHl in Hl; clear IHl.
@@ -543,7 +543,7 @@ Proof.
       rewrite Hchj in H0; inv H0; exists j; auto.
 Qed.
 
-Lemma alist_eq_colist_eq {A} (a b : colist A) :
+Lemma list_eq_colist_eq {A} (a b : colist A) :
   (forall i, prefix i a = prefix i b) ->
   a = b.
 Proof.
@@ -560,7 +560,7 @@ Proof.
       constructor; apply CH; intro i; specialize (H (S i)); inv H; auto.
 Qed.
 
-Lemma alist_le_colist_le {A} (a b : alist A) :
+Lemma list_le_colist_le {A} (a b : list A) :
   a ⊑ b ->
   inj a ⊑ inj b.
 Proof.
@@ -571,9 +571,9 @@ Qed.
 
 #[global]
   Instance monotone_inj {A} : Proper (leq ==> leq) (@inj A).
-Proof. intros a b Hab; apply alist_le_colist_le; auto. Qed.
+Proof. intros a b Hab; apply list_le_colist_le; auto. Qed.
 
-Lemma colist_le_alist_le {A} (a b : alist A) :
+Lemma colist_le_list_le {A} (a b : list A) :
   inj a ⊑ inj b ->
   a ⊑ b.
 Proof.
@@ -679,23 +679,27 @@ Proof.
 Qed.
 
 #[global]
-  Instance Compact_alist {A} : Compact (alist A).
-Proof. constructor; intros a f Hf Ha; apply alist_compact; auto. Qed.
-(* #[global] Hint Resolve Compact_alist : colist. *)
+  Instance Compact_list {A} : Compact (list A).
+Proof.
+  constructor; intros a f Hf Ha.
+  apply list_compact in Ha; auto.
+  destruct Ha as [i Ha]; subst; exists i; reflexivity.
+Qed.
+(* #[global] Hint Resolve Compact_list : colist. *)
 
 #[global]
-  Instance Dense_colist {A} : Dense (colist A) (alist A) :=
+  Instance Dense_colist {A} : Dense (colist A) (list A) :=
   { incl := inj
   ; ideal := flip prefix }.
 (* #[global] Hint Resolve Dense_colist : colist. *)
 
 #[global]
-  Instance aCPO_colist {A} : aCPO (colist A) (alist A).
+  Instance aCPO_colist {A} : aCPO (colist A) (list A).
 Proof.
   constructor.
   - intros a b; split.
-    + apply alist_le_colist_le.
-    + apply colist_le_alist_le.
+    + apply list_le_colist_le.
+    + apply colist_le_list_le.
   - apply chain_prefix.
   - intros a b Hab i; apply prefix_monotone; auto.
   - apply prefix_continuous.
@@ -706,33 +710,33 @@ Proof.
 Qed.
 (* #[global] Hint Resolve aCPO_colist : colist. *)
 
-Fixpoint afold {A B} (z : B) (f : A -> B -> B) (l : alist A) : B :=
+Fixpoint fold {A B} (z : B) (f : A -> B -> B) (l : list A) : B :=
   match l with
-  | anil => z
-  | acons x xs => f x (afold z f xs)
+  | [] => z
+  | x :: xs => f x (fold z f xs)
   end.
 
-(* Fixpoint para {A B} (z : B) (f : A -> alist A -> B -> B) (l : alist A) : B := *)
+(* Fixpoint para {A B} (z : B) (f : A -> list A -> B -> B) (l : list A) : B := *)
 (*   match l with *)
-(*   | anil => z *)
+(*   | [] => z *)
 (*   | acons x xs => f x xs (para z f xs) *)
 (*   end. *)
 
 #[global]
-  Instance monotone_afold {A B} `{OType B} (z : B) (f : A -> B -> B)
-  {Hz : forall b, z ⊑ afold z f b}
+  Instance monotone_fold {A B} `{OType B} (z : B) (f : A -> B -> B)
+  {Hz : forall b, z ⊑ fold z f b}
   {Hf : forall a, Proper (leq ==> leq) (f a)}
-  : Proper (leq ==> leq) (afold z f).
+  : Proper (leq ==> leq) (fold z f).
 Proof.
   intro a; revert Hz Hf; revert f;
     induction a; intros f Hz Hf b Hab; inv Hab; simpl.
   - apply Hz.
   - apply Hf, IHa; auto.
 Qed.
-#[global] Hint Resolve monotone_afold : colist.
+#[global] Hint Resolve monotone_fold : colist.
 
 (* #[global] *)
-(*   Instance monotone_para {A B} `{OType B} (z : B) (f : A -> alist A -> B -> B) *)
+(*   Instance monotone_para {A B} `{OType B} (z : B) (f : A -> list A -> B -> B) *)
 (*   {Hz : forall b, z ⊑ para z f b} *)
 (*   {Hf : forall a, Proper (leq ==> leq ==> leq) (f a)} *)
 (*   : Proper (leq ==> leq) (para z f). *)
@@ -744,40 +748,40 @@ Qed.
 (* Qed. *)
 (* #[global] Hint Resolve monotone_para : colist. *)
 
-(* Definition copara {A B} `{OType B} (z : B) (f : A -> alist A -> B -> B) : colist A -> B := *)
+(* Definition copara {A B} `{OType B} (z : B) (f : A -> list A -> B -> B) : colist A -> B := *)
 (*   co (para z f). *)
 
 #[global]
-  Instance antimonotone_afold {A B} `{OType B} (z : B) (f : A -> B -> B)
-  {Hz : forall b, afold z f b ⊑ z}
+  Instance antimonotone_fold {A B} `{OType B} (z : B) (f : A -> B -> B)
+  {Hz : forall b, fold z f b ⊑ z}
   {Hf : forall a, Proper (leq ==> leq) (f a)}
-  : Proper (leq ==> flip leq) (afold z f).
+  : Proper (leq ==> flip leq) (fold z f).
 Proof.
   intro a; revert Hz Hf; revert f;
     induction a; intros f Hz Hf b Hab; inv Hab; simpl.
   - apply Hz.
   - apply Hf, IHa; auto.
 Qed.
-#[global] Hint Resolve antimonotone_afold : colist.
+#[global] Hint Resolve antimonotone_fold : colist.
 
 (** Computation lemmas for cofolds. *)
 
 Lemma co_fold_nil {A B} `{dCPO B} (z : B) (f : A -> B -> B) :
-  co (afold z f) conil === z.
+  co (fold z f) conil === z.
 Proof.
   apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
 Lemma co_fold_cons {A B} `{dCPO B}
   (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
-  (forall b, z ⊑ afold z f b) ->
+  (forall b, z ⊑ fold z f b) ->
   (forall a, continuous (f a)) ->
   z ⊑ f a z ->
-  co (afold z f) (cocons a l) === f a (co (afold z f) l).
+  co (fold z f) (cocons a l) === f a (co (fold z f) l).
 Proof.
   intros Hz Hf Hfaz.
   apply supremum_sup.
-  apply shift_supremum'' with (f := fun i => f a (afold z f (ideal l i))); auto.
+  apply shift_supremum'' with (f := fun i => f a (fold z f (ideal l i))); auto.
   { apply Hf.
     { apply monotone_directed; auto with colist order.
       apply chain_directed, chain_ideal. }
@@ -791,33 +795,33 @@ Qed.
 
 Lemma co_fold_nil' {A B} {o : OType B} `{@ExtType B o} `{@dCPO B o}
   (z : B) (f : A -> B -> B) :
-  co (afold z f) conil = z.
+  co (fold z f) conil = z.
 Proof. apply ext, co_fold_nil. Qed.
 
 Lemma co_fold_cons' {A B} {o : OType B} `{@ExtType B o} `{@dCPO B o}
   (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
-  (forall b, z ⊑ afold z f b) ->
+  (forall b, z ⊑ fold z f b) ->
   (forall a, continuous (f a)) ->
   z ⊑ f a z ->
-  co (afold z f) (cocons a l) = f a (co (afold z f) l).
+  co (fold z f) (cocons a l) = f a (co (fold z f) l).
 Proof. intros Hz Hf Hfaz; apply ext, co_fold_cons; auto. Qed.
 
 Lemma coop_fold_nil {A B} `{ldCPO B} (z : B) (f : A -> B -> B) :
-  coop (afold z f) conil === z.
+  coop (fold z f) conil === z.
 Proof.
   apply infimum_inf, infimum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
 Lemma coop_fold_cons {A B} `{ldCPO B}
   (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
-  (forall b, afold z f b ⊑ z) ->
+  (forall b, fold z f b ⊑ z) ->
   (forall a, dec_continuous (f a)) ->
   f a z ⊑ z ->
-  coop (afold z f) (cocons a l) === f a (coop (afold z f) l).
+  coop (fold z f) (cocons a l) === f a (coop (fold z f) l).
 Proof with eauto with colist order.
   intros Hz Hf Hfaz.
   apply infimum_inf.
-  apply shift_infimum'' with (f := fun i => f a (afold z f (ideal l i))); auto.
+  apply shift_infimum'' with (f := fun i => f a (fold z f (ideal l i))); auto.
   { apply Hf.
     { apply antimonotone_downward_directed...
       apply chain_directed, chain_ideal. }
@@ -829,15 +833,15 @@ Qed.
 
 Lemma coop_fold_nil' {A B} {o : OType B} `{@ExtType B o} `{@ldCPO B o}
   (z : B) (f : A -> B -> B) :
-  coop (afold z f) conil = z.
+  coop (fold z f) conil = z.
 Proof. apply ext, coop_fold_nil. Qed.
 
 Lemma coop_fold_cons' {A B} {o : OType B} `{@ExtType B o} `{@ldCPO B o}
   (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
-  (forall b, afold z f b ⊑ z) ->
+  (forall b, fold z f b ⊑ z) ->
   (forall a, dec_continuous (f a)) ->
   f a z ⊑ z ->
-  coop (afold z f) (cocons a l) = f a (coop (afold z f) l).
+  coop (fold z f) (cocons a l) = f a (coop (fold z f) l).
 Proof. intros Hz Hf Hgz; apply ext, coop_fold_cons; auto. Qed.
 
 Lemma forall_False_impl {A} (f : A -> Prop) :
@@ -866,43 +870,44 @@ Proof. intro a; apply dec_continuous_conj. Qed.
 #[global] Hint Resolve forall_dec_continuous_P_conj : colist.
 
 (* #[global] *)
-(*   Instance antimonotone_alist_forall {A} (P : A -> Prop) *)
-(*   : Proper (leq ==> flip leq) (alist_forall P). *)
+(*   Instance antimonotone_list_forall {A} (P : A -> Prop) *)
+(*   : Proper (leq ==> flip leq) (list_forall P). *)
 (* Proof. *)
 (*   intro a; induction a; intros b Hab Hex; inv Hab; inv Hex; *)
 (*     constructor; auto; eapply IHa; eauto. *)
 (* Qed. *)
-(* #[global] Hint Resolve antimonotone_alist_forall : colist. *)
+(* #[global] Hint Resolve antimonotone_list_forall : colist. *)
 
-Definition alist_exists {A} (P : A -> Prop) : alist A -> Prop :=
-  afold False (fun a x => P a \/ x).
+Definition list_exists {A} (P : A -> Prop) : list A -> Prop :=
+  fold False (fun a x => P a \/ x).
 
 Definition colist_exists {A} (P : A -> Prop) : colist A -> Prop :=
-  co (alist_exists P).
+  co (list_exists P).
 
-Definition alist_forall {A} (P : A -> Prop) : alist A -> Prop :=
-  afold True (fun a x => P a /\ x).
+Definition list_forall {A} (P : A -> Prop) : list A -> Prop :=
+  fold True (fun a x => P a /\ x).
 
 Definition colist_forall {A} (P : A -> Prop) : colist A -> Prop :=
-  coop (alist_forall P).
+  coop (list_forall P).
 
 #[global]
-  Instance monotone_alist_exists {A} (P : A -> Prop)
-: Proper (leq ==> leq) (alist_exists P).
+  Instance monotone_list_exists {A} (P : A -> Prop)
+: Proper (leq ==> leq) (list_exists P).
 Proof. eauto with order colist. Qed.
-#[global] Hint Resolve monotone_alist_exists : colist.
+#[global] Hint Resolve monotone_list_exists : colist.
 
 #[global]
-  Instance antimonotone_alist_forall {A} (P : A -> Prop)
-  : Proper (leq ==> flip leq) (alist_forall P).
+  Instance antimonotone_list_forall {A} (P : A -> Prop)
+  : Proper (leq ==> flip leq) (list_forall P).
 Proof. eauto with order colist. Qed.
+#[global] Hint Resolve antimonotone_list_forall : colist.
 
 (** Introduction rule 1 for colist_exists. *)
 Lemma colist_exists_intro1 {A} (P : A -> Prop) (a : A) (l : colist A) :
   P a ->
   colist_exists P (cocons a l).
 Proof with eauto with order colist.
-  unfold colist_exists, alist_exists.
+  unfold colist_exists, list_exists.
   rewrite co_fold_cons...
   intro; apply continuous_disj.
 Qed.
@@ -912,7 +917,7 @@ Lemma colist_exists_intro2 {A} (P : A -> Prop) (a : A) (l : colist A) :
   colist_exists P l ->
   colist_exists P (cocons a l).
 Proof with eauto with order colist.
-  unfold colist_exists, alist_exists.
+  unfold colist_exists, list_exists.
   rewrite co_fold_cons...
   intro; apply continuous_disj.
 Qed.
@@ -929,7 +934,7 @@ Lemma colist_exists_elim {A} (P : A -> Prop) (a : A) (l : colist A) :
   colist_exists P (cocons a l) ->
   P a \/ colist_exists P l.
 Proof with eauto with order colist.
-  unfold colist_exists, alist_exists.
+  unfold colist_exists, list_exists.
   rewrite co_fold_cons...
   intro; apply continuous_disj.
 Qed.
@@ -959,7 +964,7 @@ Qed.
 Lemma colist_forall_elim1 {A} (P : A -> Prop) (a : A) (l : colist A) :
   colist_forall P (cocons a l) -> P a.
 Proof with eauto with order colist.
-  unfold colist_forall, alist_forall.
+  unfold colist_forall, list_forall.
   rewrite coop_fold_cons...
   intros []; auto.
 Qed.
@@ -968,7 +973,7 @@ Qed.
 Lemma colist_forall_elim2 {A} (P : A -> Prop) (a : A) (l : colist A) :
   colist_forall P (cocons a l) -> colist_forall P l.
 Proof with eauto with order colist.
-  unfold colist_forall, alist_forall.
+  unfold colist_forall, list_forall.
   rewrite coop_fold_cons...
   intros []; auto.
 Qed.
@@ -989,39 +994,39 @@ Proof with eauto with order colist.
     constructor; auto.
 Qed.
 
-Definition filter {A} (f : A -> bool) : alist A -> alist A :=
-  afold anil (fun a l' => if f a then acons a l' else l').
+Definition filter {A} (f : A -> bool) : list A -> list A :=
+  fold [] (fun a l' => if f a then a :: l' else l').
 
-Lemma alist_exists_filter {A} (a : A) (l : alist A) (P : A -> bool) :
+Lemma list_exists_filter {A} (a : A) (l : list A) (P : A -> bool) :
   P a = true ->
-  alist_exists (eq a) l ->
-  alist_exists (eq a) (filter P l).
+  list_exists (eq a) l ->
+  list_exists (eq a) (filter P l).
 Proof.
-  unfold filter, alist_exists.
+  unfold filter, list_exists.
   revert a P; induction l; simpl; intros x P HPx Hex; unfold id; auto.
   destruct Hex as [Hex|Hex]; subst.
   - rewrite HPx; left; auto.
   - destruct (P a) eqn:Hpa; simpl; auto.
 Qed.
 
-(* Lemma alist_exists_filter {A} (a : A) (l : alist A) (P : A -> bool) : *)
+(* Lemma list_exists_filter {A} (a : A) (l : list A) (P : A -> bool) : *)
 (*   P a = true -> *)
-(*   alist_exists (eq a) l -> *)
-(*   alist_exists (eq a) (filter P l). *)
+(*   list_exists (eq a) l -> *)
+(*   list_exists (eq a) (filter P l). *)
 (* Proof. *)
 (*   unfold filter. *)
 (*   revert a P; induction l; intros x P HPx Hex; inv Hex; simpl. *)
 (*   - constructor; auto. *)
 (*   - rewrite HPx; constructor; auto. *)
 (*   - destruct (P a) eqn:HPa. *)
-(*     + apply alist_exists_tl; auto. *)
+(*     + apply list_exists_tl; auto. *)
 (*     + constructor; auto. *)
 (* Qed. *)
 
 (** Filtering colists. *)
 
-Lemma prefix_inj_le {A} (l : alist A) (i : nat) :
-  alist_le (prefix i (inj l)) l.
+Lemma prefix_inj_le {A} (l : list A) (i : nat) :
+  list_le (prefix i (inj l)) l.
 Proof.
   revert l; induction i; simpl; intro l.
   { constructor. }
@@ -1030,24 +1035,24 @@ Proof.
   - constructor; auto.
 Qed.
 
-(* Lemma colist_forall_inj {A} (P : A -> Prop) (l : alist A) : *)
-(*   alist_forall P l -> *)
+(* Lemma colist_forall_inj {A} (P : A -> Prop) (l : list A) : *)
+(*   list_forall P l -> *)
 (*   colist_forall P (inj l). *)
 (* Proof with eauto with colist order. *)
 (*   intro Hl. *)
 (*   apply coop_intro... *)
 (*   intro i. *)
 (*   unfold ideal; simpl; unfold flip. *)
-(*   eapply antimonotone_alist_forall; eauto. *)
+(*   eapply antimonotone_list_forall; eauto. *)
 (*   apply prefix_inj_le. *)
 (* Qed. *)
 
-Lemma alist_forall_impl {A} (P Q : A -> Prop) (l : alist A) :
+Lemma list_forall_impl {A} (P Q : A -> Prop) (l : list A) :
   (forall x, P x -> Q x) ->
-  alist_forall P l ->
-  alist_forall Q l.
+  list_forall P l ->
+  list_forall Q l.
 Proof.
-  unfold alist_forall; induction l; intros HPQ HP; simpl; auto.
+  unfold list_forall; induction l; intros HPQ HP; simpl; auto.
   destruct HP; split; auto.
 Qed.
 
@@ -1059,66 +1064,66 @@ Proof with eauto with colist order aCPO.
   intros HPQ HP.
   apply coop_intro...
   intro i; apply coop_elim with (i:=i)in HP...
-  eapply alist_forall_impl; eauto.
+  eapply list_forall_impl; eauto.
 Qed.
 
-Lemma alist_forall_afilter {A} (P : A -> Prop) (Q : A -> bool) (l : alist A) :
-  alist_forall P l ->
-  alist_forall (fun x => P x /\ Q x = true) (filter Q l).
+Lemma list_forall_afilter {A} (P : A -> Prop) (Q : A -> bool) (l : list A) :
+  list_forall P l ->
+  list_forall (fun x => P x /\ Q x = true) (filter Q l).
 Proof.
-  unfold alist_forall, filter; induction l; intro Hl; simpl; unfold id; auto.
+  unfold list_forall, filter; induction l; intro Hl; simpl; unfold id; auto.
   destruct Hl; destruct (Q a) eqn:HQa; simpl; auto.
 Qed.
 
-(* Inductive alist_colist_le {A} : alist A -> colist A -> Prop := *)
-(* | alist_colist_le_nil : forall l, alist_colist_le anil l *)
-(* | alist_colist_le_cons : forall x l1 l2, *)
-(*     alist_colist_le l1 l2 -> *)
-(*     alist_colist_le (acons x l1) (cocons x l2). *)
-(* #[global] Hint Constructors alist_colist_le : colist. *)
+(* Inductive list_colist_le {A} : list A -> colist A -> Prop := *)
+(* | list_colist_le_nil : forall l, list_colist_le [] l *)
+(* | list_colist_le_cons : forall x l1 l2, *)
+(*     list_colist_le l1 l2 -> *)
+(*     list_colist_le (acons x l1) (cocons x l2). *)
+(* #[global] Hint Constructors list_colist_le : colist. *)
 
 (* #[global] *)
-(*   Instance antimonotone_alist_colist_le {A} : Proper (leq ==> flip leq) (@alist_colist_le A). *)
+(*   Instance antimonotone_list_colist_le {A} : Proper (leq ==> flip leq) (@list_colist_le A). *)
 (* Proof. *)
 (*   intro a; induction a; intros b Hab l Hl. *)
 (*   { constructor. } *)
 (*   inv Hab; inv Hl. *)
 (*   constructor; eapply IHa; eauto. *)
 (* Qed. *)
-(* #[global] Hint Resolve antimonotone_alist_colist_le : colist. *)
+(* #[global] Hint Resolve antimonotone_list_colist_le : colist. *)
 
-(* note: this can be generalized by alist_colist_R. *)
-Definition alist_colist_le {A} : alist A ->  colist A -> Prop :=
-  afold (const True) (fun a f l => match l with
+(* note: this can be generalized by list_colist_R. *)
+Definition list_colist_le {A} : list A ->  colist A -> Prop :=
+  fold (const True) (fun a f l => match l with
                              | conil => False
                              | cocons b l' => a = b /\ f l'
                              end).
 
 #[global]
-  Instance antimonotone_alist_colist_le {A} : Proper (leq ==> flip leq) (@alist_colist_le A).
+  Instance antimonotone_list_colist_le {A} : Proper (leq ==> flip leq) (@list_colist_le A).
 Proof.
-  apply antimonotone_afold.
+  apply antimonotone_fold.
   - intros ? ? ?; apply I.
   - intros a f g Hfg l Hl; destruct l; auto.
     destruct Hl; subst; split; auto.
     apply Hfg; auto.
 Qed.
-#[global] Hint Resolve antimonotone_alist_colist_le : colist.
+#[global] Hint Resolve antimonotone_list_colist_le : colist.
 
 Definition colist_le' {A} : colist A -> colist A -> Prop :=
-  coop alist_colist_le.
+  coop list_colist_le.
 
 Lemma colist_le'_nil {A} (l : colist A) :
   colist_le' conil l.
 Proof with eauto with colist order aCPO.
-  unfold colist_le', alist_colist_le.
+  unfold colist_le', list_colist_le.
   apply coop_intro2...
   intros []; apply I.
 Qed.
 
-Lemma alist_colist_le_prefix {A} (l1 l2 : colist A) (i : nat) :
+Lemma list_colist_le_prefix {A} (l1 l2 : colist A) (i : nat) :
   l1 ⊑ l2 ->
-  alist_colist_le (prefix i l1) l2.
+  list_colist_le (prefix i l1) l2.
 Proof.
   revert l1 l2; induction i; intros l1 l2 Hle; simpl.
   { constructor. }
@@ -1152,7 +1157,7 @@ Proof with eauto with colist order aCPO.
   - intro Hle.
     unfold colist_le'.
     apply coop_intro2...
-    intro i; apply alist_colist_le_prefix; auto.
+    intro i; apply list_colist_le_prefix; auto.
   - revert l1 l2; cofix CH; intros l1 l2 Hle.
     destruct l1.
     { constructor. }
@@ -1160,8 +1165,8 @@ Proof with eauto with colist order aCPO.
     destruct Hle as [l2' [? Hle]]; subst; constructor; apply CH; auto.
 Qed.
 
-Lemma alist_forall_filter {A} (P : A -> bool) (l : alist A) :
-  alist_forall (fun x => P x = true) (filter P l).
+Lemma list_forall_filter {A} (P : A -> bool) (l : list A) :
+  list_forall (fun x => P x = true) (filter P l).
 Proof.
   unfold filter.
   induction l; simpl.
@@ -1171,13 +1176,13 @@ Proof.
   - auto.
 Qed.
 
-Inductive alist_nth {A} (P : A -> Prop) : nat -> alist A -> Prop :=
-| alist_nth_here : forall a l,
+Inductive list_nth {A} (P : A -> Prop) : nat -> list A -> Prop :=
+| list_nth_here : forall a l,
     P a ->
-    alist_nth P O (acons a l)
-| alist_nth_there : forall n a l,
-    alist_nth P n l ->
-    alist_nth P (S n) (acons a l).
+    list_nth P O (a :: l)
+| list_nth_there : forall n a l,
+    list_nth P n l ->
+    list_nth P (S n) (a :: l).
 
 Inductive nth' {A} (P : A -> Prop) : nat -> colist A -> Prop :=
 | nth'_here : forall a l,
@@ -1196,9 +1201,9 @@ Inductive nth {A} (P : A -> Prop) : nat -> colist A -> Prop :=
     nth P n l ->
     nth P (S n) (cocons a l).
 
-Lemma nth_alist_exists_prefix {A} (P : A -> Prop) (l : colist A) (n : nat) :
+Lemma nth_list_exists_prefix {A} (P : A -> Prop) (l : colist A) (n : nat) :
   nth P n l ->
-  alist_exists P (prefix (S n) l).
+  list_exists P (prefix (S n) l).
 Proof.
   revert l; induction n; intros m Hm; inv Hm; simpl.
   { left; auto. }
@@ -1228,10 +1233,10 @@ Proof with eauto with colist order aCPO.
     intro HP; apply Hl'; constructor; auto.
 Qed.
 
-Lemma alist_forall_conj {A} (P Q : A -> Prop) (l : alist A) :
-  alist_forall P l ->
-  alist_forall Q l ->
-  alist_forall (fun x => P x /\ Q x) l.
+Lemma list_forall_conj {A} (P Q : A -> Prop) (l : list A) :
+  list_forall P l ->
+  list_forall Q l ->
+  list_forall (fun x => P x /\ Q x) l.
 Proof.
   induction l; intros HP HQ; inv HP; inv HQ; constructor; auto.
   apply IHl; auto.
@@ -1247,12 +1252,12 @@ Proof with eauto with colist order aCPO.
   intro i.
   apply coop_elim with (i:=i) in HP...
   apply coop_elim with (i:=i) in HQ...
-  apply alist_forall_conj; auto.
+  apply list_forall_conj; auto.
 Qed.
 
-Lemma alist_forall_filter' {A} (P : A -> Prop) (Q : A -> bool) (l : alist A) :
-  alist_forall P l ->
-  alist_forall P (filter Q l).
+Lemma list_forall_filter' {A} (P : A -> Prop) (Q : A -> bool) (l : list A) :
+  list_forall P l ->
+  list_forall P (filter Q l).
 Proof.
   unfold filter.
   induction l; intro Hl; inv Hl; simpl.
@@ -1261,28 +1266,28 @@ Proof.
   apply IHl; auto.
 Qed.
 
-Definition alist_length {A} : alist A -> conat :=
-  afold cozero (fun _ => cosucc).
+Definition list_length {A} : list A -> conat :=
+  fold cozero (fun _ => cosucc).
 
-Definition alist_length' {A} : alist A -> nat :=
-  afold O (fun _ => S).
+Definition list_length' {A} : list A -> nat :=
+  fold O (fun _ => S).
 
 #[global]
-  Instance monotone_alist_length {A} : Proper (leq ==> leq) (@alist_length A).
+  Instance monotone_list_length {A} : Proper (leq ==> leq) (@list_length A).
 Proof.
-  apply monotone_afold.
+  apply monotone_fold.
   { intro; constructor. }
   intros _; apply continuous_monotone, continuous_cosucc.
 Qed.
 
 Definition colist_length {A} : colist A -> conat :=
-  co alist_length.
+  co list_length.
 
 Definition cofold {A B} `{o: PType B} (f : A -> B -> B) : colist A -> B :=
-  co (afold ⊥ f).
+  co (fold ⊥ f).
 
 Definition coopfold {A B} `{o: TType B} (f : A -> B -> B) : colist A -> B :=
-  coop (afold ⊤ f).
+  coop (fold ⊤ f).
 
 Lemma cofold_nil {A B} `{o : OType B} `{@PType B o} `{@dCPO B o} (f : A -> B -> B) :
    cofold f conil === ⊥.
@@ -1353,32 +1358,32 @@ Lemma colist_length_inj {A} (l : colist A) (n : nat) :
   exists al, l = inj al.
 Proof with eauto with colist conat order aCPO.
   revert l; induction n; simpl; intros l Hl.
-  { exists anil; destruct l.
+  { exists []; destruct l.
     - reflexivity.
-    - unfold colist_length, alist_length in Hl.
+    - unfold colist_length, list_length in Hl.
       rewrite co_fold_cons' in Hl...
       inv Hl. }
   destruct l.
-  - exists anil; reflexivity.
-  - unfold colist_length, alist_length in Hl.
+  - exists []; reflexivity.
+  - unfold colist_length, list_length in Hl.
     rewrite co_fold_cons' in Hl...
     inv Hl.
     apply IHn in H0.
     destruct H0 as [al ?]; subst.
-    exists (acons a al); auto.
+    exists (a :: al); auto.
 Qed.
 
-Lemma not_alist_nth_alist_length {A} (P : A -> Prop) (l : alist A) :
-  ~ alist_nth P (alist_length' l) l.
+Lemma not_list_nth_list_length {A} (P : A -> Prop) (l : list A) :
+  ~ list_nth P (list_length' l) l.
 Proof.
-  unfold alist_length'.
+  unfold list_length'.
   induction l; simpl; intro HC; inv HC.
   apply IHl; auto.
 Qed.
 
-Lemma nth'_inj_alist_nth {A} (P : A -> Prop) (n : nat) (l : alist A) :
+Lemma nth'_inj_list_nth {A} (P : A -> Prop) (n : nat) (l : list A) :
   nth' P n (inj l) ->
-  alist_nth P n l.
+  list_nth P n l.
 Proof.
   revert n; induction l; intros n Hn; inv Hn; constructor; auto.
 Qed.
@@ -1392,11 +1397,11 @@ Proof with eauto with colist conat order aCPO.
     exfalso.
     apply colist_length_inj in Hm.
     destruct Hm as [al Hal]; subst.
-    specialize (H (alist_length' al)).
-    apply nth'_inj_alist_nth in H.
-    eapply not_alist_nth_alist_length; eauto.
+    specialize (H (list_length' al)).
+    apply nth'_inj_list_nth in H.
+    eapply not_list_nth_list_length; eauto.
   - intro n; revert H; revert l.
-    unfold colist_length, alist_length.
+    unfold colist_length, list_length.
     induction n; intros l Hl.
     { destruct l.
       - rewrite co_fold_nil', (@conat.unf_eq omega) in Hl; inv Hl.
@@ -1425,7 +1430,7 @@ Lemma not_productive_conil {A} :
   ~ productive'' (@conil A).
 Proof.
   unfold productive''.
-  unfold colist_length, alist_length.
+  unfold colist_length, list_length.
   rewrite co_fold_nil'; intro HC.
   rewrite (@conat.unf_eq omega) in HC; inv HC.
 Qed.
@@ -1436,37 +1441,37 @@ Proof with eauto with colist conat order aCPO.
   unfold productive''.
   intro Hgen.
   rewrite (@conat.unf_eq omega) in Hgen.
-  unfold colist_length, alist_length in Hgen.
+  unfold colist_length, list_length in Hgen.
   rewrite co_fold_cons' in Hgen...
   inv Hgen; auto.
 Qed.
 
-Definition alist_R {A B} (R : A -> B -> Prop) : alist A -> alist B -> Prop :=
-  afold (const True) (fun a f l => match l with
-                             | anil => False
-                             | acons b l' => R a b /\ f l'
+Definition list_R {A B} (R : A -> B -> Prop) : list A -> list B -> Prop :=
+  fold (const True) (fun a f l => match l with
+                             | [] => False
+                             | b :: l' => R a b /\ f l'
                              end).
 
-Definition alist_colist_R {A B} (R : A -> B -> Prop) : alist A -> colist B -> Prop :=
-  afold (const True) (fun a f l => match l with
+Definition list_colist_R {A B} (R : A -> B -> Prop) : list A -> colist B -> Prop :=
+  fold (const True) (fun a f l => match l with
                              | conil => False
                              | cocons b l' => R a b /\ f l'
                              end).
 
 #[global]
-  Instance antimonotone_alist_colist_R {A B} (R : A -> B -> Prop)
-  : Proper (leq ==> flip leq) (alist_colist_R R).
+  Instance antimonotone_list_colist_R {A B} (R : A -> B -> Prop)
+  : Proper (leq ==> flip leq) (list_colist_R R).
 Proof.
-  apply antimonotone_afold.
+  apply antimonotone_fold.
   { intro; constructor. }
   intros a f g Hfg l Hl; destruct l; auto.
   destruct Hl; subst; split; auto.
   apply Hfg; auto.
 Qed.
-#[global] Hint Resolve antimonotone_alist_colist_R : colist.
+#[global] Hint Resolve antimonotone_list_colist_R : colist.
 
 Definition colist_R {A B} (R : A -> B -> Prop) : colist A -> colist B -> Prop :=
-  coop (alist_colist_R R).
+  coop (list_colist_R R).
 
 Lemma colist_R_cons_nil {A B} (R : A -> B -> Prop) (a : A) (l1 : colist A) :
   ~ colist_R R (cocons a l1) conil.
@@ -1492,15 +1497,15 @@ Proof with eauto with colist order aCPO.
     apply coop_elim2 with (i:=n) in H1...
 Qed.
 
-Fixpoint list_of_alist {A} (l : alist A) : list A :=
+Fixpoint list_of_list {A} (l : list A) : list A :=
   match l with
-  | anil => []
-  | acons a l' => a :: list_of_alist l'
+  | [] => []
+  | a :: l' => a :: list_of_list l'
   end.
 
-Lemma Forall_alist_of_list {A} (P : A -> Prop) (l : alist A) :
-  Forall P (list_of_alist l) ->
-  alist_forall P l.
+Lemma Forall_list_of_list {A} (P : A -> Prop) (l : list A) :
+  Forall P (list_of_list l) ->
+  list_forall P l.
 Proof.
   induction l; intro Hall.
   { constructor. }
@@ -1509,28 +1514,28 @@ Proof.
 Qed.
 
 (** Is it possible to write this as a fold? Don't think so. *)
-Inductive alist_ordered {A} (R : A -> A -> Prop) : alist A -> Prop :=
-| alist_ordered_nil : alist_ordered R anil
-| alist_ordered_cons : forall a l,
-    alist_forall (R a) l ->
-    alist_ordered R l ->
-    alist_ordered R (acons a l).
+Inductive list_ordered {A} (R : A -> A -> Prop) : list A -> Prop :=
+| list_ordered_nil : list_ordered R []
+| list_ordered_cons : forall a l,
+    list_forall (R a) l ->
+    list_ordered R l ->
+    list_ordered R (a :: l).
 
 #[global]
-  Instance antimonotone_alist_ordered {A} (R : A -> A -> Prop)
-  : Proper (leq ==> flip leq) (alist_ordered R).
+  Instance antimonotone_list_ordered {A} (R : A -> A -> Prop)
+  : Proper (leq ==> flip leq) (list_ordered R).
 Proof.
   intro a; induction a; intros b Hab Hordered.
   { constructor. }
   inv Hab; inv Hordered.
   constructor.
-  - eapply antimonotone_alist_forall; eauto.
+  - eapply antimonotone_list_forall; eauto.
   - eapply IHa; eauto.
 Qed.
-#[global] Hint Resolve antimonotone_alist_ordered : colist.
+#[global] Hint Resolve antimonotone_list_ordered : colist.
 
 Definition ordered {A} (R : A -> A -> Prop) : colist A -> Prop :=
-  coop (alist_ordered R).
+  coop (list_ordered R).
 
 Lemma ordered_nil {A} (R : A -> A -> Prop) :
   ordered R conil.
@@ -1569,8 +1574,8 @@ Definition filter_f {A} (f : A -> bool) : A -> colist A -> colist A :=
   fun a l' => if f a then cocons a l' else l'.
 
 (** Monotone basis function for filter. *)
-Definition afilter {A} (f : A -> bool) : alist A -> colist A :=
-  afold ⊥ (filter_f f).
+Definition afilter {A} (f : A -> bool) : list A -> colist A :=
+  fold ⊥ (filter_f f).
 
 (** Filter comorphism. *)
 Definition cofilter {A} (f : A -> bool) : colist A -> colist A :=
@@ -1587,14 +1592,14 @@ Qed.
 #[global]
   Instance monotone_afilter {A} (f : A -> bool) : Proper (leq ==> leq) (afilter f).
 Proof.
-  apply monotone_afold; eauto with order colist; intro; apply bot_le.
+  apply monotone_fold; eauto with order colist; intro; apply bot_le.
 Qed.
 #[global] Hint Resolve monotone_afilter : colist.
 
 Lemma continuous_cofilter {A} (f : A -> bool) :
   continuous (cofilter f).
 Proof.
-  apply continuous_co, monotone_afold; eauto with order colist.
+  apply continuous_co, monotone_fold; eauto with order colist.
 Qed.
 #[global] Hint Resolve continuous_cofilter : colist.
 
@@ -1619,7 +1624,7 @@ Proof with eauto with colist order aCPO.
     rewrite HPa; auto.
 Qed.
 
-Lemma cofilter_inj_filter {A} (P : A -> bool) (l : alist A) :
+Lemma cofilter_inj_filter {A} (P : A -> bool) (l : list A) :
   cofilter P (inj l) = inj (filter P l).
 Proof with eauto with colist order.
   unfold cofilter, filter_f, filter.
@@ -1629,11 +1634,11 @@ Proof with eauto with colist order.
     destruct (P a); auto.
 Qed.
 
-Lemma alist_forall_colist_le'_afilter {A} (P : A -> bool) (l : alist A) :
-  alist_forall (fun x : A => P x <> true) l ->
+Lemma list_forall_colist_le'_afilter {A} (P : A -> bool) (l : list A) :
+  list_forall (fun x : A => P x <> true) l ->
   colist_le' (afilter P l) conil.
 Proof with eauto with colist order.
-  unfold colist_le', alist_colist_le, afilter, filter_f.
+  unfold colist_le', list_colist_le, afilter, filter_f.
   induction l; intro Hl; simpl.
   { apply coop_intro2...
     intros []; apply I. }
@@ -1660,7 +1665,7 @@ Proof with eauto with colist order aCPO.
       apply apply_infimum, cocontinuous_coop... }
     intro i.
     apply coop_elim with (i:=i) in Hl...
-    apply alist_forall_colist_le'_afilter; auto.
+    apply list_forall_colist_le'_afilter; auto.
   - constructor.
 Qed.
 
@@ -1704,11 +1709,11 @@ Proof with eauto with colist order aCPO.
   generalize (prefix_cofilter P l i).
   intros [j Hj].
   rewrite Hj.
-  apply alist_forall_filter.
+  apply list_forall_filter.
 Qed.
 
-Lemma colist_forall_inj {A} (P : A -> Prop) (l : alist A) :
-  alist_forall P l ->
+Lemma colist_forall_inj {A} (P : A -> Prop) (l : list A) :
+  list_forall P l ->
   colist_forall P (inj l).
 Proof with eauto with colist order.
   induction l; intro Hl; simpl.
@@ -1716,8 +1721,8 @@ Proof with eauto with colist order.
   - apply colist_forall_intro; destruct Hl; auto.
 Qed.
 
-Lemma alist_forall_colist_forall_afilter {A} (P : A -> Prop) Q l :
-  alist_forall P l ->
+Lemma list_forall_colist_forall_afilter {A} (P : A -> Prop) Q l :
+  list_forall P l ->
   colist_forall P (afilter Q l).
 Proof.
   unfold afilter, filter_f.
@@ -1728,8 +1733,8 @@ Proof.
   apply colist_forall_cons; auto.
 Qed.
 
-Lemma alist_ordered_ordered_afilter {A} (R : A -> A -> Prop) P l :
-  alist_ordered R l ->
+Lemma list_ordered_ordered_afilter {A} (R : A -> A -> Prop) P l :
+  list_ordered R l ->
   ordered R (afilter P l).
 Proof.
   unfold afilter, filter_f.
@@ -1738,7 +1743,7 @@ Proof.
   inv Hord.
   destruct (P a) eqn:HPa; auto.
   apply ordered_cons; split; auto.
-  apply alist_forall_colist_forall_afilter; auto.
+  apply list_forall_colist_forall_afilter; auto.
 Qed.
 
 Lemma ordered_cofilter {A} (R : A -> A -> Prop) (P : A -> bool) (l : colist A) :
@@ -1748,12 +1753,11 @@ Proof with eauto with colist order aCPO.
   intro Hord.
   unfold cofilter, cofold.
   apply co_coopP...
-  { apply cocontinuous_coop... }
+  (* { apply cocontinuous_coop... } *)
   apply coop_intro.
-  { apply monotone_antimonotone_compose...
-    apply cocontinuous_antimonotone, cocontinuous_coop... }
+  { apply monotone_antimonotone_compose... }
   intro i; simpl; unfold flip, compose.
-  apply alist_ordered_ordered_afilter.
+  apply list_ordered_ordered_afilter.
   apply coop_elim with (i:=i) in Hord...
 Qed.
 
@@ -1769,7 +1773,7 @@ Proof with eauto with colist order aCPO.
   simpl; unfold flip.
   rewrite Hj.
   apply coop_elim with (i:=j) in Hl...
-  apply alist_forall_filter'; auto.
+  apply list_forall_filter'; auto.
 Qed.
 
 Lemma colist_forall_cofilter_conj {A} (P : A -> Prop) (Q : A -> bool) (l : colist A) :
@@ -1788,13 +1792,13 @@ Definition map_f {A B} (f : A -> B) : A -> colist B -> colist B :=
   fun a l => cocons (f a) l.
 
 (** Monotone basis function for map. *)
-Definition amap {A B} (f : A -> B) : alist A -> colist B :=
-  afold (@conil B) (map_f f).
+Definition amap {A B} (f : A -> B) : list A -> colist B :=
+  fold (@conil B) (map_f f).
 
 #[global]
   Instance monotone_amap {A B} (f : A -> B) : Proper (leq ==> leq) (amap f).
 Proof.
-  apply monotone_afold; eauto with order colist; intro; apply bot_le.
+  apply monotone_fold; eauto with order colist; intro; apply bot_le.
 Qed.
 #[global] Hint Resolve monotone_amap : colist.
 
@@ -1817,13 +1821,13 @@ Qed.
 (*** cosum *)
 
 (** Monotone basis function for sum. *)
-Definition asum : alist eR -> eR :=
-  afold 0 eRplus.
+Definition sum : list eR -> eR :=
+  fold 0 eRplus.
 
 #[global]
-  Instance monotone_asum : Proper (leq ==> leq) asum.
-Proof. apply monotone_afold; eauto with eR order colist. Qed.
-#[global] Hint Resolve monotone_asum : colist.
+  Instance monotone_sum : Proper (leq ==> leq) sum.
+Proof. apply monotone_fold; eauto with eR order colist. Qed.
+#[global] Hint Resolve monotone_sum : colist.
 
 (** Map comorphism. *)
 Definition cosum : colist eR -> eR :=
@@ -1831,7 +1835,7 @@ Definition cosum : colist eR -> eR :=
 
 Lemma continuous_cosum :
   continuous cosum.
-Proof. apply continuous_co, monotone_asum. Qed.
+Proof. apply continuous_co, monotone_sum. Qed.
 
 (** Computation rule for sum. *)
 Lemma cosum_cons (a : eR) (l : colist eR) :

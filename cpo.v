@@ -100,12 +100,12 @@ Proof. intro Hf; unfold inf; destruct inf_prim; simpl; apply i, H0; auto. Qed.
 #[global]
   Instance CPO_dCPO {A} `{CPO A} : dCPO A.
 Proof. constructor; intros f Hf; apply H0. Qed.
-#[global] Hint Unfold CPO_dCPO : order.
+#[global] Hint Resolve CPO_dCPO : order.
 
 #[global]
   Instance lCPO_ldCPO {A} `{lCPO A} : ldCPO A.
 Proof. constructor; intros f Hf; apply H0. Qed.
-#[global] Hint Unfold lCPO_ldCPO : order.
+#[global] Hint Resolve lCPO_ldCPO : order.
 
 (** [Prop] has suprema and infima. *)
 
@@ -116,7 +116,7 @@ Proof.
   - intros i Hi; exists i; auto.
   - intros ub Hub [i Hi]; eapply Hub; eauto.
 Qed.
-#[global] Hint Unfold CPO_Prop : order.
+#[global] Hint Resolve CPO_Prop : order.
 
 #[global]
   Instance lCPO_Prop : lCPO Prop.
@@ -125,11 +125,11 @@ Proof.
   - intros i Hi; auto.
   - intros ub Hub x i; apply Hub; auto.
 Qed.
-#[global] Hint Unfold lCPO_Prop : order.
+#[global] Hint Resolve lCPO_Prop : order.
 
 #[global]
   Instance Lattice_Prop : Lattice Prop. Qed.
-#[global] Hint Unfold Lattice_Prop : order.
+#[global] Hint Resolve Lattice_Prop : order.
 
 Lemma ge_inf {A} `{lCPO A} (f : nat -> A) (a : A) (i : nat) :
   f i ⊑ a ->
@@ -212,6 +212,24 @@ Proof.
   - intros i x; eapply le_sup; reflexivity.
   - intros g Hg x; apply ge_sup; intro i; apply Hg.
 Qed.
+
+#[global]
+  Instance dCPO_prod {A B} `{dCPO A} `{dCPO B} : dCPO (A * B).
+Proof.
+  constructor; intros ch Hch.
+  destruct H0.
+  specialize (exists_dsup0 (fst ∘ ch) (directed_fst _ Hch)).
+  destruct exists_dsup0 as [a Ha].
+  destruct H2.
+  specialize (exists_dsup0 (snd ∘ ch) (directed_snd _ Hch)).
+  destruct exists_dsup0 as [b Hb].
+  exists (a, b); apply supremum_prod; auto.
+Qed.
+
+#[global]
+  Instance dCPO_sum {A B} `{dCPO A} `{dCPO B} : dCPO (A + B).
+Proof.
+Admitted.
 
 Lemma sup_const {A} `{CPO A} (a : A) :
   sup (fun _ => a) === a.

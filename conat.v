@@ -650,7 +650,11 @@ Qed.
 
 #[global]
   Instance Compact_nat : Compact nat.
-Proof. constructor; intros a f Hf Ha; apply nat_compact; auto. Qed.
+Proof.
+  constructor; intros a f Hf Ha.
+  apply nat_compact in Ha; auto.
+  destruct Ha as [i Ha]; subst; exists i; reflexivity.
+Qed.
 
 #[global]
   Instance Dense_conat : Dense conat nat :=

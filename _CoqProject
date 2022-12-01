@@ -15,7 +15,9 @@ inf_primes.v
 misc.v
 mu.v
 order.v
+prod.v
 Q.v
 R.v
 sieve.v
+sum.v
 tactics.v
