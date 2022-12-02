@@ -523,6 +523,8 @@ Lemma cotwp_linear {A} (c : eR) (f g : A -> eR) (t : cotree bool A) :
   cotwp (fun a => c * f a + g a) t = c * cotwp f t + cotwp g t.
 Proof. rewrite cotwp_sum, cotwp_scalar; reflexivity. Qed.
 
+Lemma markov_inequality {A} (f : A -> eR) (t : cotree bool A)
+
 Lemma cotree_bind_iid_chain_ {A} t i :
   cotree_bind (iid_chain_ t i)
     (fun x : unit + A => match x with
@@ -737,7 +739,7 @@ Proof.
     f_equal; rewrite eRplus_combine_fract; f_equal; apply H; auto.
 Qed.
 
-Theorem cotwp_cotwlp_sum_1 {A} (f : A -> eR) (t : cotree bool A) :
+Lemma cotwp_cotwlp_sum_1 {A} (f : A -> eR) (t : cotree bool A) :
   bounded f 1 ->
   cotwp f t + cotwlp (fun x => 1 - f x) t = 1.
 Proof.
