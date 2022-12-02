@@ -359,6 +359,16 @@ Section aCPO.
       intro i; unfold compose.
       etransitivity; eauto.
   Qed.
+  
+  Corollary co_unique_ext {C} `{o : OType C} `{@dCPO C o} `{@ExtType C o}
+    (f : basis A -> C) (g : A -> C) :
+    monotone f ->
+    continuous g ->
+    g ∘ incl = f ->
+    g = co f.
+  Proof.
+    intros Hf Hg Heq; apply ext, co_unique; auto; rewrite Heq; reflexivity.
+  Qed.
 
   Lemma continuous_incl_ideal (P : A -> Prop) (a : A) :
     continuous P ->
@@ -390,41 +400,41 @@ Section aCPO.
     apply Hlb; auto.
   Qed.
 
-  (** Continuously constrained uniqueness principle (more powerful). *)
-  Theorem co_unique_continuous_P {C} `{dCPO C} (P : A -> Prop) (f : basis A -> C) (g : A -> C) (a : A) :
-    continuous P ->
-    monotone f ->
-    continuous g ->
-    P a ->
-    ((exists i, P (incl (ideal a i))) ->
-     forall i, g (incl (ideal a i)) === f (ideal a i)) ->
-    g a === co f a.
-  Proof.
-    unfold basis, compose in *; intros HP Hf Hg HPa Hgf.
-    symmetry.
-    apply supremum_sup.
-    split.
-    - intro i; unfold compose.
-      apply continuous_incl_ideal in HPa; auto.
-      specialize (Hgf HPa).
-      rewrite <- Hgf.
-      apply continuous_monotone; auto.
-      apply incl_ideal_le.
-    - intros c Hc.
-      simpl in *.
-      destruct H as [? ? ? ? Hsup].
-      pose proof (Hsup a) as Ha.
-      apply Hg in Ha.
-      2: { apply directed_f_ideal; auto.
-           apply monotone_incl. }
-      destruct Ha as [Hub Hlub].
-      apply Hlub.
-      intro i; unfold compose.
-      unfold compose in *.
-      rewrite Hgf.
-      2: { apply continuous_incl_ideal; auto. }
-      eauto.
-  Qed.
+  (* (** Continuously constrained uniqueness principle (more powerful). *) *)
+  (* Theorem co_unique_continuous_P {C} `{dCPO C} (P : A -> Prop) (f : basis A -> C) (g : A -> C) (a : A) : *)
+  (*   continuous P -> *)
+  (*   monotone f -> *)
+  (*   continuous g -> *)
+  (*   P a -> *)
+  (*   ((exists i, P (incl (ideal a i))) -> *)
+  (*    forall i, g (incl (ideal a i)) === f (ideal a i)) -> *)
+  (*   g a === co f a. *)
+  (* Proof. *)
+  (*   unfold basis, compose in *; intros HP Hf Hg HPa Hgf. *)
+  (*   symmetry. *)
+  (*   apply supremum_sup. *)
+  (*   split. *)
+  (*   - intro i; unfold compose. *)
+  (*     apply continuous_incl_ideal in HPa; auto. *)
+  (*     specialize (Hgf HPa). *)
+  (*     rewrite <- Hgf. *)
+  (*     apply continuous_monotone; auto. *)
+  (*     apply incl_ideal_le. *)
+  (*   - intros c Hc. *)
+  (*     simpl in *. *)
+  (*     destruct H as [? ? ? ? Hsup]. *)
+  (*     pose proof (Hsup a) as Ha. *)
+  (*     apply Hg in Ha. *)
+  (*     2: { apply directed_f_ideal; auto. *)
+  (*          apply monotone_incl. } *)
+  (*     destruct Ha as [Hub Hlub]. *)
+  (*     apply Hlub. *)
+  (*     intro i; unfold compose. *)
+  (*     unfold compose in *. *)
+  (*     rewrite Hgf. *)
+  (*     2: { apply continuous_incl_ideal; auto. } *)
+  (*     eauto. *)
+  (* Qed. *)
 
   (* (** Cocontinuously constrained uniqueness principle (more powerful). *) *)
   (* Theorem co_unique_cocontinuous_R {C} `{dCPO C} *)
@@ -464,41 +474,41 @@ Section aCPO.
   (*     eauto. *)
   (* Qed. *)
 
-  (** Cocontinuously constrained uniqueness principle (more powerful). *)
-  Theorem co_unique_cocontinuous_P {C} `{dCPO C}
-    (P : A -> Prop) (f : basis A -> C) (g : A -> C) (a : A) :
-    cocontinuous P ->
-    monotone f ->
-    continuous g ->
-    P a ->
-    ((forall i, P (incl (ideal a i))) ->
-     forall i, g (incl (ideal a i)) === f (ideal a i)) ->
-    g a === co f a.
-  Proof.
-    unfold basis, compose in *; intros HP Hf Hg HPa Hgf.
-    symmetry.
-    apply supremum_sup.
-    split.
-    - intro i; unfold compose.
-      rewrite <- Hgf.
-      2: { intro; apply cocontinuous_incl_ideal; auto. }
-      apply continuous_monotone; auto.
-      apply incl_ideal_le.
-    - intros c Hc.
-      simpl in *.
-      destruct H as [? ? ? ? Hsup].
-      pose proof (Hsup a) as Ha.
-      apply Hg in Ha.
-      2: { apply directed_f_ideal; auto.
-           apply monotone_incl. }
-      destruct Ha as [Hub Hlub].
-      apply Hlub.
-      intro i; unfold compose.
-      unfold compose in *.
-      rewrite Hgf.
-      2: { intro; apply cocontinuous_incl_ideal; auto. }
-      eauto.
-  Qed.
+  (* (** Cocontinuously constrained uniqueness principle (more powerful). *) *)
+  (* Theorem co_unique_cocontinuous_P {C} `{dCPO C} *)
+  (*   (P : A -> Prop) (f : basis A -> C) (g : A -> C) (a : A) : *)
+  (*   cocontinuous P -> *)
+  (*   monotone f -> *)
+  (*   continuous g -> *)
+  (*   P a -> *)
+  (*   ((forall i, P (incl (ideal a i))) -> *)
+  (*    forall i, g (incl (ideal a i)) === f (ideal a i)) -> *)
+  (*   g a === co f a. *)
+  (* Proof. *)
+  (*   unfold basis, compose in *; intros HP Hf Hg HPa Hgf. *)
+  (*   symmetry. *)
+  (*   apply supremum_sup. *)
+  (*   split. *)
+  (*   - intro i; unfold compose. *)
+  (*     rewrite <- Hgf. *)
+  (*     2: { intro; apply cocontinuous_incl_ideal; auto. } *)
+  (*     apply continuous_monotone; auto. *)
+  (*     apply incl_ideal_le. *)
+  (*   - intros c Hc. *)
+  (*     simpl in *. *)
+  (*     destruct H as [? ? ? ? Hsup]. *)
+  (*     pose proof (Hsup a) as Ha. *)
+  (*     apply Hg in Ha. *)
+  (*     2: { apply directed_f_ideal; auto. *)
+  (*          apply monotone_incl. } *)
+  (*     destruct Ha as [Hub Hlub]. *)
+  (*     apply Hlub. *)
+  (*     intro i; unfold compose. *)
+  (*     unfold compose in *. *)
+  (*     rewrite Hgf. *)
+  (*     2: { intro; apply cocontinuous_incl_ideal; auto. } *)
+  (*     eauto. *)
+  (* Qed. *)
 
   (* (** Cocontinuously constrained uniqueness principle (more powerful). *) *)
   (* Theorem co_unique_cocontinuous_P {C} `{dCPO C} (P : A -> Prop) (f : basis A -> C) (g : A -> C) : *)
@@ -610,40 +620,50 @@ Section aCPO.
     - apply directed_f_ideal, monotone_incl.
   Qed.
 
-  (** Cocontinuously constrained uniqueness principle (more powerful). *)
-  Theorem coop_unique_constrained {C} `{ldCPO C} (P : A -> Prop) (f : basis A -> C) (g : A -> C) :
-    cocontinuous P ->
+  Corollary coop_unique_ext {C} `{o : OType C} `{@ldCPO C o} `{@ExtType C o}
+    (f : basis A -> C) (g : A -> C) :
     antimonotone f ->
     cocontinuous g ->
-    (forall b, P (incl b) -> g (incl b) === f b) ->
-    forall a, P a -> g a === coop f a.
+    g ∘ incl = f ->
+    g = coop f.
   Proof.
-    unfold basis, compose in *; intros HP Hf Hg Hgf a HPa.
-    symmetry.
-    apply infimum_inf.
-    split.
-    - intro i; unfold compose.
-      specialize (Hgf (ideal a i)).
-      apply cocontinuous_incl_ideal with (i:=i) in HPa; auto.
-      apply Hgf in HPa.
-      rewrite <- HPa.
-      apply cocontinuous_antimonotone; auto.
-      apply incl_ideal_le.
-    - intros c Hc.
-      simpl in *.
-      destruct H as [? ? ? ? Hsup].
-      pose proof (Hsup a) as Ha.
-      apply Hg in Ha.
-      2: { apply directed_f_ideal; auto.
-           apply monotone_incl. }
-      destruct Ha as [Hub Hlub].
-      apply Hlub.
-      intro i; unfold compose.
-      unfold compose in *.
-      rewrite Hgf.
-      2: { apply cocontinuous_incl_ideal; auto. }
-      eauto.
+    intros Hf Hg Heq; apply ext, coop_unique; auto; rewrite Heq; reflexivity.
   Qed.
+
+  (* (** Cocontinuously constrained uniqueness principle (more powerful). *) *)
+  (* Theorem coop_unique_constrained {C} `{ldCPO C} (P : A -> Prop) (f : basis A -> C) (g : A -> C) : *)
+  (*   cocontinuous P -> *)
+  (*   antimonotone f -> *)
+  (*   cocontinuous g -> *)
+  (*   (forall b, P (incl b) -> g (incl b) === f b) -> *)
+  (*   forall a, P a -> g a === coop f a. *)
+  (* Proof. *)
+  (*   unfold basis, compose in *; intros HP Hf Hg Hgf a HPa. *)
+  (*   symmetry. *)
+  (*   apply infimum_inf. *)
+  (*   split. *)
+  (*   - intro i; unfold compose. *)
+  (*     specialize (Hgf (ideal a i)). *)
+  (*     apply cocontinuous_incl_ideal with (i:=i) in HPa; auto. *)
+  (*     apply Hgf in HPa. *)
+  (*     rewrite <- HPa. *)
+  (*     apply cocontinuous_antimonotone; auto. *)
+  (*     apply incl_ideal_le. *)
+  (*   - intros c Hc. *)
+  (*     simpl in *. *)
+  (*     destruct H as [? ? ? ? Hsup]. *)
+  (*     pose proof (Hsup a) as Ha. *)
+  (*     apply Hg in Ha. *)
+  (*     2: { apply directed_f_ideal; auto. *)
+  (*          apply monotone_incl. } *)
+  (*     destruct Ha as [Hub Hlub]. *)
+  (*     apply Hlub. *)
+  (*     intro i; unfold compose. *)
+  (*     unfold compose in *. *)
+  (*     rewrite Hgf. *)
+  (*     2: { apply cocontinuous_incl_ideal; auto. } *)
+  (*     eauto. *)
+  (* Qed. *)
 
   Corollary coop_unique' {C} `{ldCPO C} (f : basis A -> C) (g : A -> C) (a : A) :
     antimonotone f ->
@@ -957,35 +977,35 @@ Section aCPO.
   (*   eapply coop_elim in HPa; eauto. *)
   (* Qed. *)
 
-  Corollary Proper_co_P {C} `{dCPO C} (f g : basis A -> C) (P : basis A -> Prop) (a : A) :
-    antimonotone P ->
-    monotone f ->
-    monotone g ->
-    (forall b, P b -> f b === g b) ->
-    coop P a ->
-    co f a === co g a.
-  Proof.
-    intros HP Hf Hg Hfg HPa.
-    eapply co_unique_cocontinuous_P; eauto with aCPO order.
-    intros Hi i.
-    rewrite co_incl'; auto.
-    apply Hfg.
-    eapply coop_elim in HPa; eauto.
-  Qed.
+  (* Corollary Proper_co_P {C} `{dCPO C} (f g : basis A -> C) (P : basis A -> Prop) (a : A) : *)
+  (*   antimonotone P -> *)
+  (*   monotone f -> *)
+  (*   monotone g -> *)
+  (*   (forall b, P b -> f b === g b) -> *)
+  (*   coop P a -> *)
+  (*   co f a === co g a. *)
+  (* Proof. *)
+  (*   intros HP Hf Hg Hfg HPa. *)
+  (*   eapply co_unique_cocontinuous_P; eauto with aCPO order. *)
+  (*   intros Hi i. *)
+  (*   rewrite co_incl'; auto. *)
+  (*   apply Hfg. *)
+  (*   eapply coop_elim in HPa; eauto. *)
+  (* Qed. *)
 
-  Corollary Proper_co_P_ext {C} `{oC: OType C} `{@dCPO _ oC} `{@ExtType _ oC}
-    (f g : basis A -> C) (P : basis A -> Prop) (a : A) :
-    antimonotone P ->
-    monotone f ->
-    monotone g ->
-    (forall b, P b -> f b = g b) ->
-    coop P a ->
-    co f a = co g a.
-  Proof.
-    intros HP Hf Hg Hfg HPa.
-    apply ext; eapply Proper_co_P; eauto.
-    intros b HPb; rewrite Hfg; auto; reflexivity.
-  Qed.
+  (* Corollary Proper_co_P_ext {C} `{oC: OType C} `{@dCPO _ oC} `{@ExtType _ oC} *)
+  (*   (f g : basis A -> C) (P : basis A -> Prop) (a : A) : *)
+  (*   antimonotone P -> *)
+  (*   monotone f -> *)
+  (*   monotone g -> *)
+  (*   (forall b, P b -> f b = g b) -> *)
+  (*   coop P a -> *)
+  (*   co f a = co g a. *)
+  (* Proof. *)
+  (*   intros HP Hf Hg Hfg HPa. *)
+  (*   apply ext; eapply Proper_co_P; eauto. *)
+  (*   intros b HPb; rewrite Hfg; auto; reflexivity. *)
+  (* Qed. *)
 End aCPO.
 
 #[global] Hint Resolve directed_f_ideal : aCPO.

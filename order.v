@@ -1226,9 +1226,11 @@ Qed.
 
 Lemma continuous_const {A B} `{OType A} `{OType B} (b : B) :
   continuous (fun _ : A => b).
-Proof.
-  intros ? ? ? ?; apply supremum_const.
-Qed.    
+Proof. intros ? ? ? ?; apply supremum_const. Qed.
+
+Lemma cocontinuous_const {A B} `{OType A} `{OType B} (b : B) :
+  cocontinuous (fun _ : A => b).
+Proof. intros ? ? ? ?; apply infimum_const. Qed.
 
 #[global]
   Instance monotone_fst {A B} `{OType A} `{OType B}
