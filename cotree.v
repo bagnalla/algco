@@ -1590,7 +1590,7 @@ Proof.
     try reflexivity; intros; constructor.
 Qed.
 
-(** Computation lemmas for cotree_filter'. *)
+(** Computation lemmas for cotree_filter. *)
 
 Lemma cotree_filter_bot {A} (P : A -> bool) :
   @cotree_filter A P cobot = cobot.

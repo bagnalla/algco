@@ -141,7 +141,7 @@ Create HintDb mu.
 (*   coop (atree_disjoint). *)
   
 Definition asum {A} (f : A -> eR) : atree bool A -> eR :=
-  tfold 0 f (fun f => f false + f true).
+  tfold 0 f (fun g => g false + g true).
 
 Definition tcosum {A} (f : A -> eR) : cotree bool A -> eR :=
   co (asum f).
@@ -154,6 +154,21 @@ Proof.
   intros g g' Hg; apply eRplus_le_compat; apply Hg.
 Qed.
 #[global] Hint Resolve monotone_asum : mu.
+
+Lemma tcosum_bot {A} (f : A -> eR) :
+  tcosum f bot = 0.
+Proof. apply co_tfold_bot'. Qed.
+
+Lemma tcosum_leaf {A} (f : A -> eR) (a : A) :
+  tcosum f (coleaf a) = f a.
+Proof. apply co_tfold_leaf'; eRauto. Qed.
+
+Lemma tcosum_node {A} (f : A -> eR) (k : bool -> cotree bool A) :
+  tcosum f (conode k) = tcosum f (k false) + tcosum f (k true).
+Proof. 
+  unfold tcosum, asum; rewrite co_tfold_node'; eRauto.
+  apply wcontinuous_sum; apply wcontinuous_apply.
+Qed.
 
 (* Lemma fgdfg {A T} `{UnionSet A T} (f : A -> eR) : *)
 (*   (forall x y, disjoint [[ x ]] [[ y ]] -> f (union x y) = f x + f y) -> *)
