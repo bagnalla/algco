@@ -1227,6 +1227,7 @@ Qed.
 Lemma continuous_const {A B} `{OType A} `{OType B} (b : B) :
   continuous (fun _ : A => b).
 Proof. intros ? ? ? ?; apply supremum_const. Qed.
+#[global] Hint Resolve continuous_const : order.
 
 Lemma cocontinuous_const {A B} `{OType A} `{OType B} (b : B) :
   cocontinuous (fun _ : A => b).
@@ -1236,13 +1237,13 @@ Proof. intros ? ? ? ?; apply infimum_const. Qed.
   Instance monotone_fst {A B} `{OType A} `{OType B}
   : Proper (leq ==> leq) (@fst A B).
 Proof. intros [] [] []; auto. Qed.
-#[global] Hint Resolve monotone_fst : prod.
+#[global] Hint Resolve monotone_fst : order.
 
 #[global]
   Instance monotone_snd {A B} `{OType A} `{OType B}
   : Proper (leq ==> leq) (@snd A B).
 Proof. intros [] [] []; auto. Qed.
-#[global] Hint Resolve monotone_snd : prod.
+#[global] Hint Resolve monotone_snd : order.
 
 Lemma supremum_fst {A B} `{OType A} `{OType B} (a : A) (b : B) (f : nat -> A * B) :
   supremum (a, b) f ->

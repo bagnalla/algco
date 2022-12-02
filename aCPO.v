@@ -195,6 +195,13 @@ Section aCPO.
     co f (incl b) === f b.
   Proof. intro Hmono; revert b; apply equ_arrow, co_incl; auto. Qed.
 
+  (** Pointwise variant. *)
+  Corollary co_incl'_ext {C} `{o : OType C} `{@dCPO C o} `{@ExtType C o}
+    (f : basis A -> C) (b : basis A) :
+    monotone f ->
+    co f (incl b) = f b.
+  Proof. intro Hf; apply ext, co_incl'; auto. Qed.
+
   (** [coop f] is the unique morphism (continuous function) satisfying
       this equation. [coop f] is equal to f on all basis elements for
       which f was originally defined. *)
@@ -326,11 +333,11 @@ Section aCPO.
     apply Hincl; auto.
   Qed.
   Hint Resolve monotone_incl : aCPO.
-  
+    
   (** Uniqueness property. This is the primary proof principle. *)
   Theorem co_unique {C} `{dCPO C} (f : basis A -> C) (g : A -> C) :
     monotone f ->
-    continuous g ->
+    wcontinuous g ->
     g ∘ incl === f ->
     g === co f.
   Proof.
@@ -343,7 +350,7 @@ Section aCPO.
     - intro i; unfold compose.
       simpl in *.
       etransitivity; eauto.
-      apply continuous_monotone; auto.
+      apply wcontinuous_monotone; auto.
       destruct H as [? ? ? ? Hsup].
       destruct (Hsup a) as [Hub _].
       apply Hub.
@@ -352,18 +359,51 @@ Section aCPO.
       destruct H as [? ? ? ? Hsup].
       pose proof (Hsup a) as Ha.
       apply Hg in Ha.
-      2: { apply directed_f_ideal; auto.
+      2: { apply chain_f_ideal; auto.
            apply monotone_incl. }
       destruct Ha as [Hub Hlub].
       apply Hlub.
       intro i; unfold compose.
       etransitivity; eauto.
   Qed.
+
+  (* (** Uniqueness property. This is the primary proof principle. *) *)
+  (* Theorem co_unique {C} `{dCPO C} (f : basis A -> C) (g : A -> C) : *)
+  (*   monotone f -> *)
+  (*   continuous g -> *)
+  (*   g ∘ incl === f -> *)
+  (*   g === co f. *)
+  (* Proof. *)
+  (*   unfold basis, compose in *; intros Hf Hg [Hgf Hfg]. *)
+  (*   apply equ_arrow. *)
+  (*   intro a. *)
+  (*   symmetry. *)
+  (*   apply supremum_sup. *)
+  (*   split. *)
+  (*   - intro i; unfold compose. *)
+  (*     simpl in *. *)
+  (*     etransitivity; eauto. *)
+  (*     apply continuous_monotone; auto. *)
+  (*     destruct H as [? ? ? ? Hsup]. *)
+  (*     destruct (Hsup a) as [Hub _]. *)
+  (*     apply Hub. *)
+  (*   - intros c Hc. *)
+  (*     simpl in *. *)
+  (*     destruct H as [? ? ? ? Hsup]. *)
+  (*     pose proof (Hsup a) as Ha. *)
+  (*     apply Hg in Ha. *)
+  (*     2: { apply directed_f_ideal; auto. *)
+  (*          apply monotone_incl. } *)
+  (*     destruct Ha as [Hub Hlub]. *)
+  (*     apply Hlub. *)
+  (*     intro i; unfold compose. *)
+  (*     etransitivity; eauto. *)
+  (* Qed. *)
   
   Corollary co_unique_ext {C} `{o : OType C} `{@dCPO C o} `{@ExtType C o}
     (f : basis A -> C) (g : A -> C) :
     monotone f ->
-    continuous g ->
+    wcontinuous g ->
     g ∘ incl = f ->
     g = co f.
   Proof.
@@ -552,7 +592,7 @@ Section aCPO.
   Proof.
     intro Hf; split.
     - apply co_incl; auto.
-    - intros; apply co_unique; auto.
+    - intros; apply co_unique; auto with order.
   Qed.
 
   (** Useful variant. *)
@@ -564,7 +604,7 @@ Section aCPO.
   Proof.
     intros Hf Hg Hgf.
     revert a; apply equ_arrow.
-    apply co_unique; auto.
+    apply co_unique; auto with order.
     apply equ_arrow; auto.
   Qed.
 
@@ -727,11 +767,10 @@ Section aCPO.
     co f === co g.
   Proof.
     intros Hf Hg Hfg.
-    apply co_unique; auto.
-    - apply continuous_co; auto.
-    - rewrite <- Hfg.
-      apply equ_arrow; intro b.
-      apply co_incl'; auto.
+    apply co_unique; auto with order aCPO.
+    rewrite <- Hfg.
+    apply equ_arrow; intro b.
+    apply co_incl'; auto.
   Qed.
 
   Corollary Proper_co' {C} `{dCPO C} (f g : basis A -> C) (x y : A) :
@@ -1174,9 +1213,8 @@ Qed.
 Lemma co_incl_id {A B} `{aCPO A B} :
   co incl === @id A.
 Proof.
-  symmetry; apply co_unique.
+  symmetry; apply co_unique; auto with order.
   - apply monotone_incl.
-  - apply continuous_id.
   - reflexivity.
 Qed.
 
