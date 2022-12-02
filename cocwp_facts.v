@@ -523,7 +523,87 @@ Lemma cotwp_linear {A} (c : eR) (f g : A -> eR) (t : cotree bool A) :
   cotwp (fun a => c * f a + g a) t = c * cotwp f t + cotwp g t.
 Proof. rewrite cotwp_sum, cotwp_scalar; reflexivity. Qed.
 
-Lemma markov_inequality {A} (f : A -> eR) (t : cotree bool A)
+Lemma monotone_btwp' {A} (f g : A -> eR) (t : atree bool A) :
+  f ⊑ g ->
+  btwp f t <= btwp g t.
+Proof.
+  unfold btwp.
+  revert f g; induction t; intros f g Hfg; simpl.
+  - reflexivity.
+  - apply Hfg.
+  - unfold compose.
+    rewrite <- 2!eRplus_combine_fract.
+    apply eRplus_le_compat; apply eRmult_le_compat_r, H; auto.
+Qed.
+
+Lemma monotone_btwlp' {A} (f g : A -> eR) (t : atree bool A) :
+  f ⊑ g ->
+  btwlp f t <= btwlp g t.
+Proof.
+  unfold btwlp.
+  revert f g; induction t; intros f g Hfg; simpl.
+  - reflexivity.
+  - apply Hfg.
+  - unfold compose.
+    rewrite <- 2!eRplus_combine_fract.
+    apply eRplus_le_compat; apply eRmult_le_compat_r, H; auto.
+Qed.
+
+Lemma monotone_cotwp {A} (f g : A -> eR) (t : cotree bool A) :
+  f ⊑ g ->
+  cotwp f t <= cotwp g t.
+Proof.
+  intro Hfg.
+  apply leq_eRle.
+  unfold cotwp.
+  apply ge_dsup.
+  { apply monotone_directed.
+    - apply monotone_btwp.
+    - apply chain_directed, chain_ideal. }
+  intro i; unfold compose.
+  apply le_dsup with i.
+  { apply monotone_directed.
+    - apply monotone_btwp.
+    - apply chain_directed, chain_ideal. }
+  unfold compose.
+  apply monotone_btwp'; auto.
+Qed.
+
+Lemma monotone_cotwlp {A} (f g : A -> eR) (t : cotree bool A) :
+  bounded g 1 ->
+  f ⊑ g ->
+  cotwlp f t <= cotwlp g t.
+Proof.
+  intros Hg Hfg.
+  apply leq_eRle.
+  unfold cotwlp.
+  apply le_dinf.
+  { apply antimonotone_downward_directed.
+    - apply antimonotone_btwlp; auto.
+    - apply chain_directed, chain_ideal. }
+  intro i; unfold compose.
+  apply ge_dinf with i.
+  { apply antimonotone_downward_directed.
+    - apply antimonotone_btwlp.
+      intro a; etransitivity; eauto; apply Hfg.
+    - apply chain_directed, chain_ideal. }
+  unfold compose.
+  apply monotone_btwlp'; auto.
+Qed.
+
+Theorem markov_inequality {A} (f : A -> eR) (a : eR) (t : cotree bool A) :
+  a <> 0 ->
+  a <> infty ->
+  cotwp (fun x => if eRle_dec a (f x) then 1 else 0) t <= cotwp f t / a.
+Proof.
+  intros Ha Ha'.
+  unfold eRdiv.
+  apply eRmult_le_div; auto.
+  rewrite cotwp_scalar.
+  apply monotone_cotwp.
+  intro x.
+  destr; eRauto.
+Qed.
 
 Lemma cotree_bind_iid_chain_ {A} t i :
   cotree_bind (iid_chain_ t i)

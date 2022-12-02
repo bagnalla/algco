@@ -334,6 +334,25 @@ Section aCPO.
   Qed.
   Hint Resolve monotone_incl : aCPO.
     
+  Theorem co_le {C} `{dCPO C} (f : basis A -> C) (g : A -> C) :
+    monotone f ->
+    wcontinuous g ->
+    f ⊑ g ∘ incl ->
+    co f ⊑ g.
+  Proof.
+    unfold basis, compose in *; intros Hf Hg Hgf.
+    intro a.
+    apply ge_dsup.
+    { apply directed_f_ideal; auto. }
+    intro i; unfold compose.
+    simpl in *.
+    etransitivity; eauto.
+    apply wcontinuous_monotone; auto.
+    destruct H as [? ? ? ? Hsup].
+    destruct (Hsup a) as [Hub _].
+    apply Hub.
+Qed.
+
   (** Uniqueness property. This is the primary proof principle. *)
   Theorem co_unique {C} `{dCPO C} (f : basis A -> C) (g : A -> C) :
     monotone f ->
