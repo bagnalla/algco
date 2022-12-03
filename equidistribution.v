@@ -396,14 +396,13 @@ Definition freq {A} (P : A -> Prop) (l : list A) :=
 Definition in_Sigma01 (U : Sigma01) (s : colist bool) : Prop :=
   cotree_some (fun l => is_stream_prefix l s) U.
 
-
-Definition measure (U : Sigma01) : eR :=
+Definition mu (U : Sigma01) : eR :=
   tcosum bitstring_measure U.
 
 Definition uniform (bitstreams : nat -> colist bool) : Prop :=
   forall U : Sigma01,
     cotree_partition U ->
-    converges (freq (in_Sigma01 U) ∘ prefix bitstreams) (measure U).
+    converges (freq (in_Sigma01 U) ∘ prefix bitstreams) (mu U).
 
 Inductive produces {A} (P : A -> Prop) : colist bool -> cotree bool A -> Prop :=
 | produces_leaf : forall bs x, P x -> produces P bs (coleaf x)
@@ -522,7 +521,7 @@ Section cotree_equidistribution.
     exists n0; intros n Hn; specialize (Huniform n Hn).
     unfold compose in *.
     rewrite cotwp_mu_preimage'.
-    unfold measure in Huniform.
+    unfold mu in Huniform.
     rewrite <- cotree_freq_bitstreams_samples; apply Huniform.
   Qed.
 End cotree_equidistribution.
