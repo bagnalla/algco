@@ -1844,20 +1844,20 @@ Definition cotree_disjoint {A} `{OType A} (a b : cotree bool A) : Prop :=
 
 (** Can technically be generalized to arbitrary index type but it's
     cleaner this way for our use case.*)
-Inductive atree_partition {A} `{OType A} : atree bool A -> Prop :=
-| atree_partition_bot : atree_partition abot
-| atree_partition_leaf : forall x, atree_partition (aleaf x)
-| atree_partition_node : forall f,
-    (forall i, atree_partition (f i)) ->
+Inductive atree_pairwise_disjoint {A} `{OType A} : atree bool A -> Prop :=
+| atree_pairwise_disjoint_bot : atree_pairwise_disjoint abot
+| atree_pairwise_disjoint_leaf : forall x, atree_pairwise_disjoint (aleaf x)
+| atree_pairwise_disjoint_node : forall f,
+    (forall i, atree_pairwise_disjoint (f i)) ->
     atree_disjoint (f true) (f false) ->
-    atree_partition (anode f).
+    atree_pairwise_disjoint (anode f).
 
-Definition cotree_partition {A} `{OType A} : cotree bool A -> Prop :=
-  coop (atree_partition).
+Definition cotree_pairwise_disjoint {A} `{OType A} : cotree bool A -> Prop :=
+  coop (atree_pairwise_disjoint).
 
 #[global]
-  Instance antimonotone_atree_partition {A} `{OType A}
-  : Proper (leq ==> flip leq) (@atree_partition A _).
+  Instance antimonotone_atree_pairwise_disjoint {A} `{OType A}
+  : Proper (leq ==> flip leq) (@atree_pairwise_disjoint A _).
 Proof.
   intro a; induction a; simpl; intros b Hab Hb; inv Hab; auto.
   - constructor.
@@ -1876,7 +1876,7 @@ Proof.
         simpl; intros x Hx.
         eapply antimonotone_atree_all; eauto; apply H2.
 Qed.
-#[global] Hint Resolve antimonotone_atree_partition : cotree.
+#[global] Hint Resolve antimonotone_atree_pairwise_disjoint : cotree.
 
 (* #[global] *)
 (*   Instance antimonotone_atree_disjoint {I A} `{OType A} *)

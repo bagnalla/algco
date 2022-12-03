@@ -411,9 +411,9 @@ Proof.
   - intros []; apply H, Hall.
 Qed.
 
-Lemma atree_partition_map {A} (t : atree bool (list A)) (a : A) :
-  atree_partition t ->
-  atree_partition (atree_map (cons a) t).
+Lemma atree_pairwise_disjoint_map {A} (t : atree bool (list A)) (a : A) :
+  atree_pairwise_disjoint t ->
+  atree_pairwise_disjoint (atree_map (cons a) t).
 Proof.
   revert a; induction t; intros a' Hdisj; simpl; inv Hdisj; constructor; auto.
   - intro b; apply H; auto.
@@ -471,8 +471,8 @@ Qed.
 (*         apply atree_all_true. *)
 (* Qed. *)
 
-Lemma atree_partition_lang {A} (t : atree bool A) (i : nat ) :
-  atree_partition (ideal (atree_lang t) i).
+Lemma atree_pairwise_disjoint_lang {A} (t : atree bool A) (i : nat ) :
+  atree_pairwise_disjoint (ideal (atree_lang t) i).
 Proof.
   revert i; induction t; intros i.
   - destruct i; constructor.
@@ -485,7 +485,7 @@ Proof.
         specialize (H b i).
         unfold ideal in H; simpl in H; unfold flip in H.
         rewrite tprefix_map.
-        apply atree_partition_map; auto.
+        apply atree_pairwise_disjoint_map; auto.
       * unfold compose.
         rewrite 2!tprefix_map.
         split; apply atree_all_map, atree_all_true'; intro bs;
@@ -533,8 +533,8 @@ Qed.
 (*   apply atree_disjoint_lang. *)
 (* Qed. *)
 
-Theorem partition_cotree_preimage {A} (P : A -> bool) (t : cotree bool A) :
-  cotree_partition (cotree_preimage P t).
+Theorem pairwise_disjoint_cotree_preimage {A} (P : A -> bool) (t : cotree bool A) :
+  cotree_pairwise_disjoint (cotree_preimage P t).
 Proof with eauto with cotree order mu aCPO.
   unfold cotree_disjoint, cotree_preimage, compose, cotree_filter, cotree_lang.
   apply co_coopP...
@@ -542,5 +542,5 @@ Proof with eauto with cotree order mu aCPO.
   { apply monotone_antimonotone_compose... }
   intro i; cointro...
   intro j; cointro...
-  apply atree_partition_lang.
+  apply atree_pairwise_disjoint_lang.
 Qed.

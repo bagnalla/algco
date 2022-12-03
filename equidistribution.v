@@ -236,11 +236,11 @@ Definition Sigma01 : Type := cotree bool (list bool).
 Definition cotree_union {A} (U V : cotree bool A) : cotree bool A :=
   conode (fun b : bool => if b then U else V).
 
-Lemma Sigma01_union_partition (U V : Sigma01) :
-  cotree_partition U ->
-  cotree_partition V ->
+Lemma Sigma01_union_pairwise_disjoint (U V : Sigma01) :
+  cotree_pairwise_disjoint U ->
+  cotree_pairwise_disjoint V ->
   cotree_disjoint U V ->
-  cotree_partition (cotree_union U V).
+  cotree_pairwise_disjoint (cotree_union U V).
 Proof with eauto with cotree order.
   intros HU HV [HVU HUV].
   apply coop_intro...
@@ -280,17 +280,17 @@ Qed.
 Definition colist_union {A} : colist (cotree bool A) -> cotree bool A :=
   co alist_union.
   
-Inductive alist_partition {A} `{OType A} : list (cotree bool A) -> Prop :=
-| alist_partition_nil : alist_partition []
-| alist_partition_cons : forall t l,
-    (* cotree_partition t -> *)
-    alist_partition l ->
+Inductive alist_pairwise_disjoint {A} `{OType A} : list (cotree bool A) -> Prop :=
+| alist_pairwise_disjoint_nil : alist_pairwise_disjoint []
+| alist_pairwise_disjoint_cons : forall t l,
+    (* cotree_pairwise_disjoint t -> *)
+    alist_pairwise_disjoint l ->
     list_forall (cotree_disjoint t) l ->
-    alist_partition (t :: l).
+    alist_pairwise_disjoint (t :: l).
 
 #[global]
-  Instance antimonotone_alist_partition {A} `{OType A}
-  : Proper (leq ==> flip leq) (@alist_partition A _).
+  Instance antimonotone_alist_pairwise_disjoint {A} `{OType A}
+  : Proper (leq ==> flip leq) (@alist_pairwise_disjoint A _).
 Proof.
   intro a; induction a; intros b Hab Hb.
   { constructor. }
@@ -299,10 +299,10 @@ Proof.
   - eapply IHa; eauto.
   - eapply antimonotone_list_forall; eauto.
 Qed.
-#[global] Hint Resolve antimonotone_alist_partition : colist.
+#[global] Hint Resolve antimonotone_alist_pairwise_disjoint : colist.
 
-Definition colist_partition {A} `{OType A} : colist (cotree bool A) -> Prop :=
-  coop alist_partition.
+Definition colist_pairwise_disjoint {A} `{OType A} : colist (cotree bool A) -> Prop :=
+  coop alist_pairwise_disjoint.
 
 Lemma continuous_pair_plus :
   wcontinuous (fun f : bool -> eR => f false + f true).
@@ -348,7 +348,7 @@ Qed.
 (* Qed. *)
 
 (* Lemma countable_additivity (l : colist Sigma01) : *)
-(*   colist_partition l -> *)
+(*   colist_pairwise_disjoint l -> *)
 (*   measure (colist_union l) = cosum (comap measure l). *)
 (* Proof with eauto with order colist cotree aCPO mu eR. *)
 (*   intro Hpart. *)
@@ -359,7 +359,7 @@ Qed.
 (*   rewrite co_co_ext with (g := cosum)... *)
 (*   2: { apply continuous_wcontinuous, continuous_co... } *)
 (*   eapply Proper_co_P_ext; eauto. *)
-(*   { apply antimonotone_alist_partition. } *)
+(*   { apply antimonotone_alist_pairwise_disjoint. } *)
 (*   { apply monotone_compose. *)
 (*     - apply monotone_alist_union. *)
 (*     - apply continuous_monotone, continuous_co, monotone_amu. } *)
@@ -401,7 +401,7 @@ Definition mu (U : Sigma01) : eR :=
 
 Definition uniform (bitstreams : nat -> colist bool) : Prop :=
   forall U : Sigma01,
-    cotree_partition U ->
+    cotree_pairwise_disjoint U ->
     converges (freq (in_Sigma01 U) ∘ prefix bitstreams) (mu U).
 
 Inductive produces {A} (P : A -> Prop) : colist bool -> cotree bool A -> Prop :=
@@ -516,7 +516,7 @@ Section cotree_equidistribution.
   Proof.
     intros eps Heps.
     pose proof env.(bitstreams_uniform) as Huniform.
-    specialize (Huniform _ (partition_cotree_preimage P t) _ Heps).
+    specialize (Huniform _ (pairwise_disjoint_cotree_preimage P t) _ Heps).
     destruct Huniform as [n0 Huniform].
     exists n0; intros n Hn; specialize (Huniform n Hn).
     unfold compose in *.
