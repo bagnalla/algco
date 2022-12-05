@@ -1172,8 +1172,8 @@ Lemma tcoopfold_node {A B} `{o : OType B} `{@TType B o} `{@ldCPO B o}
   tcoopfold f g (conode k) === g (tcoopfold f g ∘ k).
 Proof. intro Hg; apply coop_tfold_node; auto with order. Qed.
 
-(** Extraction primitive for tcofold. Only safe for generative cotrees
-    (no occurrences of nil). *)
+(** Extraction primitive for tcofold. Only safe for total cotrees (no
+    occurrences of cobot). *)
 Extract Constant tcofold => "
   \ o p f g t ->
     case t of
@@ -1181,6 +1181,62 @@ Extract Constant tcofold => "
       Coleaf a -> f a
       Conode k -> g (tcofold o p f g . k)
 ".
+
+Inductive exists_bot {I A} : cotree I A -> Prop :=
+| exists_bot_bot : exists_bot cobot
+| exists_bot_node : forall k i,
+    exists_bot (k i) ->
+    exists_bot (conode k).
+
+(** This still allows trees with infinite nodes and no leaves. *)
+Definition total {I A} (t : cotree I A) : Prop :=
+  ~ exists_bot t.
+
+CoInductive cototal {I A} : cotree I A -> Prop :=
+| cototal_leaf : forall a, cototal (coleaf a)
+| cototal_node : forall k,
+    (forall b, cototal (k b)) ->
+    cototal (conode k).
+
+Lemma total_cototal {I A} (t : cotree I A) :
+  total t <-> cototal t.
+Proof.
+  split.
+  - revert t; cofix CH; intros t Ht.
+    destruct t.
+    + exfalso; apply Ht; constructor.
+    + constructor.
+    + constructor; intro i; apply CH.
+      intro HC; apply Ht; econstructor; eauto.
+  - intros Ht HC.
+    revert Ht.
+    induction HC.
+    + intro HC; inv HC.
+    + intro Ht; inv Ht.
+      apply IHHC; auto.
+Qed.
+
+(* Inductive atotal {I A} : atree I A -> Prop := *)
+(* | atotal_leaf : forall a, atotal (aleaf a) *)
+(* | atotal_node : forall k, *)
+(*     (forall b, atotal (k b)) -> *)
+(*     atotal (anode k). *)
+
+(* Inductive exists_bot' {I A} : atree I A -> Prop := *)
+(* | exists_bot'_bot : exists_bot' abot *)
+(* | exists_bot'_node : forall k i, *)
+(*     exists_bot' (k i) -> *)
+(*     exists_bot' (anode k). *)
+
+(* #[global] *)
+(*   Instance antimonotone_exists_bot' {I A} *)
+(*   : Proper (leq ==> flip leq) (@exists_bot' I A). *)
+(* Proof. *)
+(*   intro a; induction a; intros b Hab Hex; inv Hab. *)
+(*   - constructor. *)
+(*   - inv Hex. *)
+(*   - inv Hex; econstructor; eapply H; eauto; apply H1. *)
+(* Qed. *)
 
 Definition atree_cotree_bind {I A B} (k : A -> cotree I B) : atree I A -> cotree I B :=
   tfold ⊥ k (@conode I B).
@@ -1562,6 +1618,13 @@ Proof.
     - constructor. }
   rewrite equ_arrow in H; apply H.
 Qed.
+
+(** Extraction primitive for cotree_iter. *)
+Extract Constant cotree_iter => "
+  \ f i ->
+    cotree_bind (f i) (\ lr -> case lr of
+                                 Inl j -> cotree_iter f j
+                                 Inr x -> coleaf x)".
 
 (** Computation lemmas for cotree_map. *)
 
@@ -2013,19 +2076,6 @@ Qed.
 Corollary snip_bind {A B} (t : cotree bool (unit + A)) (k : unit + A -> cotree bool (unit + B)) :
   snip (cotree_bind t k) = cotree_bind t (snip ∘ k).
 Proof. apply cotree_bind_assoc. Qed.
-
-(** TODO: inductive predicate for existence of bottom. [total] is
-    negation of it. *)
-
-Inductive exists_bot {I A} : cotree I A -> Prop :=
-| exists_bot_bot : exists_bot cobot
-| exists_bot_node : forall k i,
-    exists_bot (k i) ->
-    exists_bot (conode k).
-
-(** This still allows trees with infinite nodes and no leaves. *)
-Definition total {I A} (t : cotree I A) : Prop :=
-  ~ exists_bot t.
 
 (* Inductive productive {I A} : atree I A -> Prop := *)
 (* | productive_bot : productive abot *)
