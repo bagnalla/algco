@@ -7,11 +7,13 @@ cocwp_facts.v
 colist.v
 conat.v
 cotree.v
+cotrie.v
 cpo.v
 equidistribution.v
 eR.v
 geometric_series.v
 inf_primes.v
+kleene_algebra.v
 misc.v
 mu.v
 order.v

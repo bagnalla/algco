@@ -703,3 +703,154 @@ Proof.
   right; apply neq_inj_omega.
   intros m HC; subst; apply H; exists m; reflexivity.
 Qed.
+
+(* Fixpoint fold {A B} (z : B) (f : A -> B -> B) (l : list A) : B := *)
+(*   match l with *)
+(*   | [] => z *)
+(*   | x :: xs => f x (fold z f xs) *)
+(*   end. *)
+
+Fixpoint iter {A} (z : A) (f : A -> A) (n : nat) : A :=
+  match n with
+  | O => z
+  | S n' => f (iter z f n')
+  end.
+
+(* Fixpoint iter' {A} (z : A) (f : A -> A) (n : nat) : A := *)
+(*   match n with *)
+(*   | O => z *)
+(*   | S n' => iter' (f z) f n' *)
+(*   end. *)
+
+(* Fixpoint iter {A} (z : A) (f : A -> A) (n : nat) : A := *)
+(*   match n with *)
+(*   | O => z *)
+(*   | S n' => iter (f z) f n' *)
+(*   end. *)
+
+#[global]
+  Instance monotone_iter {A} `{OType A} (z : A) (f : A -> A)
+  {Hz : forall n, z ⊑ iter z f n}
+  {Hf: Proper (leq ==> leq) f}
+  : Proper (leq ==> leq) (iter z f).
+Proof.
+  intro n; revert Hz Hf; revert z f; induction n;
+    intros z f Hz Hf m Hnm; simpl; auto.
+  - destruct m; simpl in *; try lia.
+    apply Hf.
+    apply IHn; auto; lia.
+Qed.
+#[global] Hint Resolve monotone_iter : conat.
+
+#[global]
+ Instance antimonotone_iter {A} `{OType A} (z : A) (f : A -> A)
+ {Hz : forall n, iter z f n ⊑ z}
+ {Hf: Proper (leq ==> leq) f}
+  : Proper (leq ==> flip leq) (iter z f).
+Proof.
+  unfold flip.
+  intro n; revert Hz Hf; revert z f; induction n;
+    intros z f Hz Hf m Hnm; simpl; auto.
+  - destruct m; simpl in *; try lia.
+    apply Hf, IHn; auto; lia.
+Qed.
+#[global] Hint Resolve antimonotone_iter : conat.
+
+(* #[global] *)
+(*   Instance monotone_iter' {A} `{OType A} (z : A) (f : A -> A) *)
+(*   {Hz : forall n, z ⊑ iter' z f n} *)
+(*   {Hf: forall x i, x ⊑ iter' x f i} *)
+(*   : Proper (leq ==> leq) (iter' z f). *)
+(* Proof. *)
+(*   intro n; revert Hz Hf; revert z f; induction n; *)
+(*     intros z f Hz Hf m Hnm; simpl; auto. *)
+(*   - destruct m; simpl in *; try lia. *)
+(*     apply IHn; auto; try lia. *)
+(* Qed. *)
+(* #[global] Hint Resolve monotone_iter' : conat. *)
+
+Definition coiter {A} `{PType A} (f : A -> A) : conat -> A :=
+  co (iter ⊥ f).
+
+Definition coopiter {A} `{TType A} (z : A) (f : A -> A) : conat -> A :=
+  coop (iter ⊤ f).
+
+(** Computation lemmas for coiters. *)
+
+Lemma co_iter_zero {A} `{dCPO A} (z : A) (f : A -> A) :
+  co (iter z f) cozero === z.
+Proof.
+  apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity.
+Qed.
+
+Lemma co_iter_succ {A} `{dCPO A} (z : A) (f : A -> A) (n : conat) :
+  z ⊑ f z ->
+  ( forall n, z ⊑ iter z f n) ->
+  continuous f ->
+  co (iter z f) (cosucc n) === f (co (iter z f) n).
+Proof.
+  intros Hz Hfz Hf.
+  apply supremum_sup.
+  apply shift_supremum'' with (f := fun i => f (iter z f (ideal n i))); auto.
+  { apply Hf.
+    { apply monotone_directed; auto with conat order.
+      apply chain_directed, chain_ideal. }
+    { apply dsup_spec.
+      { apply monotone_directed; auto with conat order.
+        apply chain_directed, chain_ideal. } } }
+  apply equ_arrow; intro i; reflexivity.
+Qed.
+
+Lemma co_iter_zero' {A} {o : OType A} `{@ExtType A o} `{@dCPO A o}
+  (z : A) (f : A -> A) :
+  co (iter z f) cozero = z.
+Proof. apply ext, co_iter_zero. Qed.
+
+Lemma co_iter_succ' {A} {o : OType A} `{@ExtType A o} `{@dCPO A o}
+  (z : A) (f : A -> A) (n : conat) :
+  z ⊑ f z ->
+  ( forall n, z ⊑ iter z f n) ->
+  continuous f ->
+  co (iter z f) (cosucc n) = f (co (iter z f) n).
+Proof. intros Hz Hfz Hf; apply ext, co_iter_succ; auto. Qed.
+
+Lemma coiter_succ {A} `{oA: OType A} `{@PType _ oA} `{@dCPO _ oA}
+  (f : A -> A) (n : conat) :
+  continuous f ->
+  coiter f (cosucc n) === f (coiter f n).
+Proof.
+  intro Hf; apply co_iter_succ; auto.
+  - apply bot_le.
+  - intro; apply bot_le.
+Qed.
+
+Lemma coiter_succ' {A} `{oA: OType A} `{@PType _ oA} `{@dCPO _ oA} `{@ExtType _ oA}
+  (f : A -> A) (n : conat) :
+  continuous f ->
+  coiter f (cosucc n) = f (coiter f n).
+Proof. intro Hf; apply ext, coiter_succ; auto. Qed.
+
+CoInductive infinite : conat -> Prop :=
+| infinite_succ : forall n, infinite n -> infinite (cosucc n).
+
+Lemma infinite_iff_omega (n : conat) :
+  infinite n <-> n = omega.
+Proof.
+  split.
+  - intro Hn.
+    destruct (@conat_finite_or_omega n); auto.
+    exfalso; destruct H as [m Hm]; subst.
+    revert Hn; induction m; intro HC; inv HC; auto.
+  - intros ->; cofix CH; rewrite unf_eq; constructor; auto.
+Qed.
+
+Extract Constant coiter => "
+  \ o p f n ->
+    case n of
+      Cozero -> bot o p
+      Cosucc n' -> f (coiter o p f n')
+".
+
+Lemma prefix_omega (i : nat) :
+  prefix i omega = i.
+Proof. induction i; simpl; auto. Qed.

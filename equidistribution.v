@@ -402,7 +402,7 @@ Definition mu (U : Sigma01) : eR :=
 Definition uniform (bitstreams : nat -> colist bool) : Prop :=
   forall U : Sigma01,
     cotree_pairwise_disjoint U ->
-    converges (freq (in_Sigma01 U) ∘ prefix bitstreams) (mu U).
+    converges (freq (in_Sigma01 U) ∘ seq_prefix bitstreams) (mu U).
 
 Inductive produces {A} (P : A -> Prop) : colist bool -> cotree bool A -> Prop :=
 | produces_leaf : forall bs x, P x -> produces P bs (coleaf x)
@@ -500,18 +500,18 @@ Section cotree_equidistribution.
   Hypothesis bitstreams_samples : forall i, produces (eq (samples i)) (env.(bitstreams) i) t.
 
   Lemma cotree_freq_bitstreams_samples (n : nat) :
-    freq (in_Sigma01 (cotree_preimage P t)) (prefix env.(bitstreams) n) =
-      freq (fun x : A => is_true (P x)) (prefix samples n).
+    freq (in_Sigma01 (cotree_preimage P t)) (seq_prefix env.(bitstreams) n) =
+      freq (fun x : A => is_true (P x)) (seq_prefix samples n).
   Proof.
     unfold freq; f_equal.
-    2: { f_equal; rewrite 2!length_prefix; reflexivity. }
+    2: { f_equal; rewrite 2!length_seq_prefix; reflexivity. }
     f_equal; apply list_rel_count, list_rel_prefix.
     intro i; specialize (@bitstreams_samples i).
     apply produces_in_sigma01; auto.
   Qed.
 
   Theorem cotree_samples_equidistributed :
-    converges (freq (is_true ∘ P) ∘ prefix samples)
+    converges (freq (is_true ∘ P) ∘ seq_prefix samples)
       (cotwp (fun s => if P s then 1 else 0) t).
   Proof.
     intros eps Heps.

@@ -133,6 +133,40 @@ Next Obligation. intros []. Qed.
   Instance TType_Prop : TType Prop := {| top := True |}.
 Next Obligation. intro; apply I. Qed.
 
+Definition bool_le (a b : bool) : Prop :=
+  match a, b with
+  | false, _ => True
+  | _, true => True
+  | _, _ => False
+  end.
+
+#[global]
+  Instance Reflexive_bool_le : Reflexive bool_le.
+Proof. intros []; apply I. Qed.
+
+#[global]
+  Instance Transitive_bool_le : Transitive bool_le.
+Proof. intros [] [] [] [] []; constructor; etransitivity; eauto. Qed.
+
+#[global]
+  Instance PreOrder_bool_le : PreOrder bool_le.
+Proof. constructor; typeclasses eauto. Qed.
+
+#[global]
+  Instance OType_bool : OType bool :=
+  {| leq := bool_le |}.
+
+#[global]
+  Program
+  Instance PType_bool : PType bool :=
+  {| bot := false |}.
+
+#[global]
+  Program
+  Instance TType_bool : TType bool :=
+  {| top := true |}.
+Next Obligation. destruct x; apply I. Qed.
+
 #[global]
   Program Instance OType_arrow A B {oB : OType B} : OType (A -> B) :=
   {| leq := fun f g => forall x, leq (f x) (g x) |}.
@@ -223,6 +257,11 @@ Proof. unfold Symmetric, equ; intuition. Qed.
   Program
   Instance Equivalence_equ A `{OType A} : Equivalence equ.
 
+Lemma le_bot {A} `{PType A} (a : A) :
+  a ⊑ ⊥ ->
+  a === ⊥.
+Proof. intro Hle; split; auto; apply bot_le. Qed.
+
 #[global]
   Instance Proper_leq {A} `{OType A} : Proper (equ ==> equ ==> flip impl) leq.
 Proof.
@@ -235,6 +274,16 @@ Qed.
   Instance Proper_monotone_equ {A B} `{OType A} `{OType B} (f : A -> B)
   {pf: Proper (leq ==> leq) f} : Proper (equ ==> equ) f.
 Proof. intros a b Hab; split; apply pf, Hab. Qed.
+
+#[global]
+  Instance Proper_monotone_equ2 {A B C} `{OType A} `{OType B} `{OType C} (f : A -> B -> C)
+  {pf: Proper (leq ==> leq ==> leq) f} : Proper (equ ==> equ ==> equ) f.
+Proof. intros a b Hab c d Hcd; split; apply pf; firstorder. Qed.
+
+#[global]
+  Instance Proper_monotone_eq_equ {A B C} `{OType A} `{OType B} `{OType C} (f : A -> B -> C)
+  {pf: Proper (leq ==> eq ==> leq) f} : Proper (equ ==> eq ==> equ) f.
+Proof. intros a b Hab c d Hcd; split; apply pf; firstorder. Qed.
 
 #[global]
   Instance Proper_antimonotone_equ {A B} `{OType A} `{OType B} (f : A -> B)
@@ -518,6 +567,15 @@ Definition wcontinuous {A B : Type} `{OType A} `{OType B} (f : A -> B) :=
     forall a : A,
       supremum a g ->
       supremum (f a) (f ∘ g).
+
+(* Definition wcontinuous2 {A B C : Type} `{OType A} `{OType B} `{OType C} (f : A -> B -> C) := *)
+(*   forall (g : nat -> A) (h : nat -> B), *)
+(*     chain g -> *)
+(*     chain h -> *)
+(*     forall (a : A) (b : B), *)
+(*       supremum a g -> *)
+(*       supremum b h -> *)
+(*       supremum (f a b) (fun i => f (g i) (h i)). *)
 
 Definition wcocontinuous {A B : Type} `{OType A} `{OType B} (f : A -> B) :=
   forall g : nat -> A,
@@ -1087,6 +1145,10 @@ Class ExtType (A : Type) `{OType A} : Type :=
 Proof. intros x y Hxy; eapply ext in Hxy; subst; reflexivity. Qed.
 
 #[global]
+  Instance ExtType_bool : ExtType bool.
+Proof. constructor. intros [] [] []; auto; destruct H. Qed.
+
+#[global]
   Instance ExtType_arrow {A B} `{ExtType B} : ExtType (A -> B).
 Proof.
   constructor; intros f g Hfg.
@@ -1433,3 +1495,84 @@ Proof.
     + destruct (Hb' O).
     + eapply Hlub; auto.
 Qed.
+
+(* (** Hmm.. need the fancier OType on function spaces for this to work.. *) *)
+(* Lemma monotone_2 {A B C} `{OType A} `{OType B} `{OType C} (f : A -> B -> C) (a : A) : *)
+(*   Proper (leq ==> leq) f -> *)
+(*   Proper (leq ==> leq) (f a). *)
+(* Proof. *)
+(*   intros Hf x y Hxy. *)
+(*   specialize (Hf a a (leq_refl a)). *)
+(*   simpl in Hf. *)
+  
+(*   intros Hf ch Hch b [Hub Hlub]. *)
+(*   unfold compose. *)
+(*   split. *)
+(*   - intro i. *)
+(*     apply  *)
+
+(* Lemma continuous_2 {A B C} `{OType A} `{OType B} `{OType C} (f : A -> B -> C) (a : A) : *)
+(*   continuous f -> *)
+(*   continuous (f a). *)
+(* Proof. *)
+(*   intros Hf ch Hch b [Hub Hlub]. *)
+(*   unfold compose. *)
+(*   split. *)
+(*   - intro i. *)
+(*     apply  *)
+
+(* Definition ofun (A B : Type) `{OType A} `{OType B} : Type := *)
+(*   { f : A -> B | Proper (leq ==> leq) f }. *)
+
+(* Program *)
+(*   Instance OType_arrow' {A B} `{OType A} `{OType B} : OType (ofun A B) := *)
+(*   {| leq := fun f g => forall x y, x ⊑ y -> f x ⊑ g y |}. *)
+(* Next Obligation. *)
+(*   constructor. *)
+(*   - intros f x y Hxy; destruct f; auto. *)
+(*   - intros [f] [g] [h] Hfg Hgh x y Hxy; simpl in *. *)
+(*     etransitivity. *)
+(*     apply Hfg; eauto. *)
+(*     apply Hgh; reflexivity. *)
+(* Qed. *)
+
+(* Definition ocontinuous {A B : Type} `{OType A} `{OType B} (f : ofun A B) := *)
+(*   forall g : nat -> A, *)
+(*     directed g -> *)
+(*     forall a : A, *)
+(*       supremum a g -> *)
+(*       supremum (proj1_sig f a) (proj1_sig f ∘ g). *)
+
+(* Lemma continuous_2 {A B C} `{OType A} `{OType B} `{OType C} (f : ofun A (ofun B C)) (a : A) : *)
+(*   ocontinuous f -> *)
+(*   ocontinuous (proj1_sig f a). *)
+(* Proof. *)
+(*   intros Hf ch Hch b Hsup. *)
+(*   specialize (Hf (const a) (directed_const a) a (supremum_const a)). *)
+(*   destruct Hf as [Hub Hlub]. *)
+(*   unfold compose, const in *. *)
+(*   simpl in *. *)
+(*   destruct Hsup as [Hub' Hlub']. *)
+(*   destruct f as [f]; simpl in *. *)
+(*   destruct (f a) as [g]; simpl in *. *)
+(*   split. *)
+(*   - intro i; apply p0; auto. *)
+(*   - intros x Hx. *)
+(*     clear Hub. *)
+(*     specialize (Hlub (exist _ g p0)). *)
+(*     simpl in Hlub. *)
+
+(*   intros Hf ch Hch b [Hub Hlub]. *)
+(*   destruct f as [f]. *)
+(*   unfold compose. *)
+(*   split. *)
+(*   - intro i. *)
+(*     simpl. *)
+(*     destruct (f a) as [g]; simpl. *)
+(*     apply p0. *)
+(*     apply Hub. *)
+(*   - intros x Hx; simpl in *. *)
+(*     destruct (f a) as [g]; simpl.     *)
+(*     simpl in *. *)
+(*     specialize (Hf (const a)). *)
+(*     simpl in Hf. *)

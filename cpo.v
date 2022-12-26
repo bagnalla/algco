@@ -15,6 +15,7 @@ From algco Require Import
   axioms
   misc
   order
+  tactics
 .
 
 Local Open Scope order_scope.
@@ -131,6 +132,44 @@ Qed.
   Instance Lattice_Prop : Lattice Prop. Qed.
 #[global] Hint Resolve Lattice_Prop : order.
 
+#[global]
+  Instance CPO_bool : CPO bool.
+Proof.
+  constructor; intro f.
+  destruct (classic (exists i, f i = true)).
+  - exists true; split.
+    + intro i; simpl; unfold bool_le; destruct (f i); auto.
+    + intros x Hx; destruct x; try reflexivity.
+      destruct H as [i H]; specialize (Hx i).
+      rewrite H in Hx; destruct Hx.
+  - exists false; split.
+    + intro i; destruct (f i) eqn:Hfi; try reflexivity.
+      exfalso; apply H; exists i; auto.
+    + intros x Hx; destruct x; reflexivity.
+Qed.
+#[global] Hint Resolve CPO_bool : order.
+
+#[global]
+  Instance lCPO_bool : lCPO bool.
+Proof.
+  constructor; intro f.
+  destruct (classic (exists i, f i = false)).
+  - exists false; split.
+    + intro i; simpl; unfold bool_le; destruct (f i); auto.
+    + intros x Hx; destruct x; try reflexivity.
+      destruct H as [i H]; specialize (Hx i).
+      rewrite H in Hx; destruct Hx.
+  - exists true; split.
+    + intro i; destruct (f i) eqn:Hfi; try reflexivity.
+      exfalso; apply H; exists i; auto.
+    + intros x Hx; destruct x; reflexivity.
+Qed.
+#[global] Hint Resolve lCPO_bool : order.
+
+#[global]
+  Instance Lattice_bool : Lattice bool. Qed.
+#[global] Hint Resolve Lattice_bool : order.
+
 Lemma ge_inf {A} `{lCPO A} (f : nat -> A) (a : A) (i : nat) :
   f i ⊑ a ->
   inf f ⊑ a.
@@ -229,7 +268,82 @@ Qed.
 #[global]
   Instance dCPO_sum {A B} `{dCPO A} `{dCPO B} : dCPO (A + B).
 Proof.
-Admitted.
+  constructor; intros ch Hch.
+  destruct (classic (exists i a, ch i = inl a)) as [Ha|Ha].
+  { destruct Ha as [i [a Ha]].
+    set (ch_a := fun j => match (ch j) with
+                       | inl x => x
+                       | inr _ => a
+                       end).
+    assert (Hch_a: directed ch_a).
+    { intros j k; specialize (Hch j k); destruct Hch as [z [Hiz Hjz]].
+      unfold ch_a.
+      exists z; split.
+      - destruct (ch j) eqn:Hchj.
+        + destruct (ch z) eqn:Hchz; auto; inv Hiz.
+        + destruct (ch z) eqn:Hchz; try reflexivity; inv Hiz.
+      - destruct (ch k) eqn:Hchk.
+        + destruct (ch z) eqn:Hchz; auto; inv Hjz.
+        + destruct (ch z) eqn:Hchz; try reflexivity; inv Hjz. }
+    destruct H0; apply exists_dsup0 in Hch_a; clear exists_dsup0.
+    destruct (classic (exists i b, ch i = inr b)).
+    { destruct H0 as [j [b Hb]].
+      specialize (Hch i j).
+      destruct Hch as [k [Hik Hjk]].
+      rewrite Ha in Hik.
+      rewrite Hb in Hjk.
+      destruct (ch k).
+      - inv Hjk.
+      - inv Hik. }
+    destruct Hch_a as [x Hx].
+    exists (inl x).
+    destruct Hx as [Hub Hlub].
+    split.
+    - intro j.
+      specialize (Hub j).
+      unfold ch_a in Hub.
+      destruct (ch j) eqn:Hchj; auto.
+      exfalso; apply H0; exists j, b; auto.
+    - intros [y|y] Hy.
+      + apply Hlub; intro j; specialize (Hy j).
+        unfold ch_a; destruct (ch j) eqn:Hchj; auto; inv Hy; simpl in *.
+      + specialize (Hy i); rewrite Ha in Hy; inv Hy. }
+  destruct (ch O) eqn:Hch0.
+  { exfalso; apply Ha; exists O, a; auto. }
+  set (ch_b := fun j => match (ch j) with
+                     | inl _ => b
+                     | inr y => y
+                     end).
+  assert (Hch_b: directed ch_b).
+  { intros j k; specialize (Hch j k); destruct Hch as [z [Hiz Hjz]].
+    unfold ch_b.
+    exists z; split.
+    - destruct (ch j) eqn:Hchj.
+      + destruct (ch z) eqn:Hchz; try reflexivity; inv Hiz.
+      + destruct (ch z) eqn:Hchz; auto; inv Hiz.
+    - destruct (ch k) eqn:Hchk.
+      + destruct (ch z) eqn:Hchz; try reflexivity; inv Hjz.
+      + destruct (ch z) eqn:Hchz; auto; inv Hjz. }
+  destruct H2; apply exists_dsup0 in Hch_b; clear exists_dsup0.
+  destruct Hch_b as [y [Hub Hlub]].
+  exists (inr y); split.
+  - intro i; specialize (Hub i).
+    unfold ch_b in Hub.
+    destruct (ch i) eqn:Hchi; auto.
+    destruct (Hch O i) as [k [HOk Hik]].
+    rewrite Hch0 in HOk.
+    rewrite Hchi in Hik.
+    destruct (ch k).
+    + inv HOk.
+    + inv Hik.
+  - intros x Hx.
+    destruct x.
+    + specialize (Hx O); rewrite Hch0 in Hx; inv Hx.
+    + apply Hlub; intro i.
+      specialize (Hx i).
+      unfold ch_b.
+      destruct (ch i); auto; inv Hx.
+Qed.
 
 Lemma sup_const {A} `{CPO A} (a : A) :
   sup (fun _ => a) === a.
@@ -417,13 +531,13 @@ Proof.
   - rewrite Hfg; apply dsup_spec; auto.
 Qed.
 
-Lemma sup_shift {A} `{CPO A} (f : nat -> A) :
+Lemma sup_shift {A} `{dCPO A} (f : nat -> A) :
   chain f ->
   sup (shift f) === sup f.
 Proof.
   intro Hf; apply supremum_sup; auto with order.
   apply supremum_shift; auto.
-  apply sup_spec; auto with order.
+  apply dsup_spec; auto with order.
 Qed.
 
 Lemma sup_shift' {A} `{dCPO A} (f g : nat -> A) :
@@ -575,4 +689,20 @@ Lemma continuous_supP {A} `{dCPO A} (f : A -> Prop) (ch : nat -> A) :
 Proof.
   intros Hf Hch.
   apply equ_iff, continuous_sup; auto.
+Qed.
+
+Lemma sup_true_exists_i (f : nat -> bool) :
+  sup f = true ->
+  exists i, f i = true.
+Proof.
+  intro Hsup.
+  contra H.
+  assert (f = const false).
+  { ext i; unfold const; apply not_ex_all_not with (n:=i) in H.
+    destruct (f i); congruence. }
+  subst.
+  apply eq_equ in Hsup.
+  unfold const in Hsup.
+  rewrite sup_const in Hsup.
+  apply ext in Hsup; congruence.
 Qed.

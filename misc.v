@@ -9,8 +9,11 @@ From Coq Require Import
   List
   Lia
   RelationClasses
+  Basics
+  Fin
 .
 Import ListNotations.
+Local Open Scope program_scope.
 
 Require Import tactics.
 
@@ -78,22 +81,74 @@ Proof.
   inv H1; inv H2; f_equal; apply IHl1; auto.
 Qed.
 
-Fixpoint prefix_aux {A : Type} (f : nat -> A) (n : nat) : list A :=
+Fixpoint seq_prefix_aux {A : Type} (f : nat -> A) (n : nat) : list A :=
   match n with
   | O => []
-  | S n' => f n' :: prefix_aux f n'
+  | S n' => f n' :: seq_prefix_aux f n'
   end.
 
-Definition prefix {A : Type} (f : nat -> A) (n : nat) : list A :=
-  rev (prefix_aux f n).
+Definition seq_prefix {A : Type} (f : nat -> A) (n : nat) : list A :=
+  rev (seq_prefix_aux f n).
 
-Lemma length_prefix_aux {A} (f : nat -> A) (n : nat) :
-  length (prefix_aux f n) = n.
+Lemma length_seq_prefix_aux {A} (f : nat -> A) (n : nat) :
+  length (seq_prefix_aux f n) = n.
 Proof. induction n; simpl; auto. Qed.
 
-Corollary length_prefix {A} (f : nat -> A) (n : nat) :
-  length (prefix f n) = n.
-Proof. unfold prefix; rewrite rev_length; apply length_prefix_aux. Qed.
+Corollary length_seq_prefix {A} (f : nat -> A) (n : nat) :
+  length (seq_prefix f n) = n.
+Proof. unfold seq_prefix; rewrite rev_length; apply length_seq_prefix_aux. Qed.
+
+Lemma map_seq_prefix_aux {A B} (f : nat -> A) (g : A -> B) (n : nat) :
+  map g (seq_prefix_aux f n) = seq_prefix_aux (g ∘ f) n.
+Proof.
+  revert f g; induction n; intros f g; simpl; auto.
+  rewrite IHn; reflexivity.
+Qed.
+
+Lemma map_seq_prefix {A B} (f : nat -> A) (g : A -> B) (n : nat) :
+  map g (seq_prefix f n) = seq_prefix (g ∘ f) n.
+Proof.
+  unfold seq_prefix; rewrite map_rev, map_seq_prefix_aux; reflexivity.
+Qed.
+
+Lemma forall_seq_prefix_aux {A} (f : nat -> A) (P : A -> Prop) (n : nat) :
+  (forall i, P (f i)) ->
+  Forall P (seq_prefix_aux f n).
+Proof.
+  induction n; intro H; simpl.
+  { constructor. }
+  constructor; auto.
+Qed.
+
+Lemma forall_seq_prefix {A} (f : nat -> A) (P : A -> Prop) (n : nat) :
+  (forall i, P (f i)) ->
+  Forall P (seq_prefix f n).
+Proof. intro H; apply Forall_rev, forall_seq_prefix_aux; auto. Qed.
+
+Lemma in_seq_prefix_aux {A} (f : nat -> A) (i j : nat) :
+  i < j ->
+  In (f i) (seq_prefix_aux f j).
+Proof.
+  revert f i; induction j; intros f i Hij; try lia; simpl.
+  destruct (Nat.eqb_spec i j); subst.
+  - left; reflexivity.
+  - right; apply IHj; lia.
+Qed.
+
+Lemma seq_prefix_aux_monotone {A} (f : nat -> A) (i j : nat) :
+  i <= j ->
+  Forall (fun a => In a (seq_prefix_aux f j)) (seq_prefix_aux f i).
+Proof.
+  intros Hij; apply Forall_forall.
+  revert Hij; revert f j; induction i; simpl; intros f j Hij a Hin.
+  { inv Hin. }
+  destruct Hin as [Hin|Hin]; subst.
+  - destruct j; try lia; simpl.
+    destruct (Nat.eqb_spec i j); subst.
+    + left; reflexivity.
+    + right; apply in_seq_prefix_aux; lia.
+  - apply IHi; auto; lia.
+Qed.
 
 Inductive list_rel {A B : Type} (R : A -> B -> Prop) : list A -> list B -> Prop :=
 | list_rel_nil : list_rel R [] []
@@ -122,7 +177,7 @@ Qed.
 
 Lemma list_rel_prefix {A B} (R : A -> B -> Prop) (f : nat -> A) (g : nat -> B) (n : nat) :
   (forall i, R (f i) (g i)) ->
-  list_rel R (prefix f n) (prefix g n).
+  list_rel R (seq_prefix f n) (seq_prefix g n).
 Proof.
   intro HR; apply list_rel_rev.
   induction n; constructor; auto.
@@ -176,6 +231,12 @@ Lemma range_length (n : nat) :
   length (range n) = n.
 Proof.
   induction n; simpl; auto; rewrite app_length; simpl; rewrite IHn; lia.
+Qed.
+
+Lemma range_seq (n : nat) :
+  range n = seq 0 n.
+Proof.
+  induction n; auto; rewrite seq_S; simpl; rewrite IHn; reflexivity.
 Qed.
 
 Fixpoint countb_list {A : Type} (f : A -> bool) (l : list A) : nat :=
@@ -283,7 +344,7 @@ Lemma Forall_list_rel {A} (R : A -> A -> Prop) l :
   list_rel R l l.
 Proof. induction l; intro Hl; inv Hl; constructor; auto. Qed.
 
-(* Types with decidable equality *)
+(* Types with decidable equality. *)
 Class EqType (A : Type) : Type :=
   { eqb : A -> A -> bool
   ; eqb_spec : forall x y, reflect (x = y) (eqb x y)
@@ -315,6 +376,16 @@ Solve Obligations with try (split; congruence).
 Next Obligation.
   destruct x, y; try (constructor; congruence).
   destruct (eqb_spec a a0); constructor; congruence.
+Qed.
+
+#[global]
+  Program Instance EqType_fin {n} : EqType (Fin.t n) :=
+ {| eqb := Fin.eqb |}.
+Next Obligation.
+  destruct (Fin.eqb x y) eqn:Hxy.
+  - apply eqb_eq in Hxy; subst; constructor; reflexivity.
+  - constructor; intro HC.
+    apply eqb_eq in HC; congruence.
 Qed.
 
 Fixpoint list_eqb {A : Type} `{EqType A} (l1 l2 : list A) : bool :=
@@ -371,3 +442,43 @@ Proof. destruct (eqb_spec a a); subst; congruence. Qed.
 
 Definition is_prime (n : nat) : Prop :=
   1 < n /\ forall m, 1 < m -> n <> m -> n mod m <> O.
+
+(* Inductive nelist (A : Type) : Type := *)
+(* | ne_single : A -> nelist A *)
+(* | ne_cons : A -> nelist A -> nelist A. *)
+
+(* Inductive in_nelist {A} : A -> nelist A -> Prop := *)
+(* | in_nelist_single : forall a, *)
+(*     in_nelist a (ne_single a) *)
+(* | in_nelist_here : forall a l,  *)
+(*     in_nelist a (ne_cons a l) *)
+(* | in_nelist_there : forall a b l, *)
+(*     in_nelist a l -> *)
+(*     in_nelist a (ne_cons b l). *)
+
+(* Fixpoint nelist_length {A} (l : nelist A) : nat := *)
+(*   match l with *)
+(*   | ne_single _ => 1 *)
+(*   | ne_cons _ xs => S (nelist_length xs) *)
+(*   end. *)
+
+(* (* Finite types. *) *)
+(* Class FinType (A : Type) : Type := *)
+(*   { enum : nelist A *)
+(*   ; enum_full : forall a, in_nelist a enum *)
+(*   (* ; enum_nodup : NoDup enum *) *)
+(*   }. *)
+
+(* (* Finite types. *) *)
+(* Class FinType (A : Type) : Type := *)
+(*   { enum : list A *)
+(*   ; enum_full : forall a, In a enum *)
+(*   ; enum_nodup : NoDup enum *)
+(*   }. *)
+
+(* (* Finite types. *) *)
+(* Class FinType (A : Type) (n : nat) : Type := *)
+(*   { enum : Vector.t A n *)
+(*   ; enum_full : forall a, Vector.In a enum *)
+(*   (* ; enum_nodup : Vector.NoDup enum *) *)
+(*   }. *)

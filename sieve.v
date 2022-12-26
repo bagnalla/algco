@@ -242,19 +242,11 @@ Proof with eauto with colist order aCPO.
   lia.
 Qed.
 
-Lemma generative_nats (n : Z) :
+Lemma productive_nats (n : Z) :
   productive (nats n).
 Proof.
-  intro i; revert n; induction i; intro n; simpl.
-  { split.
-    - constructor.
-    - intro HC; inv HC. }
-  split.
-  - constructor; apply IHi.
-  - intro HC; inv HC.
-    specialize (IHi (n + 1)).
-    destruct IHi as [H1 H2].
-    apply H2; auto.
+  revert n; cofix CH; intro n.
+  rewrite unf_eq; constructor; auto.
 Qed.
 
 Lemma colist_exists_inj_list_exists {A} (a : A) (l : list A) :

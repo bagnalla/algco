@@ -12,6 +12,7 @@ From Coq Require Import
   List
   Nat
 .
+Local Open Scope bool_scope.
 Local Open Scope program_scope.
 Local Open Scope equiv_scope.
 Import ListNotations.
@@ -716,11 +717,34 @@ Fixpoint fold {A B} (z : B) (f : A -> B -> B) (l : list A) : B :=
   | x :: xs => f x (fold z f xs)
   end.
 
-(* Fixpoint para {A B} (z : B) (f : A -> list A -> B -> B) (l : list A) : B := *)
-(*   match l with *)
-(*   | [] => z *)
-(*   | acons x xs => f x xs (para z f xs) *)
-(*   end. *)
+Fixpoint foldl {A B} (f : B -> A -> B) (z : B) (l : list A) : B :=
+  match l with
+  | [] => z
+  | x :: xs => foldl f (f z x) xs
+  end.
+
+(* Definition para {A B} (z : B) (f : A -> colist A -> B -> B) (l : list A) : B := *)
+(*   snd (fold (conil, z) (fun a lx => let (l', x) := lx in *)
+(*                               (cocons a l', f a l' x)) l). *)
+
+Fixpoint para {A B} (z : B) (f : A -> colist A -> B -> B) (l : list A) : B :=
+  match l with
+  | [] => z
+  | x :: xs => f x (inj xs) (para z f xs)
+  end.
+
+(* Lemma para_para' {A B} (z : B) (f : A -> colist A -> B -> B) (l : list A) : *)
+(*   para z f l = para' z f l. *)
+(* Proof. *)
+(*   unfold para. *)
+(*   revert z f; induction l; intros z f; simpl; auto. *)
+(*   specialize (IHl z f). *)
+(*   destruct (fold (conil, z) *)
+(*               (fun (a0 : A) (lx : colist A * B) => *)
+(*                  let (l0, x) := lx in (cocons a0 l0, f a0 l0 x)) l). *)
+(*   simpl in *; subst. *)
+(*   f_equal. *)
+  
 
 #[global]
   Instance monotone_fold {A B} `{OType B} (z : B) (f : A -> B -> B)
@@ -735,21 +759,22 @@ Proof.
 Qed.
 #[global] Hint Resolve monotone_fold : colist.
 
-(* #[global] *)
-(*   Instance monotone_para {A B} `{OType B} (z : B) (f : A -> list A -> B -> B) *)
-(*   {Hz : forall b, z ⊑ para z f b} *)
-(*   {Hf : forall a, Proper (leq ==> leq ==> leq) (f a)} *)
-(*   : Proper (leq ==> leq) (para z f). *)
-(* Proof. *)
-(*   intro a; revert Hz Hf; revert f; *)
-(*     induction a; intros f Hz Hf b Hab; inv Hab; simpl. *)
-(*   - apply Hz. *)
-(*   - apply Hf; auto. *)
-(* Qed. *)
-(* #[global] Hint Resolve monotone_para : colist. *)
+#[global]
+  Instance monotone_para {A B} `{OType B} (z : B) (f : A -> colist A -> B -> B)
+  {Hz : forall b, z ⊑ para z f b}
+  {Hf : forall a, Proper (leq ==> leq ==> leq) (f a)}
+  : Proper (leq ==> leq) (para z f).
+Proof.
+  intro a; revert Hz Hf; revert f;
+    induction a; intros f Hz Hf b Hab; inv Hab; simpl.
+  - apply Hz.
+  - apply Hf; auto.
+    apply monotone_inj; auto.
+Qed.
+#[global] Hint Resolve monotone_para : colist.
 
-(* Definition copara {A B} `{OType B} (z : B) (f : A -> list A -> B -> B) : colist A -> B := *)
-(*   co (para z f). *)
+Definition copara {A B} `{OType B} (z : B) (f : A -> colist A -> B -> B) : colist A -> B :=
+  co (para z f).
 
 #[global]
   Instance antimonotone_fold {A B} `{OType B} (z : B) (f : A -> B -> B)
@@ -1035,18 +1060,6 @@ Proof.
   - constructor; auto.
 Qed.
 
-(* Lemma colist_forall_inj {A} (P : A -> Prop) (l : list A) : *)
-(*   list_forall P l -> *)
-(*   colist_forall P (inj l). *)
-(* Proof with eauto with colist order. *)
-(*   intro Hl. *)
-(*   apply coop_intro... *)
-(*   intro i. *)
-(*   unfold ideal; simpl; unfold flip. *)
-(*   eapply antimonotone_list_forall; eauto. *)
-(*   apply prefix_inj_le. *)
-(* Qed. *)
-
 Lemma list_forall_impl {A} (P Q : A -> Prop) (l : list A) :
   (forall x, P x -> Q x) ->
   list_forall P l ->
@@ -1331,10 +1344,15 @@ Lemma coopfold_cons' {A B} `{o : OType B} `{@ExtType _ o} `{@TType B o} `{@ldCPO
   coopfold f (cocons a l) = f a (coopfold f l).
 Proof. intro Hf; apply ext, coop_fold_cons; auto; try intro; apply le_top. Qed.
 
-(** These should all be equivalent. *)
+(** These are all be equivalent. *)
 
-Definition productive {A} (l : colist A) : Prop :=
-  forall i, prefix i l ⊏ prefix (S i) l.
+(* Definition productive {A} (l : colist A) : Prop := *)
+(*   forall i, prefix i l ⊏ prefix (S i) l. *)
+
+CoInductive productive {A} : colist A -> Prop :=
+| productive_cons : forall a l,
+    productive l ->
+    productive (cocons a l).
 
 Definition productive' {A} (l : colist A) : Prop :=
   forall n, nth' (const True) n l.
@@ -1349,8 +1367,8 @@ Definition productive''' {A} (l : colist A) : Prop :=
 Extract Constant cofold => "
   \ o p f l ->
     case l of
-      Conil -> Prelude.error ""Conil""
-      Cocons a l' -> f a (morph o p f l')
+      Cobot -> bot o p
+      Cocons a l' -> f a (cofold o p f l')
 ".
 
 Lemma colist_length_inj {A} (l : colist A) (n : nat) :
@@ -1386,6 +1404,24 @@ Lemma nth'_inj_list_nth {A} (P : A -> Prop) (n : nat) (l : list A) :
   list_nth P n l.
 Proof.
   revert n; induction l; intros n Hn; inv Hn; constructor; auto.
+Qed.
+
+Lemma productive'_productive {A} (l : colist A) :
+  productive' l <-> productive l.
+Proof.
+  unfold productive'.
+  split.
+  - revert l; cofix CH; intros l Hl.
+    destruct l.
+    + specialize (Hl O); inv Hl.
+    + constructor; apply CH; intro i.
+      specialize (Hl (S i)); inv Hl; auto.
+  - intros Hl i.
+    revert l Hl; induction i; intros l Hl.
+    + destruct l; inv Hl.
+      constructor; apply I.
+    + destruct l; inv Hl.
+      constructor; apply IHi; auto.
 Qed.
 
 Lemma productive'_productive'' {A} (l : colist A) :
@@ -1435,7 +1471,7 @@ Proof.
   rewrite (@conat.unf_eq omega) in HC; inv HC.
 Qed.
 
-Lemma productive_cons {A} (a : A) (l : colist A) :
+Lemma productive''_cons {A} (a : A) (l : colist A) :
   productive'' (cocons a l) -> productive'' l.
 Proof with eauto with colist conat order aCPO.
   unfold productive''.
@@ -1513,13 +1549,43 @@ Proof.
   split; auto; apply IHl; auto.
 Qed.
 
-(** Is it possible to write this as a fold? Don't think so. *)
+Lemma colist_forall_inj {A} (P : A -> Prop) (l : list A) :
+  list_forall P l <-> colist_forall P (inj l).
+Proof with eauto with colist order.
+  split.
+  { induction l; intro Hl; simpl.
+    - apply colist_forall_nil.
+    - apply colist_forall_intro; destruct Hl; auto. }
+  { induction l; intro Hl.
+    - constructor.
+    - apply colist_forall_cons in Hl; destruct Hl.
+      constructor; auto; apply IHl; auto. }
+Qed.
+
+(** Is it possible to write this as a fold? Don't think so. UPDATE:
+    YES, as a parafold. *)
 Inductive list_ordered {A} (R : A -> A -> Prop) : list A -> Prop :=
 | list_ordered_nil : list_ordered R []
 | list_ordered_cons : forall a l,
     list_forall (R a) l ->
     list_ordered R l ->
     list_ordered R (a :: l).
+
+Definition list_ordered' {A} (R : A -> A -> Prop) : list A -> Prop :=
+  para True (fun a l P => colist_forall (R a) l /\ P).
+
+Lemma list_ordered_list_ordered' {A} (R : A -> A -> Prop) (l : list A) :
+  list_ordered R l <-> list_ordered' R l.
+Proof.
+  split; induction l; intro H.
+  - apply I.
+  - inv H; split; auto.
+    + apply colist_forall_inj; auto.
+    + apply IHl; auto.
+  - constructor.
+  - destruct H; constructor; auto.
+    apply colist_forall_inj; auto.
+Qed.
 
 #[global]
   Instance antimonotone_list_ordered {A} (R : A -> A -> Prop)
@@ -1712,15 +1778,6 @@ Proof with eauto with colist order aCPO.
   apply list_forall_filter.
 Qed.
 
-Lemma colist_forall_inj {A} (P : A -> Prop) (l : list A) :
-  list_forall P l ->
-  colist_forall P (inj l).
-Proof with eauto with colist order.
-  induction l; intro Hl; simpl.
-  - apply colist_forall_nil.
-  - apply colist_forall_intro; destruct Hl; auto.
-Qed.
-
 Lemma list_forall_colist_forall_afilter {A} (P : A -> Prop) Q l :
   list_forall P l ->
   colist_forall P (afilter Q l).
@@ -1869,4 +1926,72 @@ Proof with eauto with colist order aCPO.
   destruct Hall as [H0 H1].
   rewrite H0.
   apply IHl; auto.
+Qed.
+
+CoFixpoint const_colist {A} (a : A) : colist A := cocons a (const_colist a).
+
+CoFixpoint nats (n : nat) : colist nat := cocons n (nats (S n)).
+
+Lemma prefix_nats (n i : nat) :
+  prefix i (nats n) = seq n i.
+Proof. revert n; induction i; intro n; simpl; auto; rewrite IHi; auto. Qed.
+
+Lemma fold_app {A B} (z : B) (f : A -> B -> B) (l l' : list A) :
+  fold z f (l ++ l') = fold (fold z f l') f l.
+Proof.
+  revert z f l'; induction l; intros z f l'; simpl; auto.
+  rewrite IHl; reflexivity.
+Qed.
+
+Lemma list_le_app {A} (a b : list A) :
+  a ⊑ a ++ b.
+Proof.
+  revert b; induction a; intro b; simpl; constructor; apply IHa.
+Qed.
+
+Lemma chain_seq_prefix {A} (f : nat -> A) :
+  chain (seq_prefix f).
+Proof.
+  unfold seq_prefix.
+  intro i; revert f; induction i; simpl; intro f.
+  { constructor. }
+  apply list_le_app.
+Qed.
+
+(** Divergent colist that is "productive" by computing elements via
+    divergent computation (e.g., big disjunction of all falses) *)
+
+(* Definition list_existsb {A} (P : A -> bool) : list A -> bool := *)
+(*   fold false (fun a x => P a || x). *)
+
+Definition colist_existsb {A} (P : A -> bool) : colist A -> bool :=
+  cofold (fun a x => P a || x).
+
+Definition bad_bool : bool := colist_existsb (const false) (nats O).
+
+CoFixpoint bad_stream : colist bool := cocons bad_bool bad_stream.
+
+Lemma bad_stream_productive :
+  productive (bad_stream).
+Proof. cofix CH; rewrite unf_eq; constructor; auto. Qed.
+
+Lemma bad_bool_false {A} (l : colist A) :
+  colist_existsb (const false) l = false.
+Proof.
+  unfold colist_existsb, co; simpl; unfold compose, flip.
+  apply ext, supremum_sup, supremum_const', eq_equ.
+  ext i; unfold const.
+  revert l; induction i; simpl; intro l; auto.
+  unfold compose, flip.
+  destruct l; simpl; auto; apply IHi.
+Qed.
+
+Lemma bad_stream_spec :
+  bad_stream = const_colist false.
+Proof.
+  apply colist_ext.
+  cofix CH.
+  rewrite unf_eq, (@unf_eq _ (const_colist _)); simpl.
+  unfold bad_bool; rewrite bad_bool_false.
+  constructor; apply CH.
 Qed.

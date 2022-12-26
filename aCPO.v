@@ -10,8 +10,10 @@ Local Open Scope program_scope.
 Local Open Scope equiv_scope.
 
 From algco Require Import
+  axioms
   cpo
   order
+  tactics
 .
 
 Local Open Scope order_scope.
@@ -56,6 +58,22 @@ Class aCPO (A B : Type) `{oA : OType A} `{oB : OType B}
   }.
 
 #[global] Hint Resolve chain_ideal : aCPO.
+
+#[global]
+  Instance Compact_bool : Compact bool.
+Proof.
+  constructor; intros [] f Hf Ha.
+  - contra HC.
+    assert (upper_bound false f).
+    { intro i.
+      destruct (f i) eqn:Hfi.
+      - exfalso; apply HC; exists i; rewrite Hfi; reflexivity.
+      - constructor. }
+    apply Ha in H; inv H.
+  - exists O; split.
+    + apply Ha.
+    + constructor.
+Qed.
 
 (** Any monotone function on a compact space is continuous. *)
 Lemma continuous_compact {A B} `{Compact A} `{OType B} (f : A -> B) :
@@ -806,17 +824,16 @@ Qed.
   Qed.
 
   Corollary Proper_co_ext {C} `{oC: OType C} `{@dCPO _ oC} `{@ExtType _ oC}
-    (f g : basis A -> C) (x y : A) :
+    (f g : basis A -> C) (x : A) :
     monotone f ->
     monotone g ->
     f = g ->
-    x = y ->
-    co f x = co g y.
+    co f x = co g x.
   Proof.
-    intros Hf Hg Hfg Hxy.
+    intros Hf Hg Hfg.
     apply ext, Proper_co'; auto.
     - rewrite Hfg; reflexivity.
-    - rewrite Hxy; reflexivity.
+    - reflexivity.
   Qed.
 
   Theorem co_intro (P : basis A -> Prop) (a : A) (i : nat) :

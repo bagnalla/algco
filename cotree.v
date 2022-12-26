@@ -181,7 +181,6 @@ Proof. cofix CH; intros []; constructor; eauto. Qed.
 #[global]
   Instance Transitive_cotree_le {I A} : Transitive (@cotree_le I A).
 Proof.
-  unfold Transitive.
   cofix CH; intros x y z Hxy Hyz.
   inv Hxy.
   - constructor.
@@ -1177,7 +1176,7 @@ Proof. intro Hg; apply coop_tfold_node; auto with order. Qed.
 Extract Constant tcofold => "
   \ o p f g t ->
     case t of
-      Cobot -> Prelude.error ""Cobot""
+      Cobot -> bot o p
       Coleaf a -> f a
       Conode k -> g (tcofold o p f g . k)
 ".
@@ -1192,14 +1191,14 @@ Inductive exists_bot {I A} : cotree I A -> Prop :=
 Definition total {I A} (t : cotree I A) : Prop :=
   ~ exists_bot t.
 
-CoInductive cototal {I A} : cotree I A -> Prop :=
-| cototal_leaf : forall a, cototal (coleaf a)
-| cototal_node : forall k,
-    (forall b, cototal (k b)) ->
-    cototal (conode k).
+CoInductive productive {I A} : cotree I A -> Prop :=
+| productive_leaf : forall a, productive (coleaf a)
+| productive_node : forall k,
+    (forall b, productive (k b)) ->
+    productive (conode k).
 
-Lemma total_cototal {I A} (t : cotree I A) :
-  total t <-> cototal t.
+Lemma total_productive {I A} (t : cotree I A) :
+  total t <-> productive t.
 Proof.
   split.
   - revert t; cofix CH; intros t Ht.
@@ -1214,7 +1213,7 @@ Proof.
     + intro HC; inv HC.
     + intro Ht; inv Ht.
       apply IHHC; auto.
-Qed.
+Qed.  
 
 (* Inductive atotal {I A} : atree I A -> Prop := *)
 (* | atotal_leaf : forall a, atotal (aleaf a) *)
@@ -1237,6 +1236,13 @@ Qed.
 (*   - inv Hex. *)
 (*   - inv Hex; econstructor; eapply H; eauto; apply H1. *)
 (* Qed. *)
+
+CoFixpoint cotree_bind' {A B} (t : cotree bool A) (k : A -> cotree bool B) : cotree bool B :=
+  match t with
+  | cobot => cobot
+  | coleaf a => k a
+  | conode f => conode (fun x => cotree_bind' (f x) k)
+  end.
 
 Definition atree_cotree_bind {I A B} (k : A -> cotree I B) : atree I A -> cotree I B :=
   tfold ⊥ k (@conode I B).
@@ -1280,6 +1286,91 @@ Proof.
   rewrite co_tfold_node; auto with cotree order;
     try reflexivity; intros; constructor.
 Qed.
+
+Lemma atree_cotree_le_tprefix {I A} (t : cotree I A) (i : nat) :
+  atree_cotree_le (tprefix i t) t.
+Proof.
+  revert t; induction i; intro t; simpl.
+  { constructor. }
+  destruct t; constructor.
+  intro j; apply IHi.
+Qed.
+
+Lemma cotree_bind_cotree_bind' {A B} (t : cotree bool A) (k : A -> cotree bool B) :
+  cotree_bind t k = cotree_bind' t k.
+Proof.
+  apply ext; split; apply cotree_le_cotree_le'.
+  - apply coop_intro2.
+    { apply antimonotone_atree_cotree_le. }
+    intro i.
+    simpl; unfold flip.
+    revert t k; induction i; intros t k; simpl.
+    { constructor. }
+    destruct t.
+    + rewrite cotree_bind_bot; constructor.
+    + rewrite cotree_bind_leaf.
+      rewrite (@unf_eq _ _ (cotree_bind' _ _)); simpl.
+      destruct (k a) eqn:Hka; constructor.
+      intro b; apply atree_cotree_le_tprefix.
+    + rewrite cotree_bind_node.
+      rewrite (@unf_eq _ _ (cotree_bind' _ _)); simpl.
+      constructor; intro b; apply IHi.
+  - apply coop_intro2.
+    { apply antimonotone_atree_cotree_le. }      
+    intro i.
+    simpl; unfold flip.
+    revert t k; induction i; intros t k; simpl.
+    { constructor. }
+    destruct t.
+    + rewrite cotree_bind_bot; constructor.
+    + rewrite cotree_bind_leaf.
+      destruct (k a) eqn:Hka; constructor.
+      intro b; apply atree_cotree_le_tprefix.
+    + rewrite cotree_bind_node.
+      constructor; intro b; apply IHi.
+Qed.
+
+Lemma productive_cotree_bind {A B} (t : cotree bool A) (k : A -> cotree bool B) :
+  productive t ->
+  (forall a, productive (k a)) ->
+  productive (cotree_bind t k).
+Proof.
+  revert t k; cofix CH; intros t k Ht Hk.
+  destruct t.
+  - inv Ht.
+  - destruct (k a) eqn:Hka.
+    + specialize (Hk a); rewrite Hka in Hk; inv Hk.
+    + unfold cotree_bind, tcofold.
+      rewrite co_tfold_leaf'; auto.
+      apply bot_le.
+    + unfold cotree_bind, tcofold.
+      rewrite co_tfold_leaf'; auto.
+      apply bot_le.
+  - inv Ht.
+    unfold cotree_bind, tcofold.
+    rewrite co_tfold_node'; auto with cotree order.
+    constructor; intro b; apply CH; auto.
+Qed.
+
+(* Lemma productive_cotree_bind {A B} (t : cotree bool A) (k : A -> cotree bool B) : *)
+(*   productive t -> *)
+(*   (forall a, productive (k a)) -> *)
+(*   productive (cotree_bind t k). *)
+(* Proof. *)
+(*   rewrite cotree_bind_cotree_bind'. *)
+(*   revert t k; cofix CH; intros t k Ht Hk. *)
+(*   destruct t; rewrite unf_eq; simpl. *)
+(*   - inv Ht. *)
+(*   - destruct (k a) eqn:Hka. *)
+(*     + specialize (Hk a); rewrite Hka in Hk; inv Hk. *)
+(*     + constructor. *)
+(*     + constructor; intro b. *)
+(*       specialize (Hk a); rewrite Hka in Hk. *)
+(*       inv Hk; auto. *)
+(*   - inv Ht. *)
+(*     constructor; intro b. *)
+(*     apply CH; auto. *)
+(* Qed. *)
 
 Definition atree_cotree_map {I A B} (f : A -> B) : atree I A -> cotree I B :=
   tfold ⊥ (@coleaf I B ∘ f) (@conode I B).
