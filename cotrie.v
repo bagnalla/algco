@@ -36,26 +36,26 @@ Create HintDb cotrie.
 
 (** Tries with index type A and label type B. *)
 Inductive trie (A B : Type) : Type :=
-| tbot : trie A B
-| tnode : B -> (A -> trie A B) -> trie A B.
+| trie_bot : trie A B
+| trie_node : B -> (A -> trie A B) -> trie A B.
 
 Inductive is_bot {A B} `{PType B} : trie A B -> Prop :=
-| is_bot_bot : is_bot tbot
+| is_bot_bot : is_bot trie_bot
 | is_bot_node : forall b k,
     b === ⊥ ->
     (forall a, is_bot (k a)) ->
-    is_bot (tnode b k).
+    is_bot (trie_node b k).
 
 Definition tlabel {A B} `{PType B} (t : trie A B) : B :=
   match t with
-  | tbot => ⊥
-  | tnode b _ => b
+  | trie_bot => ⊥
+  | trie_node b _ => b
   end.
 
 Definition tdelta {A B} (t : trie A B) (a : A) : trie A B :=
   match t with
-  | tbot => tbot
-  | tnode _ k => k a
+  | trie_bot => trie_bot
+  | trie_node _ k => k a
   end.
 
 Inductive trie_le {A B : Type} `{PType B} : trie A B -> trie A B -> Prop :=
@@ -63,7 +63,7 @@ Inductive trie_le {A B : Type} `{PType B} : trie A B -> trie A B -> Prop :=
 | trie_le_node : forall b b' k k',
     b ⊑ b' ->
     (forall a, trie_le (k a) (k' a)) ->
-    trie_le (tnode b k) (tnode b' k').
+    trie_le (trie_node b k) (trie_node b' k').
 
 #[global]
   Instance Reflexive_trie_le {A B} `{PType B} : Reflexive (@trie_le A B _ _).
@@ -115,11 +115,11 @@ Proof. constructor; typeclasses eauto. Qed.
 
 #[global]
   Program Instance PType_trie {A B} `{PType B} : PType (trie A B) :=
-  {| bot := tbot |}.
+  {| bot := trie_bot |}.
 Next Obligation. constructor; constructor. Qed.
 
 #[global]
-  Instance monotone_tnode {A B} `{PType B} : Proper (leq ==> leq ==> leq) (@tnode A B).
+  Instance monotone_trie_node {A B} `{PType B} : Proper (leq ==> leq ==> leq) (@trie_node A B).
 Proof. intros b b' Hb k k' Hk; apply trie_le_node; auto. Qed.
 
 #[global]
@@ -142,14 +142,14 @@ Proof.
   simpl; auto.
 Qed.
 
-Lemma tbot_bot {A B} `{PType B} :
-  @tbot A B === ⊥.
+Lemma trie_bot_bot {A B} `{PType B} :
+  @trie_bot A B === ⊥.
 Proof. reflexivity. Qed.
 
-Lemma equ_tnode {A B} `{PType B} (b b' : B) (k k' : A -> trie A B) :
+Lemma equ_trie_node {A B} `{PType B} (b b' : B) (k k' : A -> trie A B) :
   b === b' ->
   k === k' ->
-  tnode b k === tnode b' k'.
+  trie_node b k === trie_node b' k'.
 Proof. intros Hb Hk'; rewrite Hb, Hk'; reflexivity. Qed.
 
 (** Interesting type because:
@@ -180,24 +180,23 @@ Proof. intros Hb Hk'; rewrite Hb, Hk'; reflexivity. Qed.
 *)
 
 CoInductive cotrie (A B : Type) : Type :=
-| conode : B -> (A -> cotrie A B) -> cotrie A B.
+| cotrie_node : B -> (A -> cotrie A B) -> cotrie A B.
 
 Definition label {A B} (t : cotrie A B) : B :=
   match t with
-  | conode b _ => b
-  end
-.
+  | cotrie_node b _ => b
+  end.
 
 Definition accepts {A} (t : cotrie A bool) : bool := label t.
 
 Definition delta {A B} (t : cotrie A B) (a : A) : cotrie A B :=
   match t with
-  | conode _ k => k a
+  | cotrie_node _ k => k a
   end.
 
 Definition unf {A B} (t : cotrie A B) :=
   match t with
-  | conode b k => conode b k
+  | cotrie_node b k => cotrie_node b k
   end.
 
 Lemma unf_eq {A B} (t : cotrie A B) : t = unf t.
@@ -207,7 +206,7 @@ CoInductive cotrie_le {A B : Type} `{OType B} : cotrie A B -> cotrie A B -> Prop
 | cotrie_le_node : forall b b' k k',
     b ⊑ b' ->
     (forall a, cotrie_le (k a) (k' a)) ->
-    cotrie_le (conode b k) (conode b' k').
+    cotrie_le (cotrie_node b k) (cotrie_node b' k').
 
 #[global]
   Instance Reflexive_cotrie_le {A B} `{OType B} : Reflexive (@cotrie_le A B _).
@@ -229,7 +228,7 @@ Proof. constructor; typeclasses eauto. Qed.
   {| leq := cotrie_le |}.
 
 CoFixpoint cotrie_bot {A B} `{PType B} : cotrie A B :=
-  conode ⊥ (const cotrie_bot).
+  cotrie_node ⊥ (const cotrie_bot).
 
 Lemma cotrie_bot_le {A B} `{PType B} (t : cotrie A B) :
   cotrie_bot ⊑ t.
@@ -246,7 +245,7 @@ Qed.
    ; bot_le := @cotrie_bot_le _ _ _ _ |}.
 
 CoFixpoint cotrie_top {A B} `{TType B} : cotrie A B :=
-  conode ⊤ (const cotrie_top).
+  cotrie_node ⊤ (const cotrie_top).
 
 Lemma cotrie_le_top {A B} `{TType B} (t : cotrie A B) :
   t ⊑ cotrie_top.
@@ -267,7 +266,7 @@ Qed.
 CoInductive cotrie_eq {A B : Type} : cotrie A B -> cotrie A B -> Prop :=
 | cotrie_eq_node : forall b k k',
     (forall a, cotrie_eq (k a) (k' a)) ->
-    cotrie_eq (conode b k) (conode b k').
+    cotrie_eq (cotrie_node b k) (cotrie_node b k').
 
 (** Extensionality axiom for cotries. *)
 Axiom cotrie_ext : forall {A B} (a b : cotrie A B), cotrie_eq a b -> a = b.
@@ -315,7 +314,7 @@ Proof.
 Qed.
 
 CoFixpoint cotrie_sup {A B} `{CPO B} (f : nat -> cotrie A B) : cotrie A B :=
-  conode (sup (label ∘ f)) (fun x => cotrie_sup (fun i => delta (f i) x)).
+  cotrie_node (sup (label ∘ f)) (fun x => cotrie_sup (fun i => delta (f i) x)).
 
 Lemma supremum_cotrie_sup {A B} `{CPO B} (f : nat -> cotrie A B) :
   supremum (cotrie_sup f) f.
@@ -346,7 +345,7 @@ Proof.
 Qed.
 
 CoFixpoint cotrie_inf {A B} `{lCPO B} (f : nat -> cotrie A B) : cotrie A B :=
-  conode (inf (label ∘ f)) (fun x => cotrie_inf (fun i => delta (f i) x)).
+  cotrie_node (inf (label ∘ f)) (fun x => cotrie_inf (fun i => delta (f i) x)).
 
 Lemma infimum_cotrie_inf {A B} `{lCPO B} (f : nat -> cotrie A B) :
   infimum (cotrie_inf f) f.
@@ -501,7 +500,7 @@ Lemma is_bot_tlabel {A B} `{PType B} (t : trie A B) :
 Proof. intro Ht; inv Ht; auto; reflexivity. Qed.
 
 Lemma supremum_tlabel {A B} `{PType B} (f : nat -> trie A B) (b : B) (t : A -> trie A B) :
-  supremum (tnode b t) f ->
+  supremum (trie_node b t) f ->
   supremum b (tlabel ∘ f).
 Proof.
   intros [Hub Hlub].
@@ -512,7 +511,7 @@ Proof.
     apply is_bot_tlabel in H0.
     rewrite H0; apply bot_le.
   - intros x Hx.
-    assert (Hb: upper_bound (tnode x t) f).
+    assert (Hb: upper_bound (trie_node x t) f).
     { intro i; specialize (Hx i); specialize (Hub i).
       unfold compose in Hx.
       destruct (f i) eqn:Hfi.
@@ -536,7 +535,7 @@ Proof.
 Qed.
 
 Lemma supremum_tdelta {A B} `{PType B} (f : nat -> trie A B) (b : B) (t : A -> trie A B) :
-  supremum (tnode b t) f ->
+  supremum (trie_node b t) f ->
   supremum t (tdelta ∘ f).
 Proof.
   intros [Hub Hlub].
@@ -547,7 +546,7 @@ Proof.
     + apply is_bot_tdelta in H0; rewrite H0; apply bot_le.
     + intro a; simpl; auto.
   - intros x Hx.
-    assert (Hb: upper_bound (tnode b x) f).
+    assert (Hb: upper_bound (trie_node b x) f).
     { intro i; specialize (Hx i); specialize (Hub i).
       unfold compose in Hx.
       destruct (f i) eqn:Hfi.
@@ -568,14 +567,14 @@ Proof.
     eapply not_ex_not_all in H0; eauto.
 Qed.
 
-Lemma supremum_tnode_exists {A B} `{PType B} (f : nat -> trie A B) b k :
-  ~ is_bot (tnode b k) ->
-  supremum (tnode b k) f ->
-  exists i b' k', f i = tnode b' k' /\ b' ⊑ b /\ k' ⊑ k.
+Lemma supremum_trie_node_exists {A B} `{PType B} (f : nat -> trie A B) b k :
+  ~ is_bot (trie_node b k) ->
+  supremum (trie_node b k) f ->
+  exists i b' k', f i = trie_node b' k' /\ b' ⊑ b /\ k' ⊑ k.
 Proof.
   intros Hnb [Hub Hlub].
   destruct (is_bot_cases f) as [Hf|Hf].
-  - assert (H0: upper_bound tbot f).
+  - assert (H0: upper_bound trie_bot f).
     { intro i; specialize (Hf i); inv Hf.
       - reflexivity.
       - constructor; constructor; auto. }
@@ -620,14 +619,14 @@ Proof.
     + constructor; constructor.
   - intros ch Hch Hsup.
 
-    destruct (classic (is_bot (tnode b t))).
+    destruct (classic (is_bot (trie_node b t))).
     { exists O; split.
       - apply Hsup.
       - apply trie_le_bot; auto. }
     
     (* 1 *)
     pose proof Hsup as Hsup'.
-    apply supremum_tnode_exists in Hsup'; auto.
+    apply supremum_trie_node_exists in Hsup'; auto.
     destruct Hsup' as [i [b' [t' [Hi [Hb' Ht']]]]].
     
     (* 2 *)
@@ -671,12 +670,12 @@ Proof.
         constructor; try reflexivity.
         intro a.
         destruct (ch k) eqn:Hchk.
-        - assert (Hx: forall x, tdelta tbot x === t x).
+        - assert (Hx: forall x, tdelta trie_bot x === t x).
           { apply equ_arrow; auto. }
           specialize (Hx a).
           rewrite <- Hx; constructor.
         - inv H3.
-          assert (Hx: forall x, tdelta (tnode b0 t0) x === t x).
+          assert (Hx: forall x, tdelta (trie_node b0 t0) x === t x).
           { apply equ_arrow; auto. }
           simpl in Hx.
           eapply is_bot_le.
@@ -706,7 +705,7 @@ Proof.
           + rewrite <- H4 in Hk.
             apply Hk. }
       destruct (ch p) eqn:Hchp.
-      - rewrite tbot_bot in Hmp.
+      - rewrite trie_bot_bot in Hmp.
         apply le_bot in Hmp.
         rewrite Hmp in Hjm.
         apply le_bot in Hjm.
@@ -727,7 +726,7 @@ Proof.
           * etransitivity; eauto.
         + intro a; apply trie_le_bot; auto. }
     destruct (ch p) eqn:Hchp.
-    { rewrite tbot_bot in Hmp.
+    { rewrite trie_bot_bot in Hmp.
       apply le_bot in Hmp.
       rewrite Hmp in Hjm.
       apply le_bot in Hjm.
@@ -755,8 +754,8 @@ Qed.
 
 Fixpoint inj {A B} `{PType B} (t : trie A B) : cotrie A B :=
   match t with
-  | tbot => ⊥
-  | tnode b k => conode b (inj ∘ k)
+  | trie_bot => ⊥
+  | trie_node b k => cotrie_node b (inj ∘ k)
   end.
 
 Lemma is_bot_inj {A B} `{PType B} (a : trie A B) (b : cotrie A B) :
@@ -783,9 +782,9 @@ Qed.
 
 Fixpoint prefix {A B} (n : nat) (t : cotrie A B) : trie A B :=
   match n with
-  | O => tbot
+  | O => trie_bot
   | S n' => match t with
-           | conode b k => tnode b (prefix n' ∘ k)
+           | cotrie_node b k => trie_node b (prefix n' ∘ k)
            end
   end.
 
@@ -890,7 +889,7 @@ Qed.
 
 Lemma supremum_label {A B} `{OType B}
   (b : B) (k : A -> cotrie A B) (ch : nat -> cotrie A B) :
-  supremum (conode b k) ch ->
+  supremum (cotrie_node b k) ch ->
   supremum b (label ∘ ch).
 Proof.
   unfold flip, compose.
@@ -900,7 +899,7 @@ Proof.
   - intros y Hy.
     unfold upper_bound in Hy.
     simpl in Hy.
-    assert (Hb: upper_bound (conode y k) ch).
+    assert (Hb: upper_bound (cotrie_node y k) ch).
     { intro i; specialize (Hub i).
       specialize (Hy i).
       destruct (ch i); simpl in *.
@@ -912,7 +911,7 @@ Qed.
 
 Lemma supremum_delta {A B} `{OType B}
   (b : B) (k : A -> cotrie A B) (ch : nat -> cotrie A B) (x : A) :
-  supremum (conode b k) ch ->
+  supremum (cotrie_node b k) ch ->
   supremum (k x) (flip delta x ∘ ch).
 Proof.
   unfold flip, compose.
@@ -922,7 +921,7 @@ Proof.
   - intros y Hy.
     unfold upper_bound in Hy.
     simpl in Hy.
-    assert (Hu: upper_bound (conode b (fun z => if classicT (z = x) then y else k z)) ch).
+    assert (Hu: upper_bound (cotrie_node b (fun z => if classicT (z = x) then y else k z)) ch).
     { intro i.
       specialize (Hy i); simpl in Hy.
       destruct (ch i) eqn:Hchi.
@@ -955,8 +954,8 @@ Proof.
       apply cotrie_bot_le.
 Qed.
 
-Lemma trie_le_tbot_cotrie_bot {A B} `{PType B} (t : cotrie A B) :
-  (forall i, trie_le (prefix i t) tbot) ->
+Lemma trie_le_trie_bot_cotrie_bot {A B} `{PType B} (t : cotrie A B) :
+  (forall i, trie_le (prefix i t) trie_bot) ->
   t === cotrie_bot.
 Proof.
   intro Hle.
@@ -979,8 +978,8 @@ Proof.
     inv H0; eauto.
 Qed.
 
-Lemma upper_bound_tbot_is_bot {A B} `{PType B} (f : nat -> trie A B) (i : nat) :
-  upper_bound tbot f ->
+Lemma upper_bound_trie_bot_is_bot {A B} `{PType B} (f : nat -> trie A B) (i : nat) :
+  upper_bound trie_bot f ->
   is_bot (f i).
 Proof.
   intro Hub.
@@ -1020,11 +1019,11 @@ Proof.
     apply H3.
 Qed.
 
-Lemma supremum_ub_prefix_le_tbot {A B} `{PType B}
+Lemma supremum_ub_prefix_le_trie_bot {A B} `{PType B}
   (t : cotrie A B) (ch : nat -> cotrie A B) (n : nat) :
   supremum t ch ->
-  upper_bound tbot (prefix n ∘ ch) ->
-  prefix n t ⊑ tbot.
+  upper_bound trie_bot (prefix n ∘ ch) ->
+  prefix n t ⊑ trie_bot.
 Proof.
   intros Ht Hub.
   constructor.
@@ -1059,11 +1058,11 @@ Proof.
       apply monotone_directed; auto.
       intros [] [] Hzw; inv Hzw; unfold flip; simpl; auto.
   - intros x Hx; destruct x.
-    + assert (Hx': upper_bound tbot (prefix (S n) ∘ ch)).
+    + assert (Hx': upper_bound trie_bot (prefix (S n) ∘ ch)).
       { apply Hx. }
       clear Hx.
-      replace (tnode b (prefix n ∘ c)) with (prefix (S n) (conode b c)) by reflexivity.
-      eapply supremum_ub_prefix_le_tbot; eauto.
+      replace (trie_node b (prefix n ∘ c)) with (prefix (S n) (cotrie_node b c)) by reflexivity.
+      eapply supremum_ub_prefix_le_trie_bot; eauto.
     + apply trie_le_node.
       { apply supremum_label in Hsup.
         assert (Hb: upper_bound b0 (label ∘ ch)).
@@ -1115,8 +1114,8 @@ Definition lang (n : nat) : Type := cotrie (Fin.t n) bool.
 
 Fixpoint fold {A B C} (z : C) (f : B -> (A -> C) -> C) (t : trie A B) : C :=
   match t with
-  | tbot => z
-  | tnode b k => f b (fold z f ∘ k)
+  | trie_bot => z
+  | trie_node b k => f b (fold z f ∘ k)
   end.
 
 #[global]
@@ -1124,7 +1123,7 @@ Fixpoint fold {A B C} (z : C) (f : B -> (A -> C) -> C) (t : trie A B) : C :=
   (z : C) (f : B -> (A -> C) -> C)
   {Hz : forall x, z ⊑ fold z f x}
   {Hf : Proper (leq ==> leq ==> leq) f}
-  {Hf': forall b t y, is_bot (tnode b t) -> f b (fold z f ∘ t) ⊑ fold z f y}
+  {Hf': forall b t y, is_bot (trie_node b t) -> f b (fold z f ∘ t) ⊑ fold z f y}
   : Proper (leq ==> leq) (fold z f).
 Proof.
   intro x; induction x; intros y Hxy; simpl; auto.
@@ -1139,7 +1138,7 @@ Qed.
   (z : C) (f : B -> (A -> C) -> C)
   {Hz : forall x, fold z f x ⊑ z}
   {Hf : Proper (flip leq ==> leq ==> leq) f}
-  {Hf': forall b t y, is_bot (tnode b t) -> fold z f y ⊑ f b (fold z f ∘ t)}
+  {Hf': forall b t y, is_bot (trie_node b t) -> fold z f y ⊑ f b (fold z f ∘ t)}
   : Proper (leq ==> flip leq) (fold z f).
 Proof.
   intro x; induction x; intros y Hxy; simpl; unfold flip; auto.
@@ -1157,8 +1156,8 @@ Lemma co_fold_node {n B C} `{oB: OType B} `{@PType B oB}
   (forall b, wcontinuous (f b)) ->
   (forall b, z ⊑ fold z f b) ->
   z ⊑ f b (fun _ : Fin.t n => z) ->
-  (forall b t y, is_bot (tnode b t) -> f b (fold z f ∘ t) ⊑ fold z f y) ->
-  co (fold z f) (conode b k) === f b (co (fold z f) ∘ k).
+  (forall b t y, is_bot (trie_node b t) -> f b (fold z f ∘ t) ⊑ fold z f y) ->
+  co (fold z f) (cotrie_node b k) === f b (co (fold z f) ∘ k).
 Proof.
   intros Hprop Hf Hz Hzf Hf'.
   apply supremum_sup.
@@ -1183,8 +1182,8 @@ Lemma co_fold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
   (forall b, wcontinuous (f b)) ->
   (forall b, z ⊑ fold z f b) ->
   z ⊑ f b (fun _ : Fin.t n => z) ->
-  (forall b t y, is_bot (tnode b t) -> f b (fold z f ∘ t) ⊑ fold z f y) ->
-  co (fold z f) (conode b k) = f b (co (fold z f) ∘ k).
+  (forall b t y, is_bot (trie_node b t) -> f b (fold z f ∘ t) ⊑ fold z f y) ->
+  co (fold z f) (cotrie_node b k) = f b (co (fold z f) ∘ k).
 Proof. intros Hprop Hf Hz Hzf Hf'; apply ext, co_fold_node; auto. Qed.
 
 Definition cofold {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
@@ -1197,8 +1196,8 @@ Lemma cofold_node {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
   (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (leq ==> leq ==> leq) f ->
   (forall b, wcontinuous (f b)) ->
-  (forall b t y, is_bot (tnode b t) -> f b (fold ⊥ f ∘ t) ⊑ fold ⊥ f y) ->
-  cofold f (conode b k) === f b (cofold f ∘ k).
+  (forall b t y, is_bot (trie_node b t) -> f b (fold ⊥ f ∘ t) ⊑ fold ⊥ f y) ->
+  cofold f (cotrie_node b k) === f b (cofold f ∘ k).
 Proof.
   intros Hprop Hf Hf'.
   apply co_fold_node; auto.
@@ -1211,14 +1210,14 @@ Lemma cofold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
   (f : B -> (Fin.t  n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (leq ==> leq ==> leq) f ->
   (forall b, wcontinuous (f b)) ->
-  (forall b t y, is_bot (tnode b t) -> f b (fold ⊥ f ∘ t) ⊑ fold ⊥ f y) ->
-  cofold f (conode b k) = f b (cofold f ∘ k).
+  (forall b t y, is_bot (trie_node b t) -> f b (fold ⊥ f ∘ t) ⊑ fold ⊥ f y) ->
+  cofold f (cotrie_node b k) = f b (cofold f ∘ k).
 Proof. intros Hprop Hf Hf'; apply ext, cofold_node; auto. Qed.
 
 Extract Constant cofold => "
   \ n oB pB oC pC f t ->
     case t of
-      Conode b k -> f b (cofold n oB pB oC pC f Prelude.. k)
+      Cotrie_Node b k -> f b (cofold n oB pB oC pC f Prelude.. k)
 ".
 
 Definition coopfold {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
@@ -1233,8 +1232,8 @@ Lemma coop_fold_node {n B C} `{oB: OType B} `{@PType B oB}
   (forall b, dec_wcontinuous (f b)) ->
   (forall b, fold z f b ⊑ z) ->
   f b (fun _ : Fin.t n => z) ⊑ z ->
-  (forall b t y, is_bot (tnode b t) -> fold z f y ⊑ f b (fold z f ∘ t)) ->
-  coop (fold z f) (conode b k) === f b (coop (fold z f) ∘ k).
+  (forall b t y, is_bot (trie_node b t) -> fold z f y ⊑ f b (fold z f ∘ t)) ->
+  coop (fold z f) (cotrie_node b k) === f b (coop (fold z f) ∘ k).
 Proof.
   intros Hprop Hf Hz Hzf Hf'.
   apply infimum_inf.
@@ -1258,8 +1257,8 @@ Lemma coop_fold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
   (forall b, dec_wcontinuous (f b)) ->
   (forall b, fold z f b ⊑ z) ->
   f b (fun _ : Fin.t n => z) ⊑ z ->
-  (forall b t y, is_bot (tnode b t) -> fold z f y ⊑ f b (fold z f ∘ t)) ->
-  coop (fold z f) (conode b k) = f b (coop (fold z f) ∘ k).
+  (forall b t y, is_bot (trie_node b t) -> fold z f y ⊑ f b (fold z f ∘ t)) ->
+  coop (fold z f) (cotrie_node b k) = f b (coop (fold z f) ∘ k).
 Proof. intros Hprop Hf Hz Hzf Hf'; apply ext, coop_fold_node; auto. Qed.
 
 Lemma coopfold_node {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
@@ -1267,8 +1266,8 @@ Lemma coopfold_node {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
   (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (flip leq ==> leq ==> leq) f ->
   (forall b, dec_wcontinuous (f b)) ->
-  (forall b t y, is_bot (tnode b t) -> fold ⊤ f y ⊑ f b (fold ⊤ f ∘ t)) ->
-  coopfold f (conode b k) === f b (coopfold f ∘ k).
+  (forall b t y, is_bot (trie_node b t) -> fold ⊤ f y ⊑ f b (fold ⊤ f ∘ t)) ->
+  coopfold f (cotrie_node b k) === f b (coopfold f ∘ k).
 Proof.
   intros Hprop Hf Hf'.
   apply coop_fold_node; auto.
@@ -1281,23 +1280,23 @@ Lemma coopfold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
   (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (flip leq ==> leq ==> leq) f ->
   (forall b, dec_wcontinuous (f b)) ->
-  (forall b t y, is_bot (tnode b t) -> fold ⊤ f y ⊑ f b (fold ⊤ f ∘ t)) ->
-  coopfold f (conode b k) = f b (coopfold f ∘ k).
+  (forall b t y, is_bot (trie_node b t) -> fold ⊤ f y ⊑ f b (fold ⊤ f ∘ t)) ->
+  coopfold f (cotrie_node b k) = f b (coopfold f ∘ k).
 Proof. intros Hprop Hf Hf'; apply ext, coopfold_node; auto. Qed.
 
 Extract Constant coopfold => "
   \ oB pB oC tC f t ->
     case t of
-      Conode b k -> f b (coopfold oB pB oC pC f Prelude.. k)
+      Cotrie_Node b k -> f b (coopfold oB pB oC pC f Prelude.. k)
 ".
 
 Inductive trie_cotrie_le {A B} `{PType B} : trie A B -> cotrie A B -> Prop :=
-(* | trie_cotrie_le_bot : forall t, trie_cotrie_le tbot t *)
+(* | trie_cotrie_le_bot : forall t, trie_cotrie_le trie_bot t *)
 | trie_cotrie_le_bot : forall a b, is_bot a -> trie_cotrie_le a b
 | trie_cotrie_le_node : forall b b' f g,
     b ⊑ b' ->
     (forall a, trie_cotrie_le (f a) (g a)) ->
-    trie_cotrie_le (tnode b f) (conode b' g).
+    trie_cotrie_le (trie_node b f) (cotrie_node b' g).
 
 #[global]
   Instance antimonotone_trie_cotrie_le {A B} `{PType B}
@@ -1352,8 +1351,8 @@ Qed.
 
 Lemma cotrie_le'_inv_node {n B} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
   `{@Compact _ oB} (b : B) (f : Fin.t n -> cotrie (Fin.t n) B) (t : cotrie (Fin.t n) B) :
-  cotrie_le' (conode b f) t ->
-  exists b' g, t = conode b' g /\ b ⊑ b' /\ forall a, cotrie_le' (f a) (g a).
+  cotrie_le' (cotrie_node b f) t ->
+  exists b' g, t = cotrie_node b' g /\ b ⊑ b' /\ forall a, cotrie_le' (f a) (g a).
 Proof.
   intro Hle.
   destruct t; try solve [apply coop_elim2 with (i := S O) in Hle;
@@ -1386,15 +1385,15 @@ Qed.
 (** Membership checking by induction on the string. *)
 Inductive in_lang {n} : lang n -> list (Fin.t n) -> Prop :=
 | in_lang_here : forall k,
-    in_lang (conode true k) []
+    in_lang (cotrie_node true k) []
 | in_lang_there : forall b k x xs,
     in_lang (k x) xs ->
-    in_lang (conode b k) (x :: xs).
+    in_lang (cotrie_node b k) (x :: xs).
 
 Fixpoint in_langb {n} (t : lang n) (l : list (Fin.t n)) : bool :=
   match t, l with
-  | conode b _, [] => b
-  | conode _ k, x :: xs => in_langb (k x) xs
+  | cotrie_node b _, [] => b
+  | cotrie_node _ k, x :: xs => in_langb (k x) xs
   end.
 
 (* Definition trie_set {A} (t : tlang A) : list A -> Prop := *)
@@ -1424,7 +1423,7 @@ Proof.
     constructor.
     + specialize (Hab []).
       destruct b.
-      * assert (H: in_lang (conode true c) []).
+      * assert (H: in_lang (cotrie_node true c) []).
         { constructor. }
         apply Hab in H; inv H; reflexivity.
       * destruct b0; simpl; auto.
@@ -1432,7 +1431,7 @@ Proof.
       apply CH.
       intros l Hl.
       specialize (Hab (a :: l)).
-      assert (H: in_lang (conode b c) (a :: l)).
+      assert (H: in_lang (cotrie_node b c) (a :: l)).
       { constructor; auto. }
       apply Hab in H; inv H; auto.
   - intros Hab l.
@@ -1458,11 +1457,11 @@ Definition empty {n} : lang n := cotrie_bot.
 Definition full {n} : lang n := cotrie_top.
 
 (** Language containing empty string ϵ. *)
-Definition epsilon {n} : lang n := conode true (const empty).
+Definition epsilon {n} : lang n := cotrie_node true (const empty).
 
 (** Language containing single character a. *)
 Definition single {n} (a : Fin.t n) : lang n :=
-  conode false (fun x => if eqb x a then epsilon else empty).
+  cotrie_node false (fun x => if eqb x a then epsilon else empty).
 
 Lemma bool_le_orb_l (a b c : bool) :
   a ⊑ b ->
@@ -1493,9 +1492,9 @@ Proof. auto. Qed.
 
 Fixpoint tunion {n} (x y : tlang n) : tlang n :=
   match x, y with
-  | tbot, _ => y
-  | _, tbot => x
-  | tnode b k, tnode b' k' => tnode (b || b') (fun a => tunion (k a) (k' a))
+  | trie_bot, _ => y
+  | _, trie_bot => x
+  | trie_node b k, trie_node b' k' => trie_node (b || b') (fun a => tunion (k a) (k' a))
   end.
 
 #[global]
@@ -1504,25 +1503,25 @@ Proof. intros [] []; simpl; intuition; destruct x; auto. Qed.
 
 CoFixpoint union {n} (a b : lang n) : lang n :=
   match a, b with
-  | conode b k, conode b' k' => conode (b || b') (fun x => union (k x) (k' x))
+  | cotrie_node b k, cotrie_node b' k' => cotrie_node (b || b') (fun x => union (k x) (k' x))
   end.
 
 Lemma union_node {n} (b : bool) (k : Fin.t n -> lang n) :
-  union (conode b k) =
+  union (cotrie_node b k) =
     fun l => match l with
-          | conode b' k' => conode (b || b') (fun x => union (k x) (k' x))
+          | cotrie_node b' k' => cotrie_node (b || b') (fun x => union (k x) (k' x))
           end.
 Proof. ext y; destruct y; rewrite unf_eq; reflexivity. Qed.
 
 CoFixpoint intersection {n} (a b : lang n) : lang n :=
   match a, b with
-  | conode b k, conode b' k' => conode (b && b') (fun x => intersection (k x) (k' x))
+  | cotrie_node b k, cotrie_node b' k' => cotrie_node (b && b') (fun x => intersection (k x) (k' x))
   end.
 
 Lemma intersection_node {n} (b : bool) (k : Fin.t n -> lang n) :
-  intersection (conode b k) =
+  intersection (cotrie_node b k) =
     fun l => match l with
-          | conode b' k' => conode (b && b') (fun x => intersection (k x) (k' x))
+          | cotrie_node b' k' => cotrie_node (b && b') (fun x => intersection (k x) (k' x))
           end.
 Proof. ext y; destruct y; rewrite unf_eq; reflexivity. Qed.
 
@@ -1532,23 +1531,23 @@ Proof. reflexivity. Qed.
 
 CoFixpoint complement {n} (a : lang n) : lang n :=
   match a with
-  | conode b k => conode (negb b) (complement ∘ k)
+  | cotrie_node b k => cotrie_node (negb b) (complement ∘ k)
   end.
 
 Lemma complement_node {n} (b : bool) (k : Fin.t n -> lang n) :
-  complement (conode b k) = conode (negb b) (complement ∘ k).
+  complement (cotrie_node b k) = cotrie_node (negb b) (complement ∘ k).
 Proof. rewrite unf_eq; reflexivity. Qed.
 
 Definition tconcat {n} : tlang n -> lang n -> lang n :=
   fold (const empty)
-    (fun b k l => conode (b && accepts l)
+    (fun b k l => cotrie_node (b && accepts l)
                  (fun x => union (k x l) (if b then delta l x else empty))).
 
 Fixpoint tconcat' {n} (x : tlang n) (y : lang n) : lang n :=
   match x, y with
-  | tbot, _ => empty
-  | tnode b1 k1, conode b2 k2 =>
-      conode (b1 && b2)
+  | trie_bot, _ => empty
+  | trie_node b1 k1, cotrie_node b2 k2 =>
+      cotrie_node (b1 && b2)
         (fun a => union (tconcat' (k1 a) y) (if b1 then k2 a else empty))
   end.
 
@@ -1611,13 +1610,13 @@ Proof.
   inv Ha.
   destruct b; simpl.
   { destruct H2; inv H0. }
-  remember (conode false
+  remember (cotrie_node false
     (fun x : Fin.t n =>
      union
        ((fold (const empty)
            (fun (b : bool) (k : Fin.t n -> cotrie (Fin.t n) bool -> lang n)
               (l : cotrie (Fin.t n) bool) =>
-            conode (b && accepts l)
+            cotrie_node (b && accepts l)
               (fun x0 : Fin.t n => union (k x0 l) (if b then delta l x0 else empty))) ∘ t) x b')
        empty)) as y.
   rewrite (@unf_eq _ _ empty); subst; simpl.
@@ -1661,7 +1660,7 @@ Definition coconcat {n} : lang n -> lang n -> lang n :=
 
 Definition concat {n} : lang n -> lang n -> lang n :=
   cofold
-    (fun b k l => conode (b && accepts l)
+    (fun b k l => cotrie_node (b && accepts l)
                  (fun x => union (k x l) (if b then delta l x else empty))).
 
 Lemma concat_coconcat {n} (x y : lang n) :
@@ -1763,14 +1762,14 @@ Fixpoint star_n'' {n} (z a : lang n) (k : nat) : lang n :=
   end.
 
 Definition nstar {n} (a : lang n) : nat -> lang n :=
-  iter empty (fun b => conode true (fun x => coconcat (delta a x) b)).
+  iter empty (fun b => cotrie_node true (fun x => coconcat (delta a x) b)).
 
 Definition coplus {n} (a : lang n) : lang n :=
-  coiter (fun b => conode false (fun x => coconcat (delta a x) b)) omega.
+  coiter (fun b => cotrie_node false (fun x => coconcat (delta a x) b)) omega.
 
 (** Kleene star (extractible). *)
 Definition star {n} (a : lang n) : lang n :=
-  coiter (fun b => conode true (fun x => concat (delta a x) b)) omega.
+  coiter (fun b => cotrie_node true (fun x => concat (delta a x) b)) omega.
 
 Definition costar {n} (a : lang n) : lang n :=
   colist.cofold (fun n x => union x (pow a n)) (nats O).
@@ -1820,17 +1819,17 @@ Proof.
 Qed.
 
 #[global]
-  Instance monotone_conode {A B} `{OType B} : Proper (leq ==> leq) (@conode A B).
+  Instance monotone_cotrie_node {A B} `{OType B} : Proper (leq ==> leq) (@cotrie_node A B).
 Proof. intros a b Hab k; constructor; auto; intro; reflexivity. Qed.
-#[global] Hint Resolve monotone_conode : cotrie.
+#[global] Hint Resolve monotone_cotrie_node : cotrie.
 
 #[global]
-  Instance monotone_conode' {A B} `{OType B} (b : B) : Proper (leq ==> leq) (@conode A B b).
+  Instance monotone_cotrie_node' {A B} `{OType B} (b : B) : Proper (leq ==> leq) (@cotrie_node A B b).
 Proof. intros f g Hfg; constructor; auto; reflexivity. Qed.
-#[global] Hint Resolve monotone_conode' : cotrie.
+#[global] Hint Resolve monotone_cotrie_node' : cotrie.
 
-Lemma continuous_conode {A B} `{OType B} (b : B) :
-  continuous (@conode A B b).
+Lemma continuous_cotrie_node {A B} `{OType B} (b : B) :
+  continuous (@cotrie_node A B b).
 Proof.
   intros ch Hch f [Hub Hlub]; unfold compose; split.
   - intro i; constructor; try reflexivity.
@@ -1855,7 +1854,7 @@ Proof.
   - intros k Hk x.
     unfold delta. simpl.
     destruct ub.
-    assert (H0: upper_bound (conode b k) ch).
+    assert (H0: upper_bound (cotrie_node b k) ch).
     { intro i.
       specialize (Hub i).
       specialize (Hk i).
@@ -2022,11 +2021,11 @@ Proof.
 Qed.
 
 Lemma coconcat'_node' {n} (a : lang n) (b : bool) (k : Fin.t n -> lang n) :
-  coconcat' a (conode b k) =
+  coconcat' a (cotrie_node b k) =
     match a with
-    | conode b' k' =>
-        conode (b' && b)
-          (fun a => union (coconcat' (k' a) (conode b k)) (if b' then k a else empty))
+    | cotrie_node b' k' =>
+        cotrie_node (b' && b)
+          (fun a => union (coconcat' (k' a) (cotrie_node b k)) (if b' then k a else empty))
     end.
 Proof.
   destruct a.
@@ -2042,7 +2041,7 @@ Proof.
   2: { reflexivity. }
   unfold shift.
   simpl.
-  apply continuous_conode.
+  apply continuous_cotrie_node.
   { apply monotone_directed; auto with order.
     intros i j Hij a.
     simpl; unfold compose.
@@ -2053,8 +2052,8 @@ Proof.
   apply supremum_apply.
   intro a.
   assert (Hs: supremum
-                (union (sup (fun x : nat => tconcat' (flip prefix (c a) x)) (conode b k)))
-                (fun i : nat => union (tconcat' (prefix i (c a)) (conode b k)))).
+                (union (sup (fun x : nat => tconcat' (flip prefix (c a) x)) (cotrie_node b k)))
+                (fun i : nat => union (tconcat' (prefix i (c a)) (cotrie_node b k)))).
   { rewrite sup_apply.
     rewrite union_sup.
     apply sup_spec. }
@@ -2062,9 +2061,9 @@ Proof.
 Qed.
 
 Lemma coconcat'_node {n} (b : bool) (k : Fin.t n -> lang n) :
-  coconcat' (conode b k) =
+  coconcat' (cotrie_node b k) =
     fun l => match l with
-          | conode b' k' => conode (b && b')
+          | cotrie_node b' k' => cotrie_node (b && b')
                              (fun a => union (coconcat' (k a) l) (if b then k' a else empty))
           end.
 Proof.
@@ -2080,7 +2079,7 @@ Proof.
   2: { reflexivity. }
   unfold shift.
   simpl.
-  apply continuous_conode.
+  apply continuous_cotrie_node.
   { apply monotone_directed; auto with order.
     intros i j Hij a.
     simpl; unfold compose.
@@ -2092,28 +2091,28 @@ Proof.
   intro a.
 
   assert (Hs: supremum
-    (union (sup (fun x : nat => tconcat' (flip prefix (k a) x)) (conode b0 c)))
+    (union (sup (fun x : nat => tconcat' (flip prefix (k a) x)) (cotrie_node b0 c)))
     (fun i : nat =>
      union
        ((fix tconcat' (n0 : nat) (x : tlang n0) (y : lang n0) {struct x} : lang n0 :=
            match x with
-           | tbot => empty
-           | tnode b1 k1 =>
+           | trie_bot => empty
+           | trie_node b1 k1 =>
                match y with
-               | conode b2 k2 =>
-                   conode (b1 && b2)
+               | cotrie_node b2 k2 =>
+                   cotrie_node (b1 && b2)
                      (fun a0 : t n0 =>
                       union (tconcat' n0 (k1 a0) y) (if b1 then k2 a0 else empty))
                end
            end) n
           ((fix prefix (A B : Type) (n0 : nat) (t : cotrie A B) {struct n0} : trie A B :=
               match n0 with
-              | 0 => tbot
+              | 0 => trie_bot
               | S n' =>
                   match t with
-                  | conode b1 k0 => tnode b1 (fun x : A => prefix A B n' (k0 x))
+                  | cotrie_node b1 k0 => trie_node b1 (fun x : A => prefix A B n' (k0 x))
                   end
-              end) (t n) bool i (k a)) (conode b0 c)))).
+              end) (t n) bool i (k a)) (cotrie_node b0 c)))).
   { rewrite sup_apply.
     rewrite union_sup.
     apply sup_spec. }
@@ -2121,9 +2120,9 @@ Proof.
 Qed.
 
 Lemma concat_node {n} (b : bool) (k : Fin.t n -> lang n) :
-  concat (conode b k) =
+  concat (cotrie_node b k) =
     fun l => match l with
-          | conode b' k' => conode (b && b')
+          | cotrie_node b' k' => cotrie_node (b && b')
                              (fun a => union (concat (k a) l) (if b then k' a else empty))
           end.
 Proof.
@@ -2131,11 +2130,11 @@ Proof.
 Qed.
 
 Lemma concat_node' {n} (a : lang n) (b : bool) (k : Fin.t n -> lang n) :
-  concat a (conode b k) =
+  concat a (cotrie_node b k) =
     match a with
-    | conode b' k' =>
-        conode (b' && b)
-          (fun a => union (concat (k' a) (conode b k)) (if b' then k a else empty))
+    | cotrie_node b' k' =>
+        cotrie_node (b' && b)
+          (fun a => union (concat (k' a) (cotrie_node b k)) (if b' then k a else empty))
     end.
 Proof.
   destruct a; rewrite coconcat_coconcat', coconcat'_node'; reflexivity.
@@ -2571,8 +2570,8 @@ Proof.
       { reflexivity. }
       intro a.
       destruct b.
-      * replace (conode (b0 || b1) (fun x : Fin.t n => union (c0 x) (c1 x))) with
-          (union (conode b0 c0) (conode b1 c1)).
+      * replace (cotrie_node (b0 || b1) (fun x : Fin.t n => union (c0 x) (c1 x))) with
+          (union (cotrie_node b0 c0) (cotrie_node b1 c1)).
         2: { rewrite union_node; reflexivity. }
         rewrite prefix_union_tunion.
         rewrite union_assoc.
@@ -2583,8 +2582,8 @@ Proof.
         { apply IHi. }
         rewrite union_comm.
         apply trie_cotrie_le_prefix; reflexivity.
-      * replace (conode (b0 || b1) (fun x : Fin.t n => union (c0 x) (c1 x))) with
-          (union (conode b0 c0) (conode b1 c1)).
+      * replace (cotrie_node (b0 || b1) (fun x : Fin.t n => union (c0 x) (c1 x))) with
+          (union (cotrie_node b0 c0) (cotrie_node b1 c1)).
         2: { rewrite union_node; reflexivity. }
         rewrite 3!union_empty_r.
         apply IHi.
@@ -2601,8 +2600,8 @@ Proof.
       { reflexivity. }
       intro a.
       destruct b.
-      * replace (conode (b0 || b1) (fun x : Fin.t n => union (c0 x) (c1 x))) with
-          (union (conode b0 c0) (conode b1 c1)).
+      * replace (cotrie_node (b0 || b1) (fun x : Fin.t n => union (c0 x) (c1 x))) with
+          (union (cotrie_node b0 c0) (cotrie_node b1 c1)).
         2: { rewrite union_node; reflexivity. }
         rewrite union_assoc.
         rewrite (union_comm (c0 a) (union _ _)).
@@ -2612,8 +2611,8 @@ Proof.
         apply trie_cotrie_le_tunion.
         2: { rewrite union_comm; apply trie_cotrie_le_prefix; reflexivity. }
         apply IHi.
-      * replace (conode (b0 || b1) (fun x : Fin.t n => union (c0 x) (c1 x))) with
-          (union (conode b0 c0) (conode b1 c1)).
+      * replace (cotrie_node (b0 || b1) (fun x : Fin.t n => union (c0 x) (c1 x))) with
+          (union (cotrie_node b0 c0) (cotrie_node b1 c1)).
         2: { rewrite union_node; reflexivity. }
         rewrite 3!union_empty_r.
         apply IHi.
@@ -2644,9 +2643,9 @@ Proof.
         rewrite prefix_union_tunion.
         apply trie_cotrie_le_tunion.
         2: { apply trie_cotrie_le_prefix; reflexivity. }
-        replace (conode b1 (fun a0 : Fin.t n =>
-                              union (concat (c0 a0) (conode b1 c1)) (c1 a0)))
-          with (concat (conode true c0) (conode b1 c1)).
+        replace (cotrie_node b1 (fun a0 : Fin.t n =>
+                              union (concat (c0 a0) (cotrie_node b1 c1)) (c1 a0)))
+          with (concat (cotrie_node true c0) (cotrie_node b1 c1)).
         2: { rewrite concat_node; reflexivity. }
         apply IHi.
       * rewrite 2!union_empty_r.
@@ -2654,22 +2653,22 @@ Proof.
         rewrite prefix_union_tunion.
         apply trie_cotrie_le_tunion.
         2: { apply trie_cotrie_le_prefix; reflexivity. }
-        replace (conode false (fun a0 : Fin.t n =>
-                                 union (concat (c0 a0) (conode b1 c1)) empty))
-          with (concat (conode false c0) (conode b1 c1)).
+        replace (cotrie_node false (fun a0 : Fin.t n =>
+                                 union (concat (c0 a0) (cotrie_node b1 c1)) empty))
+          with (concat (cotrie_node false c0) (cotrie_node b1 c1)).
         2: { rewrite concat_node; reflexivity. }
         apply IHi.
     + destruct b0; simpl.
       * rewrite 3!union_empty_r.
-        replace (conode b1 (fun a0 : Fin.t n =>
-                              union (concat (c0 a0) (conode b1 c1)) (c1 a0)))
-          with (concat (conode true c0) (conode b1 c1)).
+        replace (cotrie_node b1 (fun a0 : Fin.t n =>
+                              union (concat (c0 a0) (cotrie_node b1 c1)) (c1 a0)))
+          with (concat (cotrie_node true c0) (cotrie_node b1 c1)).
         2: { rewrite concat_node; reflexivity. }
         apply IHi.
       * rewrite 3!union_empty_r.
-        replace (conode false (fun a0 : Fin.t n =>
-                                 union (concat (c0 a0) (conode b1 c1)) empty))
-          with (concat (conode false c0) (conode b1 c1)).
+        replace (cotrie_node false (fun a0 : Fin.t n =>
+                                 union (concat (c0 a0) (cotrie_node b1 c1)) empty))
+          with (concat (cotrie_node false c0) (cotrie_node b1 c1)).
         2: { rewrite concat_node; reflexivity. }
         apply IHi.
   - apply cotrie_le_cotrie_le'.
@@ -2693,9 +2692,9 @@ Proof.
         rewrite prefix_union_tunion.
         apply trie_cotrie_le_tunion.
         2: { apply trie_cotrie_le_prefix; reflexivity. }
-        replace (conode b1 (fun a0 : Fin.t n =>
-                              union (concat (c0 a0) (conode b1 c1)) (c1 a0)))
-          with (concat (conode true c0) (conode b1 c1)).
+        replace (cotrie_node b1 (fun a0 : Fin.t n =>
+                              union (concat (c0 a0) (cotrie_node b1 c1)) (c1 a0)))
+          with (concat (cotrie_node true c0) (cotrie_node b1 c1)).
         2: { rewrite concat_node; reflexivity. }
         apply IHi.
       * rewrite 2!union_empty_r.
@@ -2703,22 +2702,22 @@ Proof.
         rewrite prefix_union_tunion.
         apply trie_cotrie_le_tunion.
         2: { apply trie_cotrie_le_prefix; reflexivity. }
-        replace (conode false (fun a0 : Fin.t n =>
-                                 union (concat (c0 a0) (conode b1 c1)) empty))
-          with (concat (conode false c0) (conode b1 c1)).
+        replace (cotrie_node false (fun a0 : Fin.t n =>
+                                 union (concat (c0 a0) (cotrie_node b1 c1)) empty))
+          with (concat (cotrie_node false c0) (cotrie_node b1 c1)).
         2: { rewrite concat_node; reflexivity. }
         apply IHi.
     + destruct b0; simpl.
       * rewrite 3!union_empty_r.
-        replace (conode b1 (fun a0 : Fin.t n =>
-                              union (concat (c0 a0) (conode b1 c1)) (c1 a0)))
-          with (concat (conode true c0) (conode b1 c1)).
+        replace (cotrie_node b1 (fun a0 : Fin.t n =>
+                              union (concat (c0 a0) (cotrie_node b1 c1)) (c1 a0)))
+          with (concat (cotrie_node true c0) (cotrie_node b1 c1)).
         2: { rewrite concat_node; reflexivity. }
         apply IHi.
       * rewrite 3!union_empty_r.
-        replace (conode false (fun a0 : Fin.t n =>
-                                 union (concat (c0 a0) (conode b1 c1)) empty))
-          with (concat (conode false c0) (conode b1 c1)).
+        replace (cotrie_node false (fun a0 : Fin.t n =>
+                                 union (concat (c0 a0) (cotrie_node b1 c1)) empty))
+          with (concat (cotrie_node false c0) (cotrie_node b1 c1)).
         2: { rewrite concat_node; reflexivity. }
         apply IHi.
 Qed.
@@ -2734,9 +2733,9 @@ Proof.
     { constructor; constructor. }
     rewrite concat_node'; simpl.
     unfold compose.
-    remember (tnode false (fun x : Fin.t n =>
+    remember (trie_node false (fun x : Fin.t n =>
                              prefix i (union (concat (const cotrie_bot x)
-                                                (conode b c)) empty))) as y.
+                                                (cotrie_node b c)) empty))) as y.
     rewrite (@unf_eq _ _ empty); simpl.
     subst.
     apply trie_cotrie_le_node.
@@ -2762,7 +2761,7 @@ Proof.
     unfold compose.
     unfold const.
     destruct b.
-    + remember (tnode false (fun x : Fin.t n =>
+    + remember (trie_node false (fun x : Fin.t n =>
                                prefix i (union (concat (c x) empty) cotrie_bot)))
         as y.
       rewrite (@unf_eq _ _ empty); simpl.
@@ -2774,7 +2773,7 @@ Proof.
         replace cotrie_bot with (@empty n) by reflexivity.
         rewrite union_empty_r.
         apply IHi.
-    + remember (tnode false (fun x : Fin.t n =>
+    + remember (trie_node false (fun x : Fin.t n =>
                                prefix i (union (concat (c x) empty) empty)))
         as y.
       rewrite (@unf_eq _ _ empty); simpl.
@@ -3414,7 +3413,7 @@ Qed.
 
 Lemma coconcat_unfold {n} (a b : lang n) :
   coconcat a b =
-    conode (accepts a && accepts b)
+    cotrie_node (accepts a && accepts b)
       (fun x => union (coconcat (delta a x) b) (if accepts a then delta b x else empty)).
 Proof. destruct a, b; rewrite concat_node; auto. Qed.
 
@@ -3425,7 +3424,7 @@ Proof. rewrite coconcat_unfold; reflexivity. Qed.
 
 Lemma union_epsilon_concat {n} (a b : lang n) :
   union epsilon (concat a b) =
-    conode true (fun x => union (coconcat (delta a x) b)
+    cotrie_node true (fun x => union (coconcat (delta a x) b)
                          (if accepts a then delta b x else empty)).
 Proof.
   rewrite coconcat_unfold.
@@ -3441,16 +3440,16 @@ Qed.
 
 Lemma union_epsilon_concat_star {n} (a : lang n) :
   union epsilon (concat a (costar a)) =
-    conode true (fun x => union (coconcat (delta a x) (costar a))
+    cotrie_node true (fun x => union (coconcat (delta a x) (costar a))
                          (if accepts a then delta (costar a) x else empty)).
 Proof. apply union_epsilon_concat. Qed.
 
 Lemma union_epsilon_concat_star' {n} (a : lang n) :
   union epsilon (concat a (costar a)) =
     if accepts a then 
-      conode true (fun x => union (coconcat (delta a x) (costar a)) (delta (costar a) x))
+      cotrie_node true (fun x => union (coconcat (delta a x) (costar a)) (delta (costar a) x))
     else
-      conode true (fun x => coconcat (delta a x) (costar a)).
+      cotrie_node true (fun x => coconcat (delta a x) (costar a)).
 Proof.
   rewrite union_epsilon_concat.
   destruct (accepts a); auto.
