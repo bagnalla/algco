@@ -122,21 +122,21 @@ Qed.
   Instance ExtType_conat : ExtType conat.
 Proof. constructor; intros a b Hab; apply conat_ext, equ_conat_eq; auto. Qed.
 
-Fixpoint prefix (i : nat) (n : conat) : nat :=
+Fixpoint conat_prefix (i : nat) (n : conat) : nat :=
   match i with
   | O => O
   | S i' => match n with
            | cozero => O
-           | cosucc n' => S (prefix i' n')
+           | cosucc n' => S (conat_prefix i' n')
            end
   end.
 
-Fixpoint coprefix (i : nat) (n : conat) : conat :=
+Fixpoint coconat_prefix (i : nat) (n : conat) : conat :=
   match i with
   | O => cozero
   | S i' => match n with
            | cozero => cozero
-           | cosucc n' => cosucc (coprefix i' n')
+           | cosucc n' => cosucc (coconat_prefix i' n')
            end
   end.
 
@@ -203,16 +203,16 @@ Lemma le_succ (n m : nat) :
   n ⊑ m -> S n ⊑ S m.
 Proof. simpl; lia. Qed.
 
-Lemma prefix_monotone (i : nat) :
-  monotone (prefix i).
+Lemma conat_prefix_monotone (i : nat) :
+  monotone (conat_prefix i).
 Proof.
   induction i; intros a b Hab; simpl; try constructor.
   destruct a; inv Hab; try lia. 
   apply le_succ; auto.
 Qed.
 
-Lemma prefix_monotone' (n : conat) :
-  monotone (fun i => prefix i n).
+Lemma conat_prefix_monotone' (n : conat) :
+  monotone (fun i => conat_prefix i n).
 Proof.
   intro i; revert n; induction i; intros n j Hij; simpl.
   - lia.
@@ -225,11 +225,11 @@ Proof.
         simpl; lia.
 Qed.
 
-Lemma chain_prefix (n : conat) :
-  chain (fun i : nat => prefix i n).
+Lemma chain_conat_prefix (n : conat) :
+  chain (fun i : nat => conat_prefix i n).
 Proof.
   apply monotone_chain.
-  - apply prefix_monotone'.
+  - apply conat_prefix_monotone'.
   - intro i; simpl; lia.
 Qed.
 
@@ -418,14 +418,14 @@ Proof.
 Qed.
 #[global] Hint Resolve dCPO_conat : conat.
 
-Fixpoint inj (n : nat) : conat :=
+Fixpoint nat_inj (n : nat) : conat :=
   match n with
   | O => cozero
-  | S n' => cosucc (inj n')
+  | S n' => cosucc (nat_inj n')
   end.
 
-Lemma inj_prefix_coprefix (n : conat) (i : nat) :
-  inj (prefix i n) = coprefix i n.
+Lemma nat_inj_conat_prefix_coconat_prefix (n : conat) (i : nat) :
+  nat_inj (conat_prefix i n) = coconat_prefix i n.
 Proof.
   revert n; induction i; intro n; simpl; auto.
   destruct n; simpl; auto; rewrite IHi; auto.
@@ -515,7 +515,7 @@ Proof.
 Qed.
 
 Lemma nat_eq_conat_eq (a b : conat) :
-  (forall i, prefix i a = prefix i b) ->
+  (forall i, conat_prefix i a = conat_prefix i b) ->
   a = b.
 Proof.
   intro H; apply conat_ext.
@@ -533,7 +533,7 @@ Qed.
 
 Lemma nat_le_conat_le (a b : nat) :
   a ⊑ b ->
-  inj a ⊑ inj b.
+  nat_inj a ⊑ nat_inj b.
 Proof.
   revert b; induction a; simpl; intros b Hab.
   - constructor.
@@ -541,11 +541,11 @@ Proof.
 Qed.
 
 #[global]
-  Instance monotone_inj : Proper (leq ==> leq) inj.
+  Instance monotone_nat_inj : Proper (leq ==> leq) nat_inj.
 Proof. intros a b Hab; apply nat_le_conat_le; auto. Qed.
 
 Lemma conat_le_nat_le (a b : nat) :
-  inj a ⊑ inj b ->
+  nat_inj a ⊑ nat_inj b ->
   a ⊑ b.
 Proof.
   revert b; induction a; simpl; intros b Hab.
@@ -573,8 +573,8 @@ Proof.
     apply Hlub in H; inv H; auto.
 Qed.
 
-Lemma prefix_continuous (n : nat) :
-  continuous (prefix n).
+Lemma conat_prefix_continuous (n : nat) :
+  continuous (conat_prefix n).
 Proof.
   induction n; intros ch Hch x Hx; unfold compose; simpl.
   { apply supremum_const. }
@@ -592,7 +592,7 @@ Proof.
         rewrite Hchi in Hub.
         inv Hub.
         apply le_succ.
-        apply prefix_monotone; auto.
+        apply conat_prefix_monotone; auto.
     + intros ub Hub; destruct ub.
       * assert (H: forall i, ch i = cozero).
         { intro i; specialize (Hub i); simpl in Hub.
@@ -621,18 +621,18 @@ Proof.
         { lia. }
 Qed.
 
-Lemma coprefix_le (n : conat) (i : nat) :
-  coprefix i n ⊑ n.
+Lemma coconat_prefix_le (n : conat) (i : nat) :
+  coconat_prefix i n ⊑ n.
 Proof.
   revert n; induction i; intro n; simpl; try constructor.
   destruct n; constructor; apply IHi.
 Qed.
 
-Lemma coprefix_supremum (n : conat) :
-  supremum n (fun i => coprefix i n).
+Lemma coconat_prefix_supremum (n : conat) :
+  supremum n (fun i => coconat_prefix i n).
 Proof.
   split.
-  - intro i. apply coprefix_le.
+  - intro i. apply coconat_prefix_le.
   - revert n; cofix CH; intros n ub Hub.
     destruct ub.
     + specialize (Hub (S O)).
@@ -658,8 +658,8 @@ Qed.
 
 #[global]
   Instance Dense_conat : Dense conat nat :=
-  { incl := inj
-  ; ideal := flip prefix }.
+  { incl := nat_inj
+  ; ideal := flip conat_prefix }.
 
 #[global]
   Instance aCPO_conat : aCPO conat nat.
@@ -668,17 +668,17 @@ Proof.
   - intros a b; split.
     + apply nat_le_conat_le.
     + apply conat_le_nat_le.
-  - apply chain_prefix.
-  - intros a b Hab i; apply prefix_monotone; auto.
-  - apply prefix_continuous.
+  - apply chain_conat_prefix.
+  - intros a b Hab i; apply conat_prefix_monotone; auto.
+  - apply conat_prefix_continuous.
   - intro a; simpl; unfold compose, flip.
-    replace (fun i => inj (prefix i a)) with (fun i => coprefix i a).
-    + apply coprefix_supremum.
-    + ext i; rewrite inj_prefix_coprefix; reflexivity.
+    replace (fun i => nat_inj (conat_prefix i a)) with (fun i => coconat_prefix i a).
+    + apply coconat_prefix_supremum.
+    + ext i; rewrite nat_inj_conat_prefix_coconat_prefix; reflexivity.
 Qed.
 
-Lemma neq_inj_omega (n : conat) :
-  (forall m, n <> inj m) ->
+Lemma neq_nat_inj_omega (n : conat) :
+  (forall m, n <> nat_inj m) ->
   n = omega.
 Proof.
   intro H.
@@ -697,10 +697,10 @@ Proof.
 Qed.
 
 Lemma conat_finite_or_omega (n : conat) :
-  (exists m, n = inj m) \/ n = omega.
+  (exists m, n = nat_inj m) \/ n = omega.
 Proof.
-  destruct (classic (exists m : nat, n = inj m)); auto.
-  right; apply neq_inj_omega.
+  destruct (classic (exists m : nat, n = nat_inj m)); auto.
+  right; apply neq_nat_inj_omega.
   intros m HC; subst; apply H; exists m; reflexivity.
 Qed.
 
@@ -851,6 +851,6 @@ Extract Constant coiter => "
       Cosucc n' -> f (coiter o p f n')
 ".
 
-Lemma prefix_omega (i : nat) :
-  prefix i omega = i.
+Lemma conat_prefix_omega (i : nat) :
+  conat_prefix i omega = i.
 Proof. induction i; simpl; auto. Qed.

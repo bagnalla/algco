@@ -3585,7 +3585,7 @@ Proof.
   simpl; unfold compose, flip.
   f_equal.
   ext i.
-  rewrite prefix_omega.
+  rewrite conat_prefix_omega.
   revert a; induction i; intro a; simpl; auto.
   rewrite IHi.
   rewrite seq_prefix_S_shift; simpl.

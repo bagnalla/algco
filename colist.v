@@ -1372,7 +1372,7 @@ Extract Constant cofold => "
 ".
 
 Lemma colist_length_inj {A} (l : colist A) (n : nat) :
-  colist_length l = conat.inj n ->
+  colist_length l = nat_inj n ->
   exists al, l = inj al.
 Proof with eauto with colist conat order aCPO.
   revert l; induction n; simpl; intros l Hl.
