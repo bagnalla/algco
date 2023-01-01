@@ -482,3 +482,20 @@ Definition is_prime (n : nat) : Prop :=
 (*   ; enum_full : forall a, Vector.In a enum *)
 (*   (* ; enum_nodup : Vector.NoDup enum *) *)
 (*   }. *)
+
+(** A finite type is a type with an injective mapping into Fin.t n for
+    some n. *)
+Class FinType (A : Type) (n : nat) : Type :=
+  { fin_f : A -> Fin.t n
+  ; fin_f_inj : forall a b, fin_f a = fin_f b -> a = b
+  }.
+
+#[global]
+  Program Instance FinType_unit : FinType unit 1 :=
+  { fin_f := fun _ => F1 }.
+Next Obligation. destruct a, b; reflexivity. Qed.
+
+#[global]
+  Program Instance FinType_bool : FinType bool 2 :=
+  { fin_f := fun b => if b then FS F1 else F1 }.
+Next Obligation. destruct a, b; congruence. Qed.

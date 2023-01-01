@@ -1217,7 +1217,7 @@ Proof. intros Hprop Hf Hf'; apply ext, cofold_node; auto. Qed.
 Extract Constant cofold => "
   \ n oB pB oC pC f t ->
     case t of
-      Cotrie_Node b k -> f b (cofold n oB pB oC pC f Prelude.. k)
+      Cotrie_node b k -> f b (cofold n oB pB oC pC f Prelude.. k)
 ".
 
 Definition coopfold {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
@@ -3666,3 +3666,76 @@ Proof.
 Qed.
 
 Print Assumptions KleeneAlgebraLaws_lang.
+
+(** Regular expression syntax. *)
+Inductive RE (Σ : Type) : Type :=
+| RE_empty : RE Σ
+| RE_epsilon : RE Σ
+| RE_single : Σ -> RE Σ
+| RE_union : RE Σ -> RE Σ -> RE Σ
+| RE_intersection : RE Σ -> RE Σ -> RE Σ
+| RE_complement : RE Σ -> RE Σ
+| RE_concat : RE Σ -> RE Σ -> RE Σ
+| RE_star : RE Σ -> RE Σ.
+
+(** Trie interpretation of regular expressions over finite alphabet Σ. *)
+Fixpoint RE_trie {Σ : Type} {n : nat} `{FinType Σ n} (re : RE Σ) : lang n :=
+  match re with
+  | RE_empty => empty
+  | RE_epsilon => epsilon
+  | RE_single x => single (fin_f x)
+  | RE_union a b => union (RE_trie a) (RE_trie b)
+  | RE_intersection a b => intersection (RE_trie a) (RE_trie b)
+  | RE_complement a => complement (RE_trie a)
+  | RE_concat a b => concat (RE_trie a) (RE_trie b)
+  | RE_star a => star (RE_trie a)
+  end.
+
+(** Matching a regular expression against a string. *)
+Definition RE_match {Σ n} `{FinType Σ n} (re : RE Σ) (l : list Σ) : bool :=
+  in_langb (RE_trie re) (map fin_f l).
+
+#[global]
+  Program Instance OType_RE {Σ n} `{FinType Σ n} : OType (RE Σ) :=
+  { leq := fun a b => RE_trie a ⊑ RE_trie b }.
+Next Obligation.
+  constructor.
+  - intro x; reflexivity.
+  - intros x y z Hxy Hyz; etransitivity; eauto.
+Qed.
+
+Lemma RE_equ {Σ n} `{FinType Σ n} (a b : RE Σ) :
+  RE_trie a === RE_trie b ->
+  a === b.
+Proof. auto. Qed.
+
+#[global]
+  Instance KleeneAlgebra_RE {Σ n} `{FinType Σ n} : @KleeneAlgebra (RE Σ) _ :=
+  { plus := @RE_union _
+  ; mult := @RE_concat _
+  ; star := @RE_star _
+  ; zero := @RE_empty _
+  ; one := @RE_epsilon _
+  }.
+
+#[global]
+  Instance KleeneAlgebraLaws_RE {Σ n} `{FinType Σ n} : @KleeneAlgebraLaws (RE Σ) _ _.
+Proof.
+  constructor; intros; simpl; try apply RE_equ; simpl.
+  - rewrite union_assoc; reflexivity.
+  - rewrite concat_assoc; reflexivity.
+  - rewrite union_comm; reflexivity.
+  - rewrite concat_union_distr_l; reflexivity.
+  - rewrite concat_union_distr_r; reflexivity.
+  - rewrite union_empty_l; reflexivity.
+  - rewrite union_empty_r; reflexivity.
+  - rewrite concat_empty_l; reflexivity.
+  - rewrite concat_empty_r; reflexivity.
+  - rewrite concat_epsilon_l; reflexivity.
+  - rewrite concat_epsilon_r; reflexivity.
+  - rewrite union_idempotent; reflexivity.
+  - rewrite union_epsilon_concat_star_r; reflexivity.
+  - rewrite union_epsilon_concat_star_l; reflexivity.
+  - apply concat_star_l; auto.
+  - apply concat_star_r; auto.
+Qed.
