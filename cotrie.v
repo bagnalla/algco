@@ -1762,7 +1762,7 @@ Fixpoint star_n'' {n} (z a : lang n) (k : nat) : lang n :=
   end.
 
 Definition nstar {n} (a : lang n) : nat -> lang n :=
-  iter empty (fun b => cotrie_node true (fun x => coconcat (delta a x) b)).
+  nat_iter empty (fun b => cotrie_node true (fun x => coconcat (delta a x) b)).
 
 Definition coplus {n} (a : lang n) : lang n :=
   coiter (fun b => cotrie_node false (fun x => coconcat (delta a x) b)) omega.
@@ -2947,7 +2947,7 @@ Qed.
 #[global]
   Instance monotone_nstar {n} (a : lang n) : Proper (leq ==> leq) (nstar a).
 Proof.
-  apply monotone_iter.
+  apply monotone_nat_iter.
   - intro i; apply cotrie_bot_le.
   - intros x y Hxy; constructor; try reflexivity.
     intro b; apply monotone_concat; auto; reflexivity.
@@ -3244,7 +3244,7 @@ Proof.
 Qed.
 
 Lemma le_iter_union_concat {n} (a : lang n) (k : nat) :
-  a ⊑ iter a (fun x : lang n => union x (concat x a)) k.
+  a ⊑ nat_iter a (fun x : lang n => union x (concat x a)) k.
 Proof.
   revert a; induction k; intro a; simpl.
   { reflexivity. }

@@ -710,10 +710,10 @@ Qed.
 (*   | x :: xs => f x (fold z f xs) *)
 (*   end. *)
 
-Fixpoint iter {A} (z : A) (f : A -> A) (n : nat) : A :=
+Fixpoint nat_iter {A} (z : A) (f : A -> A) (n : nat) : A :=
   match n with
   | O => z
-  | S n' => f (iter z f n')
+  | S n' => f (nat_iter z f n')
   end.
 
 (* Fixpoint iter' {A} (z : A) (f : A -> A) (n : nat) : A := *)
@@ -729,10 +729,10 @@ Fixpoint iter {A} (z : A) (f : A -> A) (n : nat) : A :=
 (*   end. *)
 
 #[global]
-  Instance monotone_iter {A} `{OType A} (z : A) (f : A -> A)
-  {Hz : forall n, z ⊑ iter z f n}
+  Instance monotone_nat_iter {A} `{OType A} (z : A) (f : A -> A)
+  {Hz : forall n, z ⊑ nat_iter z f n}
   {Hf: Proper (leq ==> leq) f}
-  : Proper (leq ==> leq) (iter z f).
+  : Proper (leq ==> leq) (nat_iter z f).
 Proof.
   intro n; revert Hz Hf; revert z f; induction n;
     intros z f Hz Hf m Hnm; simpl; auto.
@@ -740,13 +740,13 @@ Proof.
     apply Hf.
     apply IHn; auto; lia.
 Qed.
-#[global] Hint Resolve monotone_iter : conat.
+#[global] Hint Resolve monotone_nat_iter : conat.
 
 #[global]
- Instance antimonotone_iter {A} `{OType A} (z : A) (f : A -> A)
- {Hz : forall n, iter z f n ⊑ z}
+ Instance antimonotone_nat_iter {A} `{OType A} (z : A) (f : A -> A)
+ {Hz : forall n, nat_iter z f n ⊑ z}
  {Hf: Proper (leq ==> leq) f}
-  : Proper (leq ==> flip leq) (iter z f).
+  : Proper (leq ==> flip leq) (nat_iter z f).
 Proof.
   unfold flip.
   intro n; revert Hz Hf; revert z f; induction n;
@@ -754,7 +754,7 @@ Proof.
   - destruct m; simpl in *; try lia.
     apply Hf, IHn; auto; lia.
 Qed.
-#[global] Hint Resolve antimonotone_iter : conat.
+#[global] Hint Resolve antimonotone_nat_iter : conat.
 
 (* #[global] *)
 (*   Instance monotone_iter' {A} `{OType A} (z : A) (f : A -> A) *)
@@ -770,28 +770,28 @@ Qed.
 (* #[global] Hint Resolve monotone_iter' : conat. *)
 
 Definition coiter {A} `{PType A} (f : A -> A) : conat -> A :=
-  co (iter ⊥ f).
+  co (nat_iter ⊥ f).
 
 Definition coopiter {A} `{TType A} (z : A) (f : A -> A) : conat -> A :=
-  coop (iter ⊤ f).
+  coop (nat_iter ⊤ f).
 
 (** Computation lemmas for coiters. *)
 
 Lemma co_iter_zero {A} `{dCPO A} (z : A) (f : A -> A) :
-  co (iter z f) cozero === z.
+  co (nat_iter z f) cozero === z.
 Proof.
   apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
 Lemma co_iter_succ {A} `{dCPO A} (z : A) (f : A -> A) (n : conat) :
   z ⊑ f z ->
-  ( forall n, z ⊑ iter z f n) ->
+  ( forall n, z ⊑ nat_iter z f n) ->
   continuous f ->
-  co (iter z f) (cosucc n) === f (co (iter z f) n).
+  co (nat_iter z f) (cosucc n) === f (co (nat_iter z f) n).
 Proof.
   intros Hz Hfz Hf.
   apply supremum_sup.
-  apply shift_supremum'' with (f := fun i => f (iter z f (ideal n i))); auto.
+  apply shift_supremum'' with (f := fun i => f (nat_iter z f (ideal n i))); auto.
   { apply Hf.
     { apply monotone_directed; auto with conat order.
       apply chain_directed, chain_ideal. }
@@ -803,15 +803,15 @@ Qed.
 
 Lemma co_iter_zero' {A} {o : OType A} `{@ExtType A o} `{@dCPO A o}
   (z : A) (f : A -> A) :
-  co (iter z f) cozero = z.
+  co (nat_iter z f) cozero = z.
 Proof. apply ext, co_iter_zero. Qed.
 
 Lemma co_iter_succ' {A} {o : OType A} `{@ExtType A o} `{@dCPO A o}
   (z : A) (f : A -> A) (n : conat) :
   z ⊑ f z ->
-  ( forall n, z ⊑ iter z f n) ->
+  ( forall n, z ⊑ nat_iter z f n) ->
   continuous f ->
-  co (iter z f) (cosucc n) = f (co (iter z f) n).
+  co (nat_iter z f) (cosucc n) = f (co (nat_iter z f) n).
 Proof. intros Hz Hfz Hf; apply ext, co_iter_succ; auto. Qed.
 
 Lemma coiter_succ {A} `{oA: OType A} `{@PType _ oA} `{@dCPO _ oA}
