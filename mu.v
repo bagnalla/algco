@@ -345,7 +345,7 @@ Proof
   - apply continuous_wcontinuous, continuous_co, monotone_asum.
 Qed.
 
-Theorem cotwp_mu_preimage {A} (P : A -> bool) :
+Theorem cotwp_tcosum_preimage {A} (P : A -> bool) :
   cotwp (fun x => if P x then 1 else 0) ===
     tcosum (fun bs => 1 / 2 ^ length bs) ∘ cotree_preimage P.
 Proof.
@@ -359,11 +359,11 @@ Proof.
 Qed.
 
 (* Pointwise variant. *)
-Corollary cotwp_mu_preimage' {A} (P : A -> bool) (t : cotree bool A) :
+Corollary cotwp_tcosum_preimage' {A} (P : A -> bool) (t : cotree bool A) :
   cotwp (fun x => if P x then 1 else 0) t =
     tcosum (fun bs => 1 / 2 ^ length bs) (cotree_preimage P t).
 Proof.
-  apply equ_eR; revert t; apply equ_arrow, cotwp_mu_preimage.
+  apply equ_eR; revert t; apply equ_arrow, cotwp_tcosum_preimage.
 Qed.
 
 (* Lemma atree_disjoint_map {A} (t : atree bool (list A)) (a : A) : *)
