@@ -143,6 +143,27 @@ Qed.
  Instance Symmetric_conat_eq : Symmetric conat_eq.
 Proof. cofix CH; intros n m []; constructor; auto. Qed.
 
+Lemma conat_eq_leq n m :
+  conat_eq n m ->
+  n ⊑ m.
+Proof.
+  revert n m; cofix CH; intros n m Hnm.
+  inv Hnm; constructor.
+  apply CH; auto.
+Qed.
+
+Lemma conat_eq_equiv n m :
+  conat_eq n m <-> n === m.
+Proof.
+  split.
+  - intro Hnm; split.
+    + apply conat_eq_leq; auto.
+    + apply conat_eq_leq; symmetry; auto.
+  - revert n m; cofix CH; intros n m [Hnm Hmn].
+    inv Hnm; inv Hmn; constructor.
+    apply CH; split; auto.
+Qed.
+
 Lemma conat_eq_conat_to_conat' n m :
   conat_eq n m ->
   conat_to_conat' n = conat_to_conat' m.
