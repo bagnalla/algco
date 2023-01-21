@@ -22,6 +22,7 @@ From Coq Require Import
   Rpower
   FunctionalExtensionality
   ClassicalChoice
+  IndefiniteDescription
 .
 
 From algco Require Import aCPO axioms cpo misc order tactics.
@@ -87,14 +88,101 @@ Proof.
 Qed.
 #[global] Hint Resolve le_omega : conat.
 
+Fixpoint nat_inj (n : nat) : conat :=
+  match n with
+  | O => cozero
+  | S n' => cosucc (nat_inj n')
+  end.
+
+Definition conat' : Type := nat + unit.
+
+Inductive finite : nat -> conat -> Prop :=
+| finite_zero : finite O cozero
+| finite_succ : forall n m,
+    finite n m ->
+    finite (S n) (cosucc m).
+
+Definition conat_to_conat' (n : conat) : conat' :=
+  match classicT (exists i, finite i n) with
+  | left pf => inl (proj1_sig (constructive_indefinite_description _ pf))
+  | right _ => inr tt
+  end.
+
+Definition conat'_to_conat (n : conat') : conat :=
+  match n with
+  | inl n' => nat_inj n'
+  | inr _ => omega
+  end.
+
 CoInductive conat_eq : conat -> conat -> Prop :=
 | conat_eq_zero : conat_eq cozero cozero
 | conat_eq_succ : forall n m,
     conat_eq n m ->
     conat_eq (cosucc n) (cosucc m).
 
-(** Extensionality axiom for conats. *)
-Axiom conat_ext : forall (n m : conat), conat_eq n m -> n = m.
+Lemma finite_nat_inv i j n :
+  finite i n ->
+  finite j n ->
+  i = j.
+Proof.
+  revert j n; induction i; intros j n Hi Hj.
+  - inv Hi; inv Hj; auto.
+  - inv Hi; inv Hj; erewrite IHi; eauto.
+Qed.
+
+Lemma conat_eq_finite i n m :
+  conat_eq n m ->
+  finite i n ->
+  finite i m.
+Proof.
+  revert n m; induction i;
+    intros n m Hnm Hn; inv Hn; inv Hnm; constructor; eauto.
+Qed.
+
+#[global]
+ Instance Symmetric_conat_eq : Symmetric conat_eq.
+Proof. cofix CH; intros n m []; constructor; auto. Qed.
+
+Lemma conat_eq_conat_to_conat' n m :
+  conat_eq n m ->
+  conat_to_conat' n = conat_to_conat' m.
+Proof.
+  intros Hnm.
+  unfold conat_to_conat'.
+  destr.
+  - destr.
+    + f_equal.
+      compute.
+      destr.
+      destr.
+      destruct e as [i Hi].
+      destruct e0 as [j Hj].
+      eapply conat_eq_finite in Hnm; eauto.
+      eapply finite_nat_inv; eauto.
+    + exfalso; apply n0.
+      destruct e as [i Hi].
+      exists i; eapply conat_eq_finite; eauto.
+  - destr; auto.
+    exfalso; apply n0.
+    destruct e as [i Hi].
+    exists i; eapply conat_eq_finite; eauto.
+    symmetry; auto.
+Qed.
+
+(* Extensionality axiom for conats. *)
+(* Axiom conat_ext : forall (n m : conat), conat_eq n m -> n = m. *)
+
+Axiom conat_eq_axiom : forall n, conat'_to_conat (conat_to_conat' n) = n.
+
+(** The axiom implies conat extensionality... *)
+Lemma conat_ext :
+  forall n m, conat_eq n m -> n = m.
+Proof.
+  intros n m Hnm.
+  rewrite <- conat_eq_axiom.
+  rewrite <- (@conat_eq_axiom m).
+  erewrite conat_eq_conat_to_conat'; auto.
+Qed.
 
 Lemma conat_eq_refl (n : conat) :
   conat_eq n n.
@@ -170,29 +258,6 @@ Proof.
     intro i; specialize (Hx i); inv Hx; auto.
 Qed.
 #[global] Hint Resolve continuous_cosucc : conat.
-
-(* Inductive alist_le {A} : alist A -> alist A -> Prop := *)
-(* | alist_le_conil : forall l, alist_le anil l *)
-(* | alist_le_cocons : forall x l1 l2, *)
-(*     alist_le l1 l2 -> *)
-(*     alist_le (acons x l1) (acons x l2). *)
-(* #[global] Hint Constructors alist_le : colist. *)
-
-(* #[global] *)
-(*   Instance Reflexive_nat_le : Reflexive le. *)
-(* Proof. intro l; induction l; constructor; auto. Qed. *)
-
-(* #[global] *)
-(*   Instance Transitive_nat_le : Transitive le. *)
-(* Proof. intros a b c Hab Hbc; lia. Qed. *)
-
-(* #[global] *)
-(*   Instance PreOrder_alist_le : PreOrder le. *)
-(* Proof. constructor; typeclasses eauto. Qed. *)
-
-(* #[global] *)
-(*   Instance OType_nat {A} : OType (alist A) := *)
-(*   { leq := alist_le }. *)
 
 Lemma O_le (n : nat) :
   O ⊑ n.
@@ -417,12 +482,6 @@ Proof.
   exists (conat_sup ch); apply conat_sup_supremum; auto.
 Qed.
 #[global] Hint Resolve dCPO_conat : conat.
-
-Fixpoint nat_inj (n : nat) : conat :=
-  match n with
-  | O => cozero
-  | S n' => cosucc (nat_inj n')
-  end.
 
 Lemma nat_inj_conat_prefix_coconat_prefix (n : conat) (i : nat) :
   nat_inj (conat_prefix i n) = coconat_prefix i n.
@@ -704,29 +763,11 @@ Proof.
   intros m HC; subst; apply H; exists m; reflexivity.
 Qed.
 
-(* Fixpoint fold {A B} (z : B) (f : A -> B -> B) (l : list A) : B := *)
-(*   match l with *)
-(*   | [] => z *)
-(*   | x :: xs => f x (fold z f xs) *)
-(*   end. *)
-
 Fixpoint nat_iter {A} (z : A) (f : A -> A) (n : nat) : A :=
   match n with
   | O => z
   | S n' => f (nat_iter z f n')
   end.
-
-(* Fixpoint iter' {A} (z : A) (f : A -> A) (n : nat) : A := *)
-(*   match n with *)
-(*   | O => z *)
-(*   | S n' => iter' (f z) f n' *)
-(*   end. *)
-
-(* Fixpoint iter {A} (z : A) (f : A -> A) (n : nat) : A := *)
-(*   match n with *)
-(*   | O => z *)
-(*   | S n' => iter (f z) f n' *)
-(*   end. *)
 
 #[global]
   Instance monotone_nat_iter {A} `{OType A} (z : A) (f : A -> A)
@@ -755,19 +796,6 @@ Proof.
     apply Hf, IHn; auto; lia.
 Qed.
 #[global] Hint Resolve antimonotone_nat_iter : conat.
-
-(* #[global] *)
-(*   Instance monotone_iter' {A} `{OType A} (z : A) (f : A -> A) *)
-(*   {Hz : forall n, z ⊑ iter' z f n} *)
-(*   {Hf: forall x i, x ⊑ iter' x f i} *)
-(*   : Proper (leq ==> leq) (iter' z f). *)
-(* Proof. *)
-(*   intro n; revert Hz Hf; revert z f; induction n; *)
-(*     intros z f Hz Hf m Hnm; simpl; auto. *)
-(*   - destruct m; simpl in *; try lia. *)
-(*     apply IHn; auto; try lia. *)
-(* Qed. *)
-(* #[global] Hint Resolve monotone_iter' : conat. *)
 
 Definition coiter {A} `{PType A} (f : A -> A) : conat -> A :=
   co (nat_iter ⊥ f).
@@ -855,85 +883,46 @@ Lemma conat_prefix_omega (i : nat) :
   conat_prefix i omega = i.
 Proof. induction i; simpl; auto. Qed.
 
-Definition conat_function : Type := { f : nat -> bool | dec_chain f }.
-
-Fixpoint nat_conat_le (n : nat) (m : conat) : bool :=
-  match n, m with
-  | _, cozero => false
-  | O, cosucc _ => true
-  | S n', cosucc m' => nat_conat_le n' m'
-  end.
-
-Program
-  Definition conat_to_function (n : conat) : conat_function :=
-  fun i => nat_conat_le i n.
-Next Obligation.
-  intro i; revert n; induction i; intros []; simpl; auto; destruct c; simpl; auto.
-  apply (IHi (cosucc c)).
-Qed.
-
-Program
-  Definition shift_conat_function (f : conat_function) : conat_function :=
-  f ∘ S.
-Next Obligation. intro i; destruct f; apply d. Qed.
-
-CoFixpoint function_to_conat (f : conat_function) : conat :=
-  if proj1_sig f O then cosucc (function_to_conat (shift_conat_function f)) else cozero.
-
-Lemma conat_function_eq (f g : conat_function) :
-  proj1_sig f = proj1_sig g -> f = g.
+Lemma not_finite_omega n :
+  ~ finite n omega.
 Proof.
-  intro H; destruct f, g; simpl in *; subst.
-  f_equal; apply proof_irrelevance.
+  induction n; intro HC.
+  - inv HC.
+    rewrite (@unf_eq omega) in H.
+    inv H.
+  - rewrite unf_eq in HC.
+    inv HC.
+    congruence.
 Qed.
 
-Lemma shift_conat_function_succ (n : conat) :
-  shift_conat_function (conat_to_function (cosucc n)) = conat_to_function n.
+Lemma finite_inj_inv n m :
+  finite n (nat_inj m) ->
+  n = m.
+Proof. revert n; induction m; intros n Hnm; inv Hnm; auto. Qed.
+
+Lemma finite_inj n :
+  finite n (nat_inj n).
+Proof. induction n; constructor; auto. Qed.
+
+Lemma conat_to_conat'_to_conat (n : conat') :
+  conat_to_conat' (conat'_to_conat n) = n.
 Proof.
-  apply conat_function_eq; simpl.
-  ext i; reflexivity.
+  destruct n; simpl.
+  - unfold conat_to_conat'.
+    destr.
+    + destruct e as [i Hi].
+      f_equal.
+      compute.
+      destr.
+      apply finite_inj_inv in f; auto.
+    + exfalso; apply n0; exists n.
+      apply finite_inj.
+  - unfold conat_to_conat'.
+    destr.
+    + destruct e as [i HC].
+      exfalso; eapply not_finite_omega; eauto.
+    + destruct u; auto.
 Qed.
-
-(** Can equality version of this as axiom instead to derive
-    extensionality. *)
-Lemma function_to_conat_to_function (n : conat) :
-  conat_eq (function_to_conat (conat_to_function n)) n.
-Proof.
-  revert n; cofix CH; intros [].
-  - rewrite unf_eq; constructor.
-  - rewrite unf_eq.
-    simpl.
-    constructor.
-    rewrite shift_conat_function_succ; apply CH.
-Qed.
-
-Lemma conat_to_function_to_conat (f : conat_function) :
-  conat_to_function (function_to_conat f) = f.
-Proof.
-  apply conat_function_eq; ext i; simpl.
-  revert f; induction i; intro f; simpl.
-  - destruct (proj1_sig f O) eqn:Hf; auto.
-  - destruct (proj1_sig f O) eqn:Hf; auto.
-    + rewrite IHi; auto.
-    + destruct f; simpl in *.
-      assert (H: x (S i) ⊑ false).
-      { rewrite <- Hf. apply dec_chain_leq; auto; lia. }
-      destruct (x (S i)); auto.
-Qed.
-
-Lemma conat_eq_conat_to_function n m :
-  conat_eq n m ->
-  conat_to_function n = conat_to_function m.
-Proof.
-  intros Hnm.
-  unfold conat_to_function.
-  apply conat_function_eq; ext i; simpl.
-  revert Hnm; revert n m; induction i; intros n m []; simpl; auto.
-Qed.
-
-#[global]
- Instance Symmetric_conat_eq : Symmetric conat_eq.
-Proof. cofix CH; intros n m []; constructor; auto. Qed.
 
 #[global]
  Instance Proper_conat_eq : Proper (conat_eq ==> conat_eq ==> flip impl) conat_eq.
@@ -944,14 +933,3 @@ Proof.
   - inv Hbd; inv Hcd.
     constructor; eapply CH; eauto.
 Qed.
-
-(** The weird axiom implies conat extensionality... *)
-Lemma derive_conat_ext :
-  (forall n, function_to_conat (conat_to_function n) = n) -> forall n m, conat_eq n m -> n = m.
-Proof.
-  intros H n m Hnm.
-  rewrite <- H.
-  rewrite <- (H n).
-  erewrite conat_eq_conat_to_function; eauto.
-  rewrite H; auto.
-Qed.    
