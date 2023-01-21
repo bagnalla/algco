@@ -89,7 +89,7 @@ Qed.
 
 CoInductive conat_eq : conat -> conat -> Prop :=
 | conat_eq_zero : conat_eq cozero cozero
-| conat_eq_cons : forall n m,
+| conat_eq_succ : forall n m,
     conat_eq n m ->
     conat_eq (cosucc n) (cosucc m).
 
