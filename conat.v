@@ -854,3 +854,104 @@ Extract Constant coiter => "
 Lemma conat_prefix_omega (i : nat) :
   conat_prefix i omega = i.
 Proof. induction i; simpl; auto. Qed.
+
+Definition conat_function : Type := { f : nat -> bool | dec_chain f }.
+
+Fixpoint nat_conat_le (n : nat) (m : conat) : bool :=
+  match n, m with
+  | _, cozero => false
+  | O, cosucc _ => true
+  | S n', cosucc m' => nat_conat_le n' m'
+  end.
+
+Program
+  Definition conat_to_function (n : conat) : conat_function :=
+  fun i => nat_conat_le i n.
+Next Obligation.
+  intro i; revert n; induction i; intros []; simpl; auto; destruct c; simpl; auto.
+  apply (IHi (cosucc c)).
+Qed.
+
+Program
+  Definition shift_conat_function (f : conat_function) : conat_function :=
+  f ∘ S.
+Next Obligation. intro i; destruct f; apply d. Qed.
+
+CoFixpoint function_to_conat (f : conat_function) : conat :=
+  if proj1_sig f O then cosucc (function_to_conat (shift_conat_function f)) else cozero.
+
+Lemma conat_function_eq (f g : conat_function) :
+  proj1_sig f = proj1_sig g -> f = g.
+Proof.
+  intro H; destruct f, g; simpl in *; subst.
+  f_equal; apply proof_irrelevance.
+Qed.
+
+Lemma shift_conat_function_succ (n : conat) :
+  shift_conat_function (conat_to_function (cosucc n)) = conat_to_function n.
+Proof.
+  apply conat_function_eq; simpl.
+  ext i; reflexivity.
+Qed.
+
+(** Can equality version of this as axiom instead to derive
+    extensionality. *)
+Lemma function_to_conat_to_function (n : conat) :
+  conat_eq (function_to_conat (conat_to_function n)) n.
+Proof.
+  revert n; cofix CH; intros [].
+  - rewrite unf_eq; constructor.
+  - rewrite unf_eq.
+    simpl.
+    constructor.
+    rewrite shift_conat_function_succ; apply CH.
+Qed.
+
+Lemma conat_to_function_to_conat (f : conat_function) :
+  conat_to_function (function_to_conat f) = f.
+Proof.
+  apply conat_function_eq; ext i; simpl.
+  revert f; induction i; intro f; simpl.
+  - destruct (proj1_sig f O) eqn:Hf; auto.
+  - destruct (proj1_sig f O) eqn:Hf; auto.
+    + rewrite IHi; auto.
+    + destruct f; simpl in *.
+      assert (H: x (S i) ⊑ false).
+      { rewrite <- Hf. apply dec_chain_leq; auto; lia. }
+      destruct (x (S i)); auto.
+Qed.
+
+Lemma conat_eq_conat_to_function n m :
+  conat_eq n m ->
+  conat_to_function n = conat_to_function m.
+Proof.
+  intros Hnm.
+  unfold conat_to_function.
+  apply conat_function_eq; ext i; simpl.
+  revert Hnm; revert n m; induction i; intros n m []; simpl; auto.
+Qed.
+
+#[global]
+ Instance Symmetric_conat_eq : Symmetric conat_eq.
+Proof. cofix CH; intros n m []; constructor; auto. Qed.
+
+#[global]
+ Instance Proper_conat_eq : Proper (conat_eq ==> conat_eq ==> flip impl) conat_eq.
+Proof.
+  cofix CH; intros a b Hab c d Hcd Hbd.
+  destruct Hab.
+  - inv Hbd; symmetry; auto.
+  - inv Hbd; inv Hcd.
+    constructor; eapply CH; eauto.
+Qed.
+
+(** The weird axiom implies conat extensionality... *)
+Lemma derive_conat_ext :
+  (forall n, function_to_conat (conat_to_function n) = n) -> forall n m, conat_eq n m -> n = m.
+Proof.
+  intros H n m Hnm.
+  rewrite <- H.
+  rewrite <- (H n).
+  erewrite conat_eq_conat_to_function; eauto.
+  rewrite H; auto.
+Qed.    
