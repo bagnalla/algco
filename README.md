@@ -1,6 +1,6 @@
 # algco
 
-Algebraic Coinductives
+Paper: https://arxiv.org/abs/2301.09802
 
 ## Conats
 
