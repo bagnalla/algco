@@ -748,7 +748,7 @@ Fixpoint para {A B} (z : B) (f : A -> colist A -> B -> B) (l : list A) : B :=
 
 #[global]
   Instance monotone_fold {A B} `{OType B} (z : B) (f : A -> B -> B)
-  {Hz : forall b, z ⊑ fold z f b}
+  {Hz : forall l, z ⊑ fold z f l}
   {Hf : forall a, Proper (leq ==> leq) (f a)}
   : Proper (leq ==> leq) (fold z f).
 Proof.
@@ -761,7 +761,7 @@ Qed.
 
 #[global]
   Instance monotone_para {A B} `{OType B} (z : B) (f : A -> colist A -> B -> B)
-  {Hz : forall b, z ⊑ para z f b}
+  {Hz : forall l, z ⊑ para z f l}
   {Hf : forall a, Proper (leq ==> leq ==> leq) (f a)}
   : Proper (leq ==> leq) (para z f).
 Proof.
@@ -778,7 +778,7 @@ Definition copara {A B} `{OType B} (z : B) (f : A -> colist A -> B -> B) : colis
 
 #[global]
   Instance antimonotone_fold {A B} `{OType B} (z : B) (f : A -> B -> B)
-  {Hz : forall b, fold z f b ⊑ z}
+  {Hz : forall l, fold z f l ⊑ z}
   {Hf : forall a, Proper (leq ==> leq) (f a)}
   : Proper (leq ==> flip leq) (fold z f).
 Proof.

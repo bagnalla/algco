@@ -73,6 +73,12 @@ Proof. constructor; typeclasses eauto. Qed.
   Instance OType_conat : OType conat :=
   { leq := conat_le }.
 
+#[global]
+  Program
+  Instance PType_conat : PType conat :=
+  { bot := cozero }.
+Next Obligation. constructor. Qed.
+
 Lemma cozero_le (n : conat) :
   cozero ⊑ n.
 Proof. constructor. Qed.
@@ -863,6 +869,11 @@ Lemma co_iter_succ' {A} {o : OType A} `{@ExtType A o} `{@dCPO A o}
   co (nat_iter z f) (cosucc n) = f (co (nat_iter z f) n).
 Proof. intros Hz Hfz Hf; apply ext, co_iter_succ; auto. Qed.
 
+Lemma coiter_zero {A} `{oA: OType A} `{@PType _ oA} `{@dCPO _ oA}
+  (f : A -> A) :
+  coiter f cozero === ⊥.
+Proof. apply co_iter_zero. Qed.
+
 Lemma coiter_succ {A} `{oA: OType A} `{@PType _ oA} `{@dCPO _ oA}
   (f : A -> A) (n : conat) :
   continuous f ->
@@ -878,6 +889,11 @@ Lemma coiter_succ' {A} `{oA: OType A} `{@PType _ oA} `{@dCPO _ oA} `{@ExtType _ 
   continuous f ->
   coiter f (cosucc n) = f (coiter f n).
 Proof. intro Hf; apply ext, coiter_succ; auto. Qed.
+
+Lemma coiter_zero' {A} `{oA: OType A} `{@PType _ oA} `{@dCPO _ oA} `{@ExtType _ oA}
+  (f : A -> A) :
+  coiter f cozero = ⊥.
+Proof. apply ext, coiter_zero. Qed.
 
 CoInductive infinite : conat -> Prop :=
 | infinite_succ : forall n, infinite n -> infinite (cosucc n).
@@ -954,3 +970,382 @@ Proof.
   - inv Hbd; inv Hcd.
     constructor; eapply CH; eauto.
 Qed.
+
+#[global]
+ Instance Proper_cosucc : Proper (conat_eq ==> conat_eq) cosucc.
+Proof. intros n m Hnm; constructor; auto. Qed.
+
+Definition nat_conat_le : nat -> conat -> Prop :=
+  nat_iter (const True) (fun f m => match m with
+                              | cozero => False
+                              | cosucc m' => f m'
+                              end).
+
+#[global]
+ Instance antimonotone_nat_conat_le : Proper (leq ==> flip leq) nat_conat_le.
+Proof.
+  apply antimonotone_nat_iter.
+  - intros i n H; apply I.
+  - intros f g Hfg [] Hn; auto; apply Hfg; auto.
+Qed.
+#[global] Hint Resolve antimonotone_nat_conat_le : conat.
+
+Definition conat_le' : conat -> conat -> Prop :=
+  coop nat_conat_le.
+
+Lemma conat_le_conat_le' (n m : conat) :
+  n ⊑ m <-> conat_le' n m.
+Proof with auto with conat order.
+  split.
+  - intro Hnm.
+    apply coop_intro2...
+    intro i; simpl; unfold flip.
+    revert Hnm; revert n m.
+    induction i; intros n m Hnm; simpl.
+    + constructor.
+    + destruct n.
+      * constructor.
+      * inv Hnm; apply IHi; auto.
+  - revert n m; cofix CH; intros n m Hnm.
+    destruct n.
+    + constructor.
+    + destruct m.
+      * apply coop_elim2 with (i := S O) in Hnm...
+        inv Hnm.
+      * constructor; apply CH.
+        apply coop_intro2...
+        intro i; apply coop_elim2 with (i := S i) in Hnm...
+Qed.
+
+(* Definition coplus (n : conat) : conat -> conat := *)
+(*   (* coiter (compose cosucc) n. *) *)
+(*   co (nat_iter id (compose cosucc)) n. *)
+
+(* Lemma coplus_zero_l (n : conat) : *)
+(*   coplus cozero n = n. *)
+(* Proof. *)
+(*   unfold coplus; simpl. *)
+(*   rewrite co_iter_zero'; auto. *)
+(* Qed. *)
+
+(* (* Lemma coplus_zero_r (n : conat) : *) *)
+(* (*   coplus n cozero = n. *) *)
+(* (* Proof. *) *)
+  
+(* (*   unfold coplus; simpl. *) *)
+(* (*   rewrite co_iter_zero'; auto. *) *)
+(* (* Qed. *) *)
+
+Lemma succ_conat_le (n : conat) :
+  n ⊑ cosucc n.
+Proof.
+  revert n; cofix CH; intros [].
+  { constructor. }
+  constructor; apply CH.
+Qed.
+
+(* Lemma ikdfg (n : nat) (m : conat) : *)
+(*   m ⊑ nat_iter (fun x0 : conat => x0) (compose cosucc) n m. *)
+(* Proof. *)
+(*   revert m; induction n; intro m; simpl. *)
+(*   { reflexivity. } *)
+(*   (* unfold compose in *. *) *)
+(*   destruct m; constructor. *)
+(*   etransitivity. *)
+(*   { apply IHn. } *)
+(*   admit. *)
+(* Admitted. *)
+
+(* Lemma coplus_succ (n m : conat) : *)
+(*   coplus (cosucc n) m = cosucc (coplus n m). *)
+(* Proof. *)
+(*   unfold coplus; simpl. *)
+(*   rewrite co_iter_succ'; auto. *)
+(*   { intro x; unfold id, compose. *)
+(*     apply succ_conat_le. } *)
+(*   { intros x y; unfold id. simpl. *)
+(*     apply ikdfg. } *)
+(*   intros ch Hch f Hf. *)
+(*   apply supremum_apply. *)
+(*   intro x; unfold compose. *)
+(*   apply continuous_cosucc. *)
+(*   { intros i j. *)
+(*     specialize (Hch i j). *)
+(*     destruct Hch as [k [Hik Hjk]]. *)
+(*     exists k; split; auto. } *)
+(*   apply apply_supremum; auto. *)
+(* Qed. *)
+
+(* Lemma coplus_comm_leq (n m : conat) : *)
+(*   coplus n m ⊑ coplus m n. *)
+(* Proof with auto with conat order. *)
+(*   apply conat_le_conat_le'. *)
+(*   apply coop_intro2... *)
+(*   intro i; simpl; unfold flip. *)
+(*   revert n m; induction i; intros n m; simpl. *)
+(*   { constructor. } *)
+(*   destruct n. *)
+(*   { rewrite coplus_zero_l. *)
+
+(* Lemma coplus_comm (n m : conat) : *)
+(*   coplus n m = coplus m n. *)
+(* Proof. *)
+(*   apply ext. *)
+(*   split. *)
+  
+CoFixpoint coplus (n m : conat) : conat :=
+  match n with
+  | cozero => m
+  | cosucc n' => cosucc (coplus n' m)
+  end.
+
+(* Lemma plus_0_r (n : nat) : *)
+(*   n = n + 0. *)
+(* Proof. induction n; simpl; auto. Qed. *)
+
+(* Lemma S_plus (n m : nat) : *)
+(*   S (n + m) = n + S m. *)
+(* Proof. revert m; induction n; intro m; simpl; auto. Qed. *)
+
+(* Lemma plus_comm (n m : nat) : *)
+(*   n + m = m + n. *)
+(* Proof. *)
+(*   revert m; induction n; intros m; simpl. *)
+(*   - apply plus_0_r. *)
+(*   - rewrite IHn. *)
+(*     apply S_plus. *)
+(* Qed. *)
+
+Lemma coplus_zero_l (n : conat) :
+  coplus cozero n = n.
+Proof.
+  rewrite (@unf_eq (coplus _ _)); simpl.
+  destruct n; reflexivity.
+Qed.
+
+Lemma coplus_zero_r (n : conat) :
+  coplus n cozero = n.
+Proof.
+  apply conat_ext.
+  revert n; cofix CH; intros [].
+  - rewrite unf_eq; reflexivity.
+  - rewrite (@unf_eq (coplus _ _)); constructor; apply CH.
+Qed.
+
+Lemma coplus_succ (n m : conat) :
+  coplus (cosucc n) m = cosucc (coplus n m).
+Proof. rewrite (@unf_eq (coplus _ _)); auto. Qed.
+
+Lemma cosucc_coplus (n m : conat) :
+  cosucc (coplus n m) = coplus n (cosucc m).
+Proof.
+  apply conat_ext.
+  revert n m; cofix CH; intros [|n'] m.
+  - rewrite (@unf_eq (coplus cozero _)); simpl.
+    rewrite (@unf_eq (coplus cozero _)); simpl.
+    destruct m; reflexivity.
+  - rewrite (@unf_eq (coplus _ _)); simpl.
+    rewrite (@unf_eq (coplus (cosucc _) _)); simpl.
+    constructor.
+    apply CH.
+Qed.
+
+Lemma coplus_comm (n m : conat) :
+  coplus n m = coplus m n.
+Proof.
+  apply conat_ext.
+  revert n m; cofix CH; intros n m.
+  destruct n as [|n'].
+  - rewrite unf_eq; simpl.
+    rewrite <- coplus_zero_r.
+    destruct m; reflexivity.
+  - rewrite unf_eq; simpl.
+    destruct m as [|m'].
+    + rewrite coplus_zero_r.
+      rewrite (@unf_eq (coplus _ _)); reflexivity.
+    + rewrite (@unf_eq (coplus (cosucc _) _)); simpl.
+      constructor.
+      rewrite <- cosucc_coplus.
+      rewrite <- cosucc_coplus.
+      constructor.
+      apply CH.
+Qed.
+
+(* Definition nmult : nat -> conat -> conat := *)
+(*   nat_iter (const cozero) (fun f m => coplus m (f m)). *)
+
+(* Definition nmult' (n : conat) : nat -> conat := *)
+(*   nat_iter cozero (fun m => coplus n m). *)
+
+(* Lemma nmult_nmult' n m : *)
+(*   nmult n m = nmult' m n. *)
+(* Proof. *)
+(*   unfold nmult, nmult'. *)
+(*   revert m; induction n; intro m; simpl; auto. *)
+(*   rewrite IHn; auto. *)
+(* Qed. *)
+
+(* Lemma le_coplus (n m : conat) : *)
+(*   n ⊑ coplus n m. *)
+(* Proof. *)
+(*   revert n m; cofix CH; intros [|n'] m. *)
+(*   - constructor. *)
+(*   - rewrite (@unf_eq (coplus _ _)); simpl. *)
+(*     constructor. *)
+(*     apply CH. *)
+(* Qed. *)
+
+(* #[global] *)
+(*   Instance monotone_coplus (n : conat) : Proper (leq ==> leq) (coplus n). *)
+(* Proof. *)
+(*   revert n; cofix CH; intros n a b Hab. *)
+(*   destruct b as [|b']. *)
+(*   - inv Hab; rewrite <- coplus_zero_r; reflexivity. *)
+(*   - destruct a as [|a']. *)
+(*     + rewrite coplus_zero_r. *)
+(*       apply le_coplus. *)
+(*     + inv Hab. *)
+(*       rewrite <- 2!cosucc_coplus. *)
+(*       constructor. *)
+(*       apply CH; auto. *)
+(* Qed. *)
+
+(* #[global] *)
+(*  Instance monotone_nmult : Proper (leq ==> leq) nmult. *)
+(* Proof. *)
+(*   apply monotone_nat_iter. *)
+(*   - intros; constructor. *)
+(*   - intros f g Hfg n; apply monotone_coplus; auto. *)
+(* Qed. *)
+
+(* #[global] *)
+(*  Instance monotone_nmult' (n : conat) : Proper (leq ==> leq) (nmult' n). *)
+(* Proof. *)
+(*   apply monotone_nat_iter. *)
+(*   - intros; constructor. *)
+(*   - intros a b Hab; apply monotone_coplus; auto. *)
+(* Qed. *)
+
+(* Definition comult : conat -> conat -> conat := *)
+(*   co nmult. *)
+
+(* Definition comult' (n : conat) : conat -> conat := *)
+(*   co (nmult' n). *)
+
+(* Lemma comult'_zero_l (n : conat) : *)
+(*   comult' cozero n = cozero. *)
+(* Proof. Admitted. *)
+
+(* Lemma comult'_zero_r (n : conat) : *)
+(*   comult' n cozero = cozero. *)
+(* Proof. Admitted. *)
+
+(* Lemma comult'_succ (n m : conat) : *)
+(*   comult' n (cosucc m) = coplus n (comult' n m). *)
+(* Proof. Admitted. *)
+
+(* Lemma coplus_inj a b : *)
+(*   coplus (nat_inj a) (nat_inj b) = nat_inj (a + b). *)
+(* Proof. *)
+(*   revert b; induction a; intro b; simpl. *)
+(*   - rewrite coplus_zero_l; auto. *)
+(*   - rewrite coplus_succ, IHa; auto. *)
+(* Qed. *)
+
+(* Lemma comult'_inj a b : *)
+(*   comult' (nat_inj a) (nat_inj b) = nat_inj (a * b). *)
+(* Proof. *)
+(*   revert a; induction b; intro a; simpl. *)
+(*   - rewrite comult'_zero_r, Nat.mul_0_r; auto. *)
+(*   - rewrite <- mult_n_Sm. *)
+(*     rewrite <- coplus_inj. *)
+(*     rewrite comult'_succ. *)
+(*     rewrite coplus_comm. *)
+(*     rewrite IHb; auto. *)
+(* Qed. *)
+
+(* Lemma comult'_comm (n m : conat) : *)
+(*   comult' n m = comult' m n. *)
+(* Proof. *)
+(*   destruct (@conat_finite_or_omega n); subst. *)
+(*   - destruct H as [a ?]; subst. *)
+(*     destruct (@conat_finite_or_omega m); subst. *)
+(*     + destruct H as [b ?]; subst. *)
+(*       rewrite 2!comult'_inj; f_equal; lia. *)
+(*     + admit. *)
+(*   - admit. *)
+(* Admitted. *)
+
+(* Lemma comult_comult' (n m : conat) : *)
+(*   comult n m = comult' m n. *)
+(* Proof. *)
+(*   unfold comult, comult'. *)
+(*   unfold co. *)
+(*   unfold compose. *)
+(*   apply ext. *)
+(*   rewrite dsup_apply. *)
+(*   2: { admit. } *)
+(*   apply eq_equ. *)
+(*   f_equal; ext i. *)
+(*   apply nmult_nmult'. *)
+(* Admitted. *)
+
+(* Lemma comult'_comm (n m : conat) : *)
+(*   comult' n m = comult' m n. *)
+(* Proof. *)
+(*   unfold comult'. *)
+(*   unfold co. *)
+(*   f_equal. *)
+(*   ext i. *)
+(*   simpl; unfold compose, flip. *)
+(*   revert n m; induction i; intros n m; simpl; auto. *)
+(*   destruct m as [|m']. *)
+(*   - unfold nmult'. simpl. *)
+(*     destruct n as [|n']; simpl; auto. *)
+(*     rewrite coplus_zero_l. *)
+(*     admit. *)
+(*   - unfold nmult'. simpl. *)
+    
+
+
+(* Lemma comult_zero_l (n : conat) : *)
+(*   comult cozero n = cozero. *)
+(* Proof. unfold comult; rewrite coiter_zero'; auto. Qed. *)
+
+(* Lemma comult_zero_r (n : conat) : *)
+(*   comult n cozero = cozero. *)
+(* Proof. Admitted. *)
+
+(* Lemma comult_succ (n m : conat) : *)
+(*   comult (cosucc n) m = coplus m (comult n m). *)
+(* Proof. *)
+(*   unfold comult. *)
+(*   rewrite coiter_succ'; auto. *)
+(*   admit. *)
+(* Admitted. *)
+
+(* Lemma nat_conat_le_trans n m p : *)
+(*   n ⊑ m -> *)
+(*   nat_conat_le m p -> *)
+(*   nat_conat_le n p. *)
+(* Admitted. *)
+
+(* Lemma nat_conat_le_prefix i n : *)
+(*   nat_conat_le (conat_prefix i n) n. *)
+(* Admitted. *)
+
+(* Lemma comult_comm_leq (n m : conat) : *)
+(*   comult n m ⊑ comult m n. *)
+(* Proof with auto with conat order. *)
+(*   apply conat_le_conat_le'. *)
+(*   apply coop_intro2... *)
+(*   intro i; simpl; unfold flip. *)
+(*   revert n m; induction i; intros n m; simpl. *)
+(*   { constructor. } *)
+(*   destruct n as [|n']. *)
+(*   - rewrite comult_zero_l; constructor. *)
+(*   - rewrite comult_succ. *)
+(*     destruct m as [|m']; simpl. *)
+(*     + rewrite comult_zero_r; constructor. *)
+(*     + rewrite comult_succ. *)
+(*       rewrite (@unf_eq (coplus (cosucc _) _)); simpl. *)
