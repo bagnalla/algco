@@ -1647,7 +1647,7 @@ Definition afilter {A} (f : A -> bool) : list A -> colist A :=
 Definition cofilter {A} (f : A -> bool) : colist A -> colist A :=
   cofold (filter_f f).
 
-Lemma cofilter_nil {A} (f : A -> bool) (a : A) (l : colist A) :
+Lemma cofilter_nil {A} (f : A -> bool) :
   cofilter f conil = conil.
 Proof. unfold cofilter, cofold; rewrite co_fold_nil'; auto. Qed.
 
@@ -1897,6 +1897,10 @@ Definition cosum : colist eR -> eR :=
 Lemma continuous_cosum :
   continuous cosum.
 Proof. apply continuous_co, monotone_sum. Qed.
+
+Lemma cosum_nil :
+  cosum conil = 0.
+Proof. unfold cosum, cofold. rewrite co_fold_nil'; auto. Qed.
 
 (** Computation rule for sum. *)
 Lemma cosum_cons (a : eR) (l : colist eR) :
