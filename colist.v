@@ -1813,10 +1813,10 @@ Lemma ordered_cofilter {A} (R : A -> A -> Prop) (P : A -> bool) (l : colist A) :
 Proof with eauto with colist order aCPO.
   intro Hord.
   unfold cofilter, cofold.
-  apply co_coopP...
-  (* { apply cocontinuous_coop... } *)
+  apply co_coopP... (* Fusion *)
   apply coop_intro.
   { apply monotone_antimonotone_compose... }
+  unfold compose.
   intro i; simpl; unfold flip, compose.
   apply list_ordered_ordered_afilter.
   apply coop_elim with (i:=i) in Hord...
@@ -1870,6 +1870,10 @@ Definition comap {A B} (f : A -> B) : colist A -> colist B :=
 Lemma continuous_comap {A B} (f : A -> B) :
   continuous (comap f).
 Proof. apply continuous_co, monotone_amap. Qed.
+
+Lemma comap_nil {A B} (f : A -> B) :
+  comap f conil = conil.
+Proof. unfold comap, cofold; rewrite co_fold_nil'; auto. Qed.
 
 (** Computation rule for map. *)
 Lemma comap_cons {A B} (f : A -> B) (a : A) (l : colist A) :
