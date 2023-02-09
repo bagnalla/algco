@@ -751,16 +751,15 @@ Proof.
         auto.
 Qed.
 
-
-Fixpoint inj {A B} `{PType B} (t : trie A B) : cotrie A B :=
+Fixpoint trie_inj {A B} `{PType B} (t : trie A B) : cotrie A B :=
   match t with
   | trie_bot => ⊥
-  | trie_node b k => cotrie_node b (inj ∘ k)
+  | trie_node b k => cotrie_node b (trie_inj ∘ k)
   end.
 
 Lemma is_bot_inj {A B} `{PType B} (a : trie A B) (b : cotrie A B) :
   is_bot a ->
-  inj a ⊑ b.
+  trie_inj a ⊑ b.
 Proof.
   revert b; induction a; intros b' Ha; simpl.
   { apply cotrie_bot_le. }
@@ -772,7 +771,7 @@ Proof.
 Qed.
 
 #[global]
-  Instance monotone_inj {A B} `{PType B} : Proper (leq ==> leq) (@inj A B _ _).
+  Instance monotone_inj {A B} `{PType B} : Proper (leq ==> leq) (@trie_inj A B _ _).
 Proof.
   intro x; induction x; intros y Hxy; inv Hxy; simpl.
   { apply cotrie_bot_le. }
@@ -780,17 +779,17 @@ Proof.
   - constructor; auto; intro a; apply H0; simpl; auto.
 Qed.
 
-Fixpoint prefix {A B} (n : nat) (t : cotrie A B) : trie A B :=
+Fixpoint trie_prefix {A B} (n : nat) (t : cotrie A B) : trie A B :=
   match n with
   | O => trie_bot
   | S n' => match t with
-           | cotrie_node b k => trie_node b (prefix n' ∘ k)
+           | cotrie_node b k => trie_node b (trie_prefix n' ∘ k)
            end
   end.
 
 Lemma monotone_prefix {A B} `{PType B} (x y : cotrie A B) (i : nat) :
   x ⊑ y ->
-  prefix i x ⊑ prefix i y.
+  trie_prefix i x ⊑ trie_prefix i y.
 Proof.
   revert x y; induction i; intros [] [] Hxy; simpl.
   { constructor; constructor. }
@@ -801,7 +800,7 @@ Qed.
 
 Lemma monotone_prefix' {A B} `{PType B} (t : cotrie A B) (i j : nat) :
   i ⊑ j ->
-  prefix i t ⊑ prefix j t.
+  trie_prefix i t ⊑ trie_prefix j t.
 Proof.
   revert t j; induction i; intros t j Hij; simpl.
   { constructor; constructor. }
@@ -814,7 +813,7 @@ Proof.
 Qed.
 
 Lemma inj_prefix_le {A B} `{PType B} (t : cotrie A B) (i : nat) :
-  inj (prefix i t) ⊑ t.
+  trie_inj (trie_prefix i t) ⊑ t.
 Proof.
   revert t; induction i; intro t; simpl.
   { apply cotrie_bot_le. }
@@ -825,7 +824,7 @@ Proof.
 Qed.
 
 Lemma supremum_inj_prefix {A B} `{PType B} (t : cotrie A B) :
-  supremum t (fun i => inj (prefix i t)).
+  supremum t (fun i => trie_inj (trie_prefix i t)).
 Proof.
   split.
   - intro i; apply inj_prefix_le.
@@ -842,7 +841,7 @@ Proof.
 Qed.
 
 Lemma trie_le_cotrie_le {A B} `{PType B} (a b : trie A B) :
-  a ⊑ b -> inj a ⊑ inj b.
+  a ⊑ b -> trie_inj a ⊑ trie_inj b.
 Proof.
   revert b; induction a; intros y Hy; simpl.
   - apply cotrie_bot_le.
@@ -852,7 +851,7 @@ Proof.
 Qed.
 
 Lemma inj_is_bot {A B} `{PType B} (a : trie A B) :
-  inj a ⊑ cotrie_bot ->
+  trie_inj a ⊑ cotrie_bot ->
   is_bot a.
 Proof.
   induction a; intros Ha.
@@ -864,7 +863,7 @@ Proof.
 Qed.
 
 Lemma cotrie_le_trie_le {A B} `{PType B} (a b : trie A B) :
-  inj a ⊑ inj b -> a ⊑ b.
+  trie_inj a ⊑ trie_inj b -> a ⊑ b.
 Proof.
   revert b; induction a; intros y Hy.
   { constructor; constructor. }
@@ -880,7 +879,7 @@ Proof.
 Qed.
 
 Lemma chain_prefix {A B} `{PType B} (t : cotrie A B) :
-  chain (fun n : nat => prefix n t).
+  chain (fun n : nat => trie_prefix n t).
 Proof.
   apply monotone_chain.
   - intros i j Hij; apply monotone_prefix'; auto.
@@ -938,7 +937,7 @@ Qed.
 
 Lemma cotrie_bot_is_bot_prefix {A B} `{PType B} (t : cotrie A B) (i : nat) :
   t === cotrie_bot ->
-  is_bot (prefix i t).
+  is_bot (trie_prefix i t).
 Proof.
   revert t; induction i; intros t Ht; simpl.
   - constructor.
@@ -955,7 +954,7 @@ Proof.
 Qed.
 
 Lemma trie_le_trie_bot_cotrie_bot {A B} `{PType B} (t : cotrie A B) :
-  (forall i, trie_le (prefix i t) trie_bot) ->
+  (forall i, trie_le (trie_prefix i t) trie_bot) ->
   t === cotrie_bot.
 Proof.
   intro Hle.
@@ -990,8 +989,8 @@ Qed.
 Lemma supremum_is_bot_prefix {A B} `{PType B}
   (t : cotrie A B) (ch : nat -> cotrie A B) (n : nat) :
   supremum t ch ->
-  (forall i, is_bot (prefix n (ch i))) ->
-  is_bot (prefix n t).
+  (forall i, is_bot (trie_prefix n (ch i))) ->
+  is_bot (trie_prefix n t).
 Proof.
   revert t ch; induction n; intros t ch Ht Hub; simpl.
   { constructor. }
@@ -1022,8 +1021,8 @@ Qed.
 Lemma supremum_ub_prefix_le_trie_bot {A B} `{PType B}
   (t : cotrie A B) (ch : nat -> cotrie A B) (n : nat) :
   supremum t ch ->
-  upper_bound trie_bot (prefix n ∘ ch) ->
-  prefix n t ⊑ trie_bot.
+  upper_bound trie_bot (trie_prefix n ∘ ch) ->
+  trie_prefix n t ⊑ trie_bot.
 Proof.
   intros Ht Hub.
   constructor.
@@ -1037,7 +1036,7 @@ Proof.
 Qed.
 
 Lemma prefix_continuous {A B} `{PType B} (n : nat) :
-  continuous (@prefix A B n).
+  continuous (@trie_prefix A B n).
 Proof.
   induction n; intros ch Hch a Hsup; unfold compose; simpl.
   { apply supremum_const. }
@@ -1051,17 +1050,18 @@ Proof.
       specialize (Hub i); rewrite Hchi in Hub.
       inv Hub; auto.
     + intro x.
-      replace ((prefix n ∘ c0) x) with ((prefix n ∘ (flip delta x ∘ ch)) i).
+      replace ((trie_prefix n ∘ c0) x) with ((trie_prefix n ∘ (flip delta x ∘ ch)) i).
       2: { unfold compose; rewrite Hchi; reflexivity. }
       specialize (Hc x).
       apply IHn; auto.
       apply monotone_directed; auto.
       intros [] [] Hzw; inv Hzw; unfold flip; simpl; auto.
   - intros x Hx; destruct x.
-    + assert (Hx': upper_bound trie_bot (prefix (S n) ∘ ch)).
+    + assert (Hx': upper_bound trie_bot (trie_prefix (S n) ∘ ch)).
       { apply Hx. }
       clear Hx.
-      replace (trie_node b (prefix n ∘ c)) with (prefix (S n) (cotrie_node b c)) by reflexivity.
+      replace (trie_node b (trie_prefix n ∘ c)) with
+        (trie_prefix (S n) (cotrie_node b c)) by reflexivity.
       eapply supremum_ub_prefix_le_trie_bot; eauto.
     + apply trie_le_node.
       { apply supremum_label in Hsup.
@@ -1089,8 +1089,8 @@ Qed.
 
 #[global]
   Instance Dense_cotrie {A B} `{PType B} : Dense (cotrie A B) (trie A B) :=
-  { incl := inj
-  ; ideal := flip prefix }.
+  { incl := trie_inj
+  ; ideal := flip trie_prefix }.
 
 #[global]
   Instance aCPO_cotrie {n B} `{oB: OType B} `{@PType B oB}
@@ -1807,7 +1807,7 @@ Definition star2' {n} (a : lang n) : lang n :=
   big_union (pow' a).
 
 Lemma cotrie_le_tconcat'_prefix_coconcat' {n} (x y : lang n) (i : nat) :
-  tconcat' (prefix i x) y ⊑ coconcat' x y.
+  tconcat' (trie_prefix i x) y ⊑ coconcat' x y.
 Proof.
   unfold coconcat'.
   simpl.
@@ -2052,8 +2052,8 @@ Proof.
   apply supremum_apply.
   intro a.
   assert (Hs: supremum
-                (union (sup (fun x : nat => tconcat' (flip prefix (c a) x)) (cotrie_node b k)))
-                (fun i : nat => union (tconcat' (prefix i (c a)) (cotrie_node b k)))).
+                (union (sup (fun x : nat => tconcat' (flip trie_prefix (c a) x)) (cotrie_node b k)))
+                (fun i : nat => union (tconcat' (trie_prefix i (c a)) (cotrie_node b k)))).
   { rewrite sup_apply.
     rewrite union_sup.
     apply sup_spec. }
@@ -2089,9 +2089,8 @@ Proof.
   unfold compose.
   apply supremum_apply.
   intro a.
-
   assert (Hs: supremum
-    (union (sup (fun x : nat => tconcat' (flip prefix (k a) x)) (cotrie_node b0 c)))
+    (union (sup (fun x : nat => tconcat' (flip trie_prefix (k a) x)) (cotrie_node b0 c)))
     (fun i : nat =>
      union
        ((fix tconcat' (n0 : nat) (x : tlang n0) (y : lang n0) {struct x} : lang n0 :=
@@ -2255,7 +2254,8 @@ Proof.
   apply apply_supremum.
   simpl.
   unfold compose, flip.
-  replace (fun i : nat => let (a0, _) := sup_prim (fun x0 : nat => tconcat' (prefix x0 (ch i))) in a0)
+  replace (fun i : nat => let (a0, _) :=
+                       sup_prim (fun x0 : nat => tconcat' (trie_prefix x0 (ch i))) in a0)
     with (coconcat' ∘ ch).
   2: { ext i; reflexivity. }
   apply continuous_co; auto.
@@ -2269,7 +2269,8 @@ Proof.
   apply apply_supremum.
   simpl.
   unfold compose, flip.
-  replace (fun i : nat => let (a0, _) := sup_prim (fun x0 : nat => tconcat (prefix x0 (ch i))) in a0)
+  replace (fun i : nat => let (a0, _) :=
+                       sup_prim (fun x0 : nat => tconcat (trie_prefix x0 (ch i))) in a0)
     with (concat ∘ ch).
   2: { ext i; reflexivity. }
   apply continuous_co; auto.
@@ -2356,7 +2357,7 @@ Lemma intersection_empty_r {n} (x : lang n) :
 Proof. rewrite intersection_comm; apply intersection_empty_l. Qed.
 
 Lemma prefix_union_tunion {n} (x y : lang n) (i : nat) :
-  prefix i (union x y) = tunion (prefix i x) (prefix i y).
+  trie_prefix i (union x y) = tunion (trie_prefix i x) (trie_prefix i y).
 Proof.
   revert x y; induction i; simpl; intros [] []; auto.
   simpl.
@@ -2448,7 +2449,7 @@ Qed.
 
 Lemma trie_cotrie_le_prefix {A B} `{PType B} (x y : cotrie A B) (i : nat) :
   cotrie_le x y ->
-  trie_cotrie_le (prefix i x) y.
+  trie_cotrie_le (trie_prefix i x) y.
 Proof.
   revert x y; induction i; intros [] [] Hxy; simpl; inv Hxy.
   - constructor; constructor.
@@ -2734,8 +2735,8 @@ Proof.
     rewrite concat_node'; simpl.
     unfold compose.
     remember (trie_node false (fun x : Fin.t n =>
-                             prefix i (union (concat (const cotrie_bot x)
-                                                (cotrie_node b c)) empty))) as y.
+                                 trie_prefix i (union (concat (const cotrie_bot x)
+                                                         (cotrie_node b c)) empty))) as y.
     rewrite (@unf_eq _ _ empty); simpl.
     subst.
     apply trie_cotrie_le_node.
@@ -2762,7 +2763,7 @@ Proof.
     unfold const.
     destruct b.
     + remember (trie_node false (fun x : Fin.t n =>
-                               prefix i (union (concat (c x) empty) cotrie_bot)))
+                               trie_prefix i (union (concat (c x) empty) cotrie_bot)))
         as y.
       rewrite (@unf_eq _ _ empty); simpl.
       subst.
@@ -2774,7 +2775,7 @@ Proof.
         rewrite union_empty_r.
         apply IHi.
     + remember (trie_node false (fun x : Fin.t n =>
-                               prefix i (union (concat (c x) empty) empty)))
+                               trie_prefix i (union (concat (c x) empty) empty)))
         as y.
       rewrite (@unf_eq _ _ empty); simpl.
       subst.
