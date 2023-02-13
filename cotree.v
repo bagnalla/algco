@@ -1178,7 +1178,7 @@ Extract Constant tcofold => "
     case t of
       Cobot -> bot o p
       Coleaf a -> f a
-      Conode k -> g (tcofold o p f g . k)
+      Conode k -> g (tcofold o p f g Prelude.. k)
 ".
 
 Inductive exists_bot {I A} : cotree I A -> Prop :=

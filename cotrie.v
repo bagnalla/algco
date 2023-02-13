@@ -1538,6 +1538,15 @@ Lemma complement_node {n} (b : bool) (k : Fin.t n -> lang n) :
   complement (cotrie_node b k) = cotrie_node (negb b) (complement ∘ k).
 Proof. rewrite unf_eq; reflexivity. Qed.
 
+(** Attempt to define concat via primitive corecursion. Doesn't work
+    because corecursive call is under union. *)
+(* CoFixpoint concat {n} (a b : lang n) : lang n := *)
+(*   match a, b with *)
+(*   | cotrie_node b1 k1, cotrie_node b2 k2 => *)
+(*       cotrie_node (b1 && b2) *)
+(*         (fun x => union (concat (k1 x) b) (if b1 then k2 x else empty)) *)
+(*   end. *)
+
 Definition tconcat {n} : tlang n -> lang n -> lang n :=
   fold (const empty)
     (fun b k l => cotrie_node (b && accepts l)
@@ -1766,6 +1775,13 @@ Definition nstar {n} (a : lang n) : nat -> lang n :=
 
 Definition coplus {n} (a : lang n) : lang n :=
   coiter (fun b => cotrie_node false (fun x => coconcat (delta a x) b)) omega.
+
+(** Attempt to define Kleene star via primitive corecursion. Doesn't
+    work because the corecursive call is under a call to concat. *)
+(* CoFixpoint star {n} (a : lang n) : lang n := *)
+(*   match a with *)
+(*   | cotrie_node _ k => cotrie_node true (fun x => concat (k x) (star a)) *)
+(*   end. *)
 
 (** Kleene star (extractible). *)
 Definition star {n} (a : lang n) : lang n :=
