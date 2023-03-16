@@ -810,7 +810,7 @@ Proof.
   { apply Hf.
     { apply monotone_directed; auto with colist order.
       apply chain_directed, chain_ideal. }
-    { apply dsup_spec.
+    { apply sup_spec.
       { apply monotone_directed; auto with colist order.
         apply chain_directed, chain_ideal. } } }
   apply equ_arrow; intro i; reflexivity.
@@ -850,7 +850,7 @@ Proof with eauto with colist order.
   { apply Hf.
     { apply antimonotone_downward_directed...
       apply chain_directed, chain_ideal. }
-    { apply dinf_spec.
+    { apply inf_spec.
       { apply antimonotone_downward_directed...
         apply chain_directed, chain_ideal. } } }
   apply equ_arrow; intro i; reflexivity.
@@ -1323,7 +1323,7 @@ Lemma cofold_cons' {A B} `{o : OType B} `{@ExtType _ o} `{@PType B o} `{@dCPO B 
   cofold f (cocons a l) = f a (cofold f l).
 Proof. intro Hf; apply ext, co_fold_cons; auto; try intro; apply bot_le. Qed.
 
-Lemma coopfold_nil {A B} `{o : OType B} `{@TType B o} `{@lCPO B o} (f : A -> B -> B) :
+Lemma coopfold_nil {A B} `{o : OType B} `{@TType B o} `{@ldCPO B o} (f : A -> B -> B) :
    coopfold f conil === ⊤.
 Proof. apply coop_fold_nil. Qed.
 

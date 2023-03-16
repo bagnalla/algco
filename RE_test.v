@@ -1,4 +1,4 @@
-(** * Coinductive tries (cotries) algebraic CPO. *)
+(** * RE extraction test. *)
 
 Set Implicit Arguments.
 Set Contextual Implicit.

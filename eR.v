@@ -364,16 +364,24 @@ Proof.
     - intros x Hx; constructor. }
 Qed.
 
-#[global]
-  Instance lCPO_eR : lCPO eR.
-Proof. constructor; intros f; apply eR_complete_inf. Qed.
+(* #[global] *)
+(*   Instance ldCPO_eR : ldCPO eR. *)
+(* Proof. constructor; intros f ?; apply eR_complete_inf. Qed. *)
+
+(* #[global] *)
+(*   Instance dCPO_eR : dCPO eR. *)
+(* Proof. constructor; intros f ?; apply eR_complete. Qed. *)
+
+(* #[global] *)
+(*   Instance dLattice_eR : dLattice eR. Qed. *)
 
 #[global]
-  Instance CPO_eR : CPO eR.
-Proof. constructor; intros f; apply eR_complete. Qed.
-
-#[global]
-  Instance Lattice_eR : Lattice eR. Qed.
+  Instance pLattice_eR : pLattice eR.
+Proof.
+  constructor; intro f.
+  - apply eR_complete.
+  - apply eR_complete_inf.
+Qed.
 
 Lemma eRplus_assoc (a b c : eR) :
   a + b + c = a + (b + c).
@@ -1067,13 +1075,33 @@ Proof.
   apply supremum_sum; auto; apply sup_spec; auto with order.
 Qed.
 
+(* Lemma eR_directed (f : nat -> eR) : *)
+(*   directed f. *)
+(* Admitted. *)
+(* #[global] Hint Resolve eR_directed : eR. *)
+
+(* Lemma eR_downward_directed (f : nat -> eR) : *)
+(*   downward_directed f. *)
+(* Admitted. *)
+(* #[global] Hint Resolve eR_downward_directed : eR. *)
+
+(* Lemma eR_f_directed {A} (f : nat -> A -> eR) : *)
+(*   directed f. *)
+(* Admitted. *)
+(* #[global] Hint Resolve eR_f_directed : eR. *)
+
+(* Lemma eR_f_downward_directed {A} (f : nat -> A -> eR) : *)
+(*   downward_directed f. *)
+(* Admitted. *)
+(* #[global] Hint Resolve eR_f_downward_directed : eR. *)
+
 Lemma sup_apply_eR {A} (ch : nat -> A -> eR) (x : A) :
   sup ch x = sup (fun i => ch i x).
-Proof. apply equ_eR, sup_apply; auto. Qed.
+Proof. apply equ_eR, lattice_sup_apply; auto with eR. Qed.
 
 Lemma inf_apply_eR {A} (ch : nat -> A -> eR) (x : A) :
   inf ch x = inf (fun i => ch i x).
-Proof. apply equ_eR, inf_apply; auto. Qed.
+Proof. apply equ_eR, lattice_inf_apply; auto with eR. Qed.
 
 Lemma sup_apply_f_eR {A B} (ch : nat -> A -> (B -> eR)) (x : A) :
   directed ch ->
@@ -1757,8 +1785,8 @@ Lemma sup_scalar (f : nat -> eR) (c : eR) :
 Proof.
   apply equ_eR.
   eapply supremum_unique.
-  2: { apply sup_spec; auto with eR. }
-  apply supremum_scalar, sup_spec; auto with eR.
+  2: { apply lattice_sup_spec; auto with eR. }
+  apply supremum_scalar, lattice_sup_spec; auto with eR.
 Qed.
 
 Lemma chain_scalar (f : nat -> eR) (a : eR) :
@@ -2137,8 +2165,8 @@ Lemma inf_scalar (f : nat -> eR) (c : eR) :
   c * inf f = inf (fun x => c * f x).
 Proof.
   intro Hc; apply equ_eR; eapply infimum_unique.
-  2: { apply inf_spec; auto with eR. }
-  apply infimum_scalar, inf_spec; auto with eR.
+  2: { apply lattice_inf_spec; auto with eR. }
+  apply infimum_scalar, lattice_inf_spec; auto with eR.
 Qed.
 
 Lemma eRmult_div_cancel a b :

@@ -249,10 +249,10 @@ Section aCPO.
     : Proper (leq ==> leq) (co f).
   Proof.
     intros a b Hab.
-    apply ge_dsup.
+    apply ge_sup.
     { apply directed_f_ideal; auto. }
     intro i.
-    apply le_dsup with i.
+    apply le_sup with i.
     { apply directed_f_ideal; auto. }
     apply H2, monotone_ideal; auto.
   Qed.
@@ -267,7 +267,7 @@ Section aCPO.
     intros a b Hab.
     unfold flip.
     unfold co.
-    eapply monotone_dinf.
+    eapply monotone_inf.
     { apply downward_directed_f_ideal; auto. }
     { apply downward_directed_f_ideal; auto. }
     intro i; apply H2, monotone_ideal; auto.
@@ -304,13 +304,13 @@ Section aCPO.
     intros Hmono ch Hch t Hsup; unfold compose; split.
     - intro i; apply monotone_co; auto; apply Hsup.
     - intros x Hx.
-      apply ge_dsup.
+      apply ge_sup.
       { apply directed_f_ideal; auto. }
       intro i.
       eapply continuous_f_ideal; eauto.
       unfold flip, compose; intro j; specialize (Hx j).
       etransitivity; eauto.
-      generalize (dsup_spec (fun x0 : nat => f (ideal (ch j) x0))).
+      generalize (sup_spec (fun x0 : nat => f (ideal (ch j) x0))).
       intro Hwsup.
       assert (Hch': directed (fun x0 : nat => f (ideal (ch j) x0))).
       { apply directed_f_ideal; auto. }
@@ -328,17 +328,17 @@ Section aCPO.
     intros Hmono ch Hch t Hsup; unfold compose; split.
     - intro i; apply antimonotone_coop; auto; apply Hsup.
     - intros x Hx.
-      apply le_dinf.
+      apply le_inf.
       { apply downward_directed_f_ideal; auto. }
       intro i.
       eapply cocontinuous_f_ideal; eauto.
       unfold flip, compose; intro j; specialize (Hx j).
       etransitivity; eauto.
-      generalize (dinf_spec (fun x0 : nat => f (ideal (ch j) x0))).
-      intro Hdinf.
+      generalize (inf_spec (fun x0 : nat => f (ideal (ch j) x0))).
+      intro Hinf.
       assert (Hch': downward_directed (fun x0 : nat => f (ideal (ch j) x0))).
       { apply downward_directed_f_ideal; auto. }
-      apply Hdinf in Hch'.
+      apply Hinf in Hch'.
       destruct Hch' as [Hub Hlub].
       apply Hub.
   Qed.
@@ -360,7 +360,7 @@ Section aCPO.
   Proof.
     unfold basis, compose in *; intros Hf Hg Hgf.
     intro a.
-    apply ge_dsup.
+    apply ge_sup.
     { apply directed_f_ideal; auto. }
     intro i; unfold compose.
     simpl in *.
@@ -771,10 +771,10 @@ Qed.
     co f ⊑ co g.
   Proof.
     intros Hf Hg Hfg t.
-    apply ge_dsup.
+    apply ge_sup.
     { apply directed_f_ideal; auto. }
     intro i.
-    apply le_dsup with (i:=i).
+    apply le_sup with (i:=i).
     { apply directed_f_ideal; auto. }
     apply Hfg.
   Qed.
@@ -786,10 +786,10 @@ Qed.
     coop f ⊑ coop g.
   Proof.
     intros Hf Hg Hfg t.
-    apply le_dinf.
+    apply le_inf.
     { apply downward_directed_f_ideal; auto. }
     intro i.
-    apply ge_dinf with (i:=i).
+    apply ge_inf with (i:=i).
     { apply downward_directed_f_ideal; auto. }
     apply Hfg.
   Qed.
@@ -844,7 +844,7 @@ Qed.
     intros Hmono HP; unfold co.
     assert (Hch: directed (P ∘ ideal a)).
     { apply directed_f_ideal; auto. }
-    generalize (dsup_spec (P ∘ ideal a) Hch).
+    generalize (sup_spec (P ∘ ideal a) Hch).
     intros [Hub Hlub].
     eapply Hub; eauto.
   Qed.
@@ -857,7 +857,7 @@ Qed.
     intros Hmono HP; unfold coop.
     assert (Hch: downward_directed (P ∘ ideal a)).
     { apply downward_directed_f_ideal; auto. }
-    generalize (dinf_spec (P ∘ ideal a) Hch).
+    generalize (inf_spec (P ∘ ideal a) Hch).
     intros [Hub Hlub].
     unfold lower_bound in Hub.
     simpl in *; unfold flip, impl in *.
@@ -874,7 +874,7 @@ Qed.
     intros Hmono HP; unfold co.
     assert (Hch: directed (P ∘ ideal a)).
     { apply directed_f_ideal; auto. }
-    generalize (dsup_spec (P ∘ ideal a) Hch).
+    generalize (sup_spec (P ∘ ideal a) Hch).
     intros [Hub Hlub].
     apply Hlub; auto.
     intros i Hi; exists i; auto.
@@ -888,7 +888,7 @@ Qed.
     intros Hmono HP; unfold coop.
     assert (Hch: downward_directed (P ∘ ideal a)).
     { apply downward_directed_f_ideal; auto. }
-    generalize (dinf_spec (P ∘ ideal a) Hch).
+    generalize (inf_spec (P ∘ ideal a) Hch).
     intros [Hub Hlub] i.
     apply Hub, HP.
   Qed.
@@ -901,7 +901,7 @@ Qed.
     intros Hmono HR; unfold co.
     assert (Hch: directed (R ∘ ideal a)).
     { apply directed_f_ideal; auto. }
-    generalize (dsup_spec (R ∘ ideal a) Hch).
+    generalize (sup_spec (R ∘ ideal a) Hch).
     intros [Hub Hlub].
     eapply Hub; eauto.
   Qed.
@@ -914,7 +914,7 @@ Qed.
     intros Hmono HR; unfold coop.
     assert (Hch: downward_directed (R ∘ ideal a)).
     { apply downward_directed_f_ideal; auto. }
-    generalize (dinf_spec (R ∘ ideal a) Hch).
+    generalize (inf_spec (R ∘ ideal a) Hch).
     intros [Hub Hlub].
     unfold upper_bound in Hub.
     simpl in *; unfold flip, impl in *.
@@ -931,7 +931,7 @@ Qed.
     intros Hmono HR; unfold co.
     assert (Hch: directed (R ∘ ideal a)).
     { apply directed_f_ideal; auto. }
-    generalize (dsup_spec (R ∘ ideal a) Hch).
+    generalize (sup_spec (R ∘ ideal a) Hch).
     intros [Hub Hlub].
     unfold upper_bound in Hub.
     assert (Hx: upper_bound (fun c => exists i, R (ideal a i) c) (R ∘ ideal a)).
@@ -948,7 +948,7 @@ Qed.
     intros Hmono HR; unfold coop.
     assert (Hch: downward_directed (R ∘ ideal a)).
     { apply downward_directed_f_ideal; auto. }
-    generalize (dinf_spec (R ∘ ideal a) Hch).
+    generalize (inf_spec (R ∘ ideal a) Hch).
     intros [Hub Hlub] i.
     apply Hub, HR.
   Qed.
@@ -961,7 +961,7 @@ Qed.
     intros Hmono HR; unfold coop.
     assert (Hch: downward_directed (R ∘ ideal a)).
     { apply downward_directed_f_ideal; auto. }
-    generalize (dinf_spec (R ∘ ideal a) Hch).
+    generalize (inf_spec (R ∘ ideal a) Hch).
     intros [Hub Hlub] i.
     apply Hub, HR.
   Qed.

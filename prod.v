@@ -250,7 +250,7 @@ Section prod.
     co f a === co g b.
   Proof.
     intros HP Hf Hg Hfg HPa.
-    apply co_unique_cocontinuous_R with (P := coop P); auto with aCPO order.
+    apply co_unique_cocontinuous_R with (P := coop P); eauto with aCPO order.
     intros Hi i.
     rewrite co_incl'; auto.
     apply Hfg.

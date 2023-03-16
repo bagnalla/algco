@@ -127,6 +127,7 @@ Next Obligation. constructor; intuition. Qed.
   Program
   Instance PType_Prop : PType Prop := {| bot := False |}.
 Next Obligation. intros []. Qed.
+#[global] Hint Resolve PType_Prop : order.
 
 #[global]
   Program

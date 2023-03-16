@@ -323,8 +323,7 @@ Proof.
     intro x; unfold compose, coop.
     apply leq_eRle.
     unfold g.
-    apply ge_inf with O.
-    apply btwlp_bounded; auto. }
+    apply lattice_ge_inf with O; auto with eR. }
   apply equ_arrow.
   intro t.
   apply equ_eR.
@@ -459,7 +458,7 @@ Lemma tie_cotree_iid_tie_cotree {A} :
 Proof.
   ext ct.
   unfold tie_cotree_iid, tie_cotree, cotree_iter, iter.
-  apply cotree_ext, equ_cotree_eq; rewrite dsup_apply.
+  apply cotree_ext, equ_cotree_eq; rewrite sup_apply.
   2: { apply chain_directed, chain_iter_n';
        eauto with order cotree; constructor. }
   apply eq_equ; f_equal; ext i.
@@ -556,12 +555,12 @@ Proof.
   intro Hfg.
   apply leq_eRle.
   unfold cotwp.
-  apply ge_dsup.
+  apply ge_sup.
   { apply monotone_directed.
     - apply monotone_btwp.
     - apply chain_directed, chain_ideal. }
   intro i; unfold compose.
-  apply le_dsup with i.
+  apply le_sup with i.
   { apply monotone_directed.
     - apply monotone_btwp.
     - apply chain_directed, chain_ideal. }
@@ -577,12 +576,12 @@ Proof.
   intros Hg Hfg.
   apply leq_eRle.
   unfold cotwlp.
-  apply le_dinf.
+  apply le_inf.
   { apply antimonotone_downward_directed.
     - apply antimonotone_btwlp; auto.
     - apply chain_directed, chain_ideal. }
   intro i; unfold compose.
-  apply ge_dinf with i.
+  apply ge_inf with i.
   { apply antimonotone_downward_directed.
     - apply antimonotone_btwlp.
       intro a; etransitivity; eauto; apply Hfg.
@@ -827,8 +826,8 @@ Proof.
   unfold cotwp, cotwlp.
   unfold co, coop.
   eapply supremum_infimum_sum.
-  6: { apply sup_spec. }
-  6: { apply inf_spec. }
+  6: { apply lattice_sup_spec; auto with eR. }
+  6: { apply lattice_inf_spec; auto with eR. }
   { apply chain_f_ideal; eauto with cotcwp order. }
   { apply dec_chain_f_ideal, antimonotone_btwlp; intro; eRauto. }
   { intro i; unfold compose. simpl. unfold flip.
@@ -857,7 +856,7 @@ Lemma cotwlp_bounded {A} (t : cotree bool A) (f : A -> eR) :
   bounded f 1 ->
   cotwlp f t <= 1.
 Proof.
-  intro Hf; apply leq_eRle, ge_inf with (i:=O), btwlp_bounded; auto.
+  intro Hf; apply leq_eRle, lattice_ge_inf with (i:=O); auto with eR.
 Qed.
 
 Corollary cowlp_cofail {A} (t : cotree bool (unit + A)) :

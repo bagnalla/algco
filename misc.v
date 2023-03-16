@@ -350,10 +350,14 @@ Class EqType (A : Type) : Type :=
   ; eqb_spec : forall x y, reflect (x = y) (eqb x y)
   }.
 
+Lemma unit_eqb_spec (x y : unit) :
+  reflect (x = y) true.
+Proof. destruct x, y; constructor; reflexivity. Qed.
+
 #[global]
   Program Instance EqType_unit : EqType unit :=
-  {| eqb := fun _ _ => true |}.
-Next Obligation. destruct x, y; constructor; reflexivity. Qed.
+  {| eqb := fun _ _ => true
+   ; eqb_spec := unit_eqb_spec |}.
 
 #[global]
   Instance EqType_bool : EqType bool :=

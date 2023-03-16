@@ -313,10 +313,10 @@ Proof.
   constructor; intros a b Hab; apply cotrie_ext, equ_cotrie_eq; auto.
 Qed.
 
-CoFixpoint cotrie_sup {A B} `{CPO B} (f : nat -> cotrie A B) : cotrie A B :=
+CoFixpoint cotrie_sup {A B} `{pLattice B} (f : nat -> cotrie A B) : cotrie A B :=
   cotrie_node (sup (label ∘ f)) (fun x => cotrie_sup (fun i => delta (f i) x)).
 
-Lemma supremum_cotrie_sup {A B} `{CPO B} (f : nat -> cotrie A B) :
+Lemma supremum_cotrie_sup {A B} `{pLattice B} (f : nat -> cotrie A B) :
   supremum (cotrie_sup f) f.
 Proof.
   split.
@@ -324,7 +324,7 @@ Proof.
     rewrite (@unf_eq _ _ (cotrie_sup _)); simpl.
     destruct (f i) eqn:Hfi.
     constructor.
-    + apply le_sup with i.
+    + apply lattice_le_sup with i.
       unfold compose; rewrite Hfi; reflexivity.
     + intro a.
       set (g := fun i => delta (f i) a).
@@ -335,7 +335,7 @@ Proof.
     destruct x.
     rewrite unf_eq; simpl.
     constructor.
-    + apply ge_sup.
+    + apply lattice_ge_sup.
       intro i; unfold compose.
       specialize (Hx i).
       destruct (f i); inv Hx; auto.
@@ -344,10 +344,10 @@ Proof.
       destruct (f i); inv Hx; simpl; auto.
 Qed.
 
-CoFixpoint cotrie_inf {A B} `{lCPO B} (f : nat -> cotrie A B) : cotrie A B :=
+CoFixpoint cotrie_inf {A B} `{pLattice B} (f : nat -> cotrie A B) : cotrie A B :=
   cotrie_node (inf (label ∘ f)) (fun x => cotrie_inf (fun i => delta (f i) x)).
 
-Lemma infimum_cotrie_inf {A B} `{lCPO B} (f : nat -> cotrie A B) :
+Lemma infimum_cotrie_inf {A B} `{pLattice B} (f : nat -> cotrie A B) :
   infimum (cotrie_inf f) f.
 Proof.
   split.
@@ -355,7 +355,7 @@ Proof.
     rewrite unf_eq; simpl.
     destruct (f i) eqn:Hfi.
     constructor.
-    + apply ge_inf with i.
+    + apply lattice_ge_inf with i.
       unfold compose; rewrite Hfi; reflexivity.
     + intro a.
       set (g := fun i => delta (f i) a).
@@ -366,7 +366,7 @@ Proof.
     destruct x.
     rewrite (@unf_eq _ _ (cotrie_inf _)); simpl.
     constructor.
-    + apply le_inf.
+    + apply lattice_le_inf.
       intro i; unfold compose.
       specialize (Hx i).
       destruct (f i); inv Hx; auto.
@@ -376,20 +376,12 @@ Proof.
 Qed.
 
 #[global]
-  Instance CPO_cotrie {A B} `{CPO B} : CPO (@cotrie A B).
+  Instance pLattice_cotrie {A B} `{pLattice B} : pLattice (@cotrie A B).
 Proof.
-  constructor; intro f; exists (cotrie_sup f).
-  apply supremum_cotrie_sup.
+  constructor; intro f.
+  - exists (cotrie_sup f); apply supremum_cotrie_sup.
+  - exists (cotrie_inf f); apply infimum_cotrie_inf.
 Qed.
-#[global] Hint Resolve CPO_cotrie : cotrie.
-
-#[global]
-  Instance lCPO_cotrie {A B} `{lCPO B} : lCPO (@cotrie A B).
-Proof.
-  constructor; intro f; exists (cotrie_inf f).
-  apply infimum_cotrie_inf.
-Qed.
-#[global] Hint Resolve lCPO_cotrie : cotrie.
 
 Fixpoint fin_inj (n : nat) (x : Fin.t n) : Fin.t (S n) :=
   match x with
@@ -1094,7 +1086,7 @@ Qed.
 
 #[global]
   Instance aCPO_cotrie {n B} `{oB: OType B} `{@PType B oB}
-  `{@Compact _ oB} `{@CPO B oB}
+  `{@Compact _ oB} `{@pLattice B oB _}
   : aCPO (cotrie (Fin.t n) B) (trie (Fin.t n) B).
 Proof.
   constructor.
@@ -1150,7 +1142,7 @@ Qed.
 #[global] Hint Resolve antimonotone_fold : cotrie.
 
 Lemma co_fold_node {n B C} `{oB: OType B} `{@PType B oB}
-  `{@CPO _ oB} `{@Compact _ oB} `{dCPO C}
+  `{@pLattice _ oB _} `{@Compact _ oB} `{dCPO C}
   (z : C) (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (leq ==> leq ==> leq) f ->
   (forall b, wcontinuous (f b)) ->
@@ -1169,13 +1161,13 @@ Proof.
       apply monotone_fold; auto.
       apply chain_leq; auto; apply chain_ideal. }
     { apply supremum_apply; intro x.
-      apply dsup_spec.
+      apply sup_spec.
       { apply monotone_directed; auto with cotrie order.
         apply chain_directed, chain_ideal. } } }
   apply equ_arrow; intro i; reflexivity.
 Qed.
 
-Lemma co_fold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
+Lemma co_fold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   `{@Compact _ oB} `{oC : OType C} `{@dCPO _ oC} `{@ExtType _ oC}
   (z : C) (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (leq ==> leq ==> leq) f ->
@@ -1186,12 +1178,12 @@ Lemma co_fold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
   co (fold z f) (cotrie_node b k) = f b (co (fold z f) ∘ k).
 Proof. intros Hprop Hf Hz Hzf Hf'; apply ext, co_fold_node; auto. Qed.
 
-Definition cofold {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
+Definition cofold {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   `{@Compact _ oB} `{PType C} (f : B -> (Fin.t n -> C) -> C)
   : cotrie (Fin.t n) B -> C :=
   co (fold ⊥ f).
 
-Lemma cofold_node {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
+Lemma cofold_node {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   `{@Compact _ oB} `{oC : OType C} `{@PType _ oC} `{@dCPO _ oC}
   (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (leq ==> leq ==> leq) f ->
@@ -1205,7 +1197,7 @@ Proof.
   - apply bot_le.
 Qed.
 
-Lemma cofold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
+Lemma cofold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   `{@Compact _ oB} `{oC : OType C} `{@PType _ oC} `{@dCPO _ oC} `{@ExtType _ oC}
   (f : B -> (Fin.t  n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (leq ==> leq ==> leq) f ->
@@ -1220,13 +1212,13 @@ Extract Constant cofold => "
       Cotrie_node b k -> f b (cofold n oB pB oC pC f Prelude.. k)
 ".
 
-Definition coopfold {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
+Definition coopfold {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   `{@Compact _ oB} `{TType C} (f : B -> (Fin.t n -> C) -> C)
   : cotrie (Fin.t n) B -> C :=
   coop (fold ⊤ f).
 
 Lemma coop_fold_node {n B C} `{oB: OType B} `{@PType B oB}
-  `{@CPO _ oB} `{@Compact _ oB} `{ldCPO C}
+  `{@pLattice _ oB _} `{@Compact _ oB} `{ldCPO C}
   (z : C) (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (flip leq ==> leq ==> leq) f ->
   (forall b, dec_wcontinuous (f b)) ->
@@ -1244,13 +1236,13 @@ Proof.
       apply antimonotone_fold; eauto.
       apply chain_leq; auto; apply chain_ideal. }
     { apply infimum_apply; intro x.
-      apply dinf_spec.
+      apply inf_spec.
       { apply antimonotone_downward_directed; auto with cotrie order.
         apply chain_directed, chain_ideal. } } }
   apply equ_arrow; intro i; reflexivity.
 Qed.
 
-Lemma coop_fold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
+Lemma coop_fold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   `{@Compact _ oB} `{oC : OType C} `{@ldCPO _ oC} `{@ExtType _ oC}
   (z : C) (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (flip leq ==> leq ==> leq) f ->
@@ -1261,7 +1253,7 @@ Lemma coop_fold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
   coop (fold z f) (cotrie_node b k) = f b (coop (fold z f) ∘ k).
 Proof. intros Hprop Hf Hz Hzf Hf'; apply ext, coop_fold_node; auto. Qed.
 
-Lemma coopfold_node {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
+Lemma coopfold_node {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   `{@Compact _ oB} `{oC : OType C} `{@TType _ oC} `{@ldCPO _ oC}
   (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (flip leq ==> leq ==> leq) f ->
@@ -1275,7 +1267,7 @@ Proof.
   - apply le_top.
 Qed.
 
-Lemma coopfold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
+Lemma coopfold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   `{@Compact _ oB} `{oC : OType C} `{@TType _ oC} `{@ldCPO _ oC} `{@ExtType _ oC}
   (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (flip leq ==> leq ==> leq) f ->
@@ -1316,7 +1308,7 @@ Proof.
 Qed.
 #[global] Hint Resolve antimonotone_trie_cotrie_le : cotrie.
 
-Definition cotrie_le' {n B} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
+Definition cotrie_le' {n B} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   `{@Compact _ oB} : cotrie (Fin.t n) B -> cotrie (Fin.t n) B -> Prop :=
   coop trie_cotrie_le.
 
@@ -1349,7 +1341,7 @@ Proof.
 Qed.
 (* #[global] Hint Resolve trie_cotrie_le_ideal : cotrie. *)
 
-Lemma cotrie_le'_inv_node {n B} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
+Lemma cotrie_le'_inv_node {n B} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   `{@Compact _ oB} (b : B) (f : Fin.t n -> cotrie (Fin.t n) B) (t : cotrie (Fin.t n) B) :
   cotrie_le' (cotrie_node b f) t ->
   exists b' g, t = cotrie_node b' g /\ b ⊑ b' /\ forall a, cotrie_le' (f a) (g a).
@@ -1367,8 +1359,8 @@ Proof.
     inv H2; constructor; eauto.
 Qed.
 
-Lemma cotrie_le_cotrie_le' {n B} `{oB: OType B} `{@PType B oB} `{@CPO _ oB}
-  `{@Compact _ oB} (x y : cotrie (Fin.t n) B) :
+Lemma cotrie_le_cotrie_le' {n B} `{oB: OType B} `{@PType B oB}
+  `{@pLattice _ oB _} `{@Compact _ oB} (x y : cotrie (Fin.t n) B) :
   cotrie_le x y <-> cotrie_le' x y.
 Proof.
   split; intro Hle.
@@ -1687,7 +1679,7 @@ Proof.
   unfold coconcat, coconcat'.
   unfold co.
   unfold compose.
-  rewrite 2!sup_apply.
+  rewrite 2!lattice_sup_apply.
   apply Proper_sup.
   { apply monotone_directed; eauto with cotrie order.
     intros i j Hij; apply monotone_tconcat.
@@ -1828,10 +1820,10 @@ Proof.
   unfold coconcat'.
   simpl.
   unfold co.
-  rewrite sup_apply.
+  rewrite lattice_sup_apply.
   unfold compose. 
   apply leq_cotrie_le.
-  apply le_sup with (i:=i); reflexivity.
+  apply lattice_le_sup with (i:=i); reflexivity.
 Qed.
 
 #[global]
@@ -2011,7 +2003,7 @@ Lemma union_sup {n} (f : nat -> lang n) :
 Proof.
   ext y.
   apply ext.
-  rewrite sup_apply.
+  rewrite lattice_sup_apply.
   apply eq_equ.
   rewrite 2!sup_cotrie_sup.
   apply in_lang_eq.
@@ -2048,7 +2040,7 @@ Proof.
   unfold coconcat'.
   unfold co.
   apply ext.
-  rewrite sup_apply.
+  rewrite lattice_sup_apply.
   unfold compose.
   unfold flip.
   apply supremum_sup.
@@ -2070,9 +2062,9 @@ Proof.
   assert (Hs: supremum
                 (union (sup (fun x : nat => tconcat' (flip trie_prefix (c a) x)) (cotrie_node b k)))
                 (fun i : nat => union (tconcat' (trie_prefix i (c a)) (cotrie_node b k)))).
-  { rewrite sup_apply.
+  { rewrite lattice_sup_apply.
     rewrite union_sup.
-    apply sup_spec. }
+    apply lattice_sup_spec. }
   eapply apply_supremum in Hs; eauto.
 Qed.
 
@@ -2088,7 +2080,7 @@ Proof.
   destruct x.
   apply ext.
   unfold co.
-  rewrite sup_apply.
+  rewrite lattice_sup_apply.
   apply supremum_sup.  
   eapply shift_supremum''.
   { apply cotrie_bot_le. }
@@ -2128,9 +2120,9 @@ Proof.
                   | cotrie_node b1 k0 => trie_node b1 (fun x : A => prefix A B n' (k0 x))
                   end
               end) (t n) bool i (k a)) (cotrie_node b0 c)))).
-  { rewrite sup_apply.
+  { rewrite lattice_sup_apply.
     rewrite union_sup.
-    apply sup_spec. }
+    apply lattice_sup_spec. }
   eapply apply_supremum in Hs; eauto.
 Qed.
 
@@ -3216,7 +3208,7 @@ Proof.
       apply chain_directed, chain_seq_prefix. }
   rewrite H.
   unfold compose.
-  rewrite sup_apply.
+  rewrite lattice_sup_apply.
   apply eq_equ.
   f_equal.
   ext i.
@@ -3356,7 +3348,7 @@ Proof.
   rewrite H; clear H.
   unfold compose.
   apply ext.
-  rewrite sup_apply.
+  rewrite lattice_sup_apply.
   apply eq_equ.
   f_equal.
   ext i.
@@ -3403,7 +3395,7 @@ Lemma big_union_lub {n} (f : nat -> lang n) (x : lang n) :
   (forall i, f i ⊑ x) ->
   big_union f ⊑ x.
 Proof.
-  intro H; apply ge_sup.
+  intro H; apply lattice_ge_sup.
   intro i; apply list_union_lub, forall_seq_prefix; auto.
 Qed.
 

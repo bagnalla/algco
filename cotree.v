@@ -1005,7 +1005,7 @@ Proof. intro Hz; apply ext, co_tfold_leaf; auto. Qed.
 (* Proof. *)
 (*   intros Hg Hz Hz'. *)
 (*   split. *)
-(*   - apply ge_dsup. *)
+(*   - apply ge_sup. *)
 (*     + apply monotone_directed; eauto with cotree order. *)
 (*       apply chain_directed, chain_ideal. *)
 (*     + intro i; unfold compose. *)
@@ -1033,7 +1033,7 @@ Proof.
         apply tprefix_monotone'; auto.
       - apply chain_id. }
     { apply supremum_apply; intro x.
-      apply dsup_spec.
+      apply sup_spec.
       { apply monotone_directed; auto with cotree order.
         apply chain_directed, chain_ideal. } } }
   apply equ_arrow; intro i; reflexivity.
@@ -1082,7 +1082,7 @@ Proof.
   { apply Hh.
     { intros i b; apply antimonotone_tfold; auto; apply chain_ideal. }
     { apply infimum_apply; intro x.
-      apply dinf_spec.
+      apply inf_spec.
       { apply antimonotone_downward_directed; auto with cotree order.
         apply chain_directed, chain_ideal. } } }
   apply equ_arrow; intro i; reflexivity.
@@ -1118,7 +1118,7 @@ Proof.
   - apply bot_le.
   - rewrite tcofold_leaf; reflexivity.
   - unfold compose. simpl.
-    apply le_dsup with (i := S i).
+    apply le_sup with (i := S i).
     + apply monotone_directed; eauto with cotree order.
       apply chain_directed, chain_ideal.
     + reflexivity.

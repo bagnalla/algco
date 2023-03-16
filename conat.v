@@ -850,7 +850,7 @@ Proof.
   { apply Hf.
     { apply monotone_directed; auto with conat order.
       apply chain_directed, chain_ideal. }
-    { apply dsup_spec.
+    { apply sup_spec.
       { apply monotone_directed; auto with conat order.
         apply chain_directed, chain_ideal. } } }
   apply equ_arrow; intro i; reflexivity.
@@ -1283,7 +1283,7 @@ Qed.
 (*   unfold co. *)
 (*   unfold compose. *)
 (*   apply ext. *)
-(*   rewrite dsup_apply. *)
+(*   rewrite sup_apply. *)
 (*   2: { admit. } *)
 (*   apply eq_equ. *)
 (*   f_equal; ext i. *)
