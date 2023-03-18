@@ -31,13 +31,14 @@ Class CPO (A : Type) `{OType A} : Prop :=
 Class lCPO (A : Type) `{OType A} : Prop :=
   { exists_inf : forall f : nat -> A, downward_directed f -> exists s, infimum s f }.
 
-(** [A] ω-lattice when it has suprema and infima for all chains and
-    decreasing chains. *)
-Class wLattice (A : Type) {o : OType A} `{@CPO A o} `{@lCPO A o} : Prop := {}.
+(** [A] is a d-lattice when it has suprema and infima for all directed
+    sets and downward-directed sets. *)
+Class dLattice (A : Type) {o : OType A} `{@CPO A o} `{@lCPO A o} : Prop := {}.
 
 (** Pointed lattice.  For convenience -- deviates slightly from
     standard definition of complete lattice by quantifying over only
-    countable collections. *)
+    countable collections. Every pLattice is automatically a
+    dLattice. *)
 Class pLattice (A : Type) {o : OType A} {p : @PType _ o} : Prop := {
     lattice_exists_sup : forall f : nat -> A, exists s, supremum s f
   ; lattice_exists_inf : forall f : nat -> A, exists s, infimum s f
