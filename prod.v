@@ -132,7 +132,7 @@ Proof.
     + eapply supremum_snd; eauto.
 Qed.
 
-Definition cooppair {A bA B bB C D} `{aCPO A bA} `{aCPO B bB} `{ldCPO C} `{ldCPO D}
+Definition cooppair {A bA B bB C D} `{aCPO A bA} `{aCPO B bB} `{lCPO C} `{lCPO D}
   (f : bA -> C) (g : bB -> D) : A * B -> C * D :=
   coop (fpair f g).
 
@@ -203,7 +203,7 @@ Section prod.
       @incl (A*B) (bA*bB) _ _ _ (@ideal (A*B) (bA*bB) _ _ _ (a, b) i).
   Proof. reflexivity. Qed.
 
-  Theorem co_unique_cocontinuous_R {C} `{dCPO C}
+  Theorem co_unique_cocontinuous_R {C} `{CPO C}
     (P : A * B -> Prop) (f : A -> C) (g : basis B -> C) (a : A) (b : B) :
     cocontinuous P ->
     continuous f ->
@@ -240,7 +240,7 @@ Section prod.
       eauto.
   Qed.
 
-  Corollary Proper_co_P {C} `{dCPO C}
+  Corollary Proper_co_P {C} `{CPO C}
     (f : basis A -> C) (g : basis B -> C) (P : basis A * basis B -> Prop) (a : A) (b : B) :
     antimonotone P ->
     monotone f ->
@@ -257,7 +257,7 @@ Section prod.
     eapply coop_elim in HPa; auto; apply HPa.
   Qed.
 
-  Corollary Proper_co_P_ext {C} `{o : OType C} `{@dCPO _ o} `{@ExtType _ o}
+  Corollary Proper_co_P_ext {C} `{o : OType C} `{@CPO _ o} `{@ExtType _ o}
     (f : basis A -> C) (g : basis B -> C) (P : basis A * basis B -> Prop) (a : A) (b : B) :
     antimonotone P ->
     monotone f ->
@@ -271,7 +271,7 @@ Section prod.
     intros x y Hxy; erewrite Hfg; eauto; reflexivity.
   Qed.
 
-  Theorem co_unique_general {C} `{dCPO C} (f : A -> C) (g : basis B -> C) (a : A) (b : B) :
+  Theorem co_unique_general {C} `{CPO C} (f : A -> C) (g : basis B -> C) (a : A) (b : B) :
     continuous f ->
     monotone g ->
     (forall i, f (incl (ideal a i)) === g (ideal b i)) ->
@@ -301,7 +301,7 @@ Section prod.
       reflexivity.
   Qed.
 
-  Corollary Proper_co_general {C} `{dCPO C}
+  Corollary Proper_co_general {C} `{CPO C}
     (f : basis A -> C) (g : basis B -> C) (a : A) (b : B) :
     monotone f ->
     monotone g ->
@@ -315,7 +315,7 @@ Section prod.
     rewrite co_incl'; auto; reflexivity.
   Qed.
 
-  Corollary Proper_co_general_ext {C} `{o : OType C} `{@dCPO _ o} `{@ExtType _ o}
+  Corollary Proper_co_general_ext {C} `{o : OType C} `{@CPO _ o} `{@ExtType _ o}
     (f : basis A -> C) (g : basis B -> C) (a : A) (b : B) :
     monotone f ->
     monotone g ->

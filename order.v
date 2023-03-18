@@ -1368,6 +1368,11 @@ Proof.
     destruct (f i); constructor; auto.
 Qed.
 
+Lemma chain_fst {A B} `{OType A} `{OType B} (f : nat -> A * B) :
+  chain f ->
+  chain (fst ∘ f).
+Proof. firstorder. Qed.
+
 Lemma directed_fst {A B} `{OType A} `{OType B} (f : nat -> A * B) :
   directed f ->
   directed (fst ∘ f).
@@ -1375,6 +1380,11 @@ Proof.
   intros Hf i j; specialize (Hf i j); destruct Hf as [k [Hk Hk']].
   exists k; split; apply monotone_fst; auto.
 Qed.
+
+Lemma chain_snd {A B} `{OType A} `{OType B} (f : nat -> A * B) :
+  chain f ->
+  chain (snd ∘ f).
+Proof. firstorder. Qed.
 
 Lemma directed_snd {A B} `{OType A} `{OType B} (f : nat -> A * B) :
   directed f ->

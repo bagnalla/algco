@@ -503,12 +503,12 @@ Proof.
 Qed.
 
 #[global]
-  Instance dCPO_conat : dCPO conat.
+  Instance CPO_conat : CPO conat.
 Proof.
   constructor; intros ch Hch.
   exists (conat_sup ch); apply conat_sup_supremum; auto.
 Qed.
-#[global] Hint Resolve dCPO_conat : conat.
+#[global] Hint Resolve CPO_conat : conat.
 
 Lemma nat_inj_conat_prefix_coconat_prefix (n : conat) (i : nat) :
   nat_inj (conat_prefix i n) = coconat_prefix i n.
@@ -832,13 +832,13 @@ Definition coopiter {A} `{TType A} (z : A) (f : A -> A) : conat -> A :=
 
 (** Computation lemmas for coiters. *)
 
-Lemma co_iter_zero {A} `{dCPO A} (z : A) (f : A -> A) :
+Lemma co_iter_zero {A} `{CPO A} (z : A) (f : A -> A) :
   co (nat_iter z f) cozero === z.
 Proof.
   apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
-Lemma co_iter_succ {A} `{dCPO A} (z : A) (f : A -> A) (n : conat) :
+Lemma co_iter_succ {A} `{CPO A} (z : A) (f : A -> A) (n : conat) :
   z ⊑ f z ->
   ( forall n, z ⊑ nat_iter z f n) ->
   continuous f ->
@@ -856,12 +856,12 @@ Proof.
   apply equ_arrow; intro i; reflexivity.
 Qed.
 
-Lemma co_iter_zero' {A} {o : OType A} `{@ExtType A o} `{@dCPO A o}
+Lemma co_iter_zero' {A} {o : OType A} `{@ExtType A o} `{@CPO A o}
   (z : A) (f : A -> A) :
   co (nat_iter z f) cozero = z.
 Proof. apply ext, co_iter_zero. Qed.
 
-Lemma co_iter_succ' {A} {o : OType A} `{@ExtType A o} `{@dCPO A o}
+Lemma co_iter_succ' {A} {o : OType A} `{@ExtType A o} `{@CPO A o}
   (z : A) (f : A -> A) (n : conat) :
   z ⊑ f z ->
   ( forall n, z ⊑ nat_iter z f n) ->
@@ -869,12 +869,12 @@ Lemma co_iter_succ' {A} {o : OType A} `{@ExtType A o} `{@dCPO A o}
   co (nat_iter z f) (cosucc n) = f (co (nat_iter z f) n).
 Proof. intros Hz Hfz Hf; apply ext, co_iter_succ; auto. Qed.
 
-Lemma coiter_zero {A} `{oA: OType A} `{@PType _ oA} `{@dCPO _ oA}
+Lemma coiter_zero {A} `{oA: OType A} `{@PType _ oA} `{@CPO _ oA}
   (f : A -> A) :
   coiter f cozero === ⊥.
 Proof. apply co_iter_zero. Qed.
 
-Lemma coiter_succ {A} `{oA: OType A} `{@PType _ oA} `{@dCPO _ oA}
+Lemma coiter_succ {A} `{oA: OType A} `{@PType _ oA} `{@CPO _ oA}
   (f : A -> A) (n : conat) :
   continuous f ->
   coiter f (cosucc n) === f (coiter f n).
@@ -884,13 +884,13 @@ Proof.
   - intro; apply bot_le.
 Qed.
 
-Lemma coiter_succ' {A} `{oA: OType A} `{@PType _ oA} `{@dCPO _ oA} `{@ExtType _ oA}
+Lemma coiter_succ' {A} `{oA: OType A} `{@PType _ oA} `{@CPO _ oA} `{@ExtType _ oA}
   (f : A -> A) (n : conat) :
   continuous f ->
   coiter f (cosucc n) = f (coiter f n).
 Proof. intro Hf; apply ext, coiter_succ; auto. Qed.
 
-Lemma coiter_zero' {A} `{oA: OType A} `{@PType _ oA} `{@dCPO _ oA} `{@ExtType _ oA}
+Lemma coiter_zero' {A} `{oA: OType A} `{@PType _ oA} `{@CPO _ oA} `{@ExtType _ oA}
   (f : A -> A) :
   coiter f cozero = ⊥.
 Proof. apply ext, coiter_zero. Qed.

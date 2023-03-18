@@ -365,11 +365,11 @@ Proof.
 Qed.
 
 (* #[global] *)
-(*   Instance ldCPO_eR : ldCPO eR. *)
+(*   Instance lCPO_eR : lCPO eR. *)
 (* Proof. constructor; intros f ?; apply eR_complete_inf. Qed. *)
 
 (* #[global] *)
-(*   Instance dCPO_eR : dCPO eR. *)
+(*   Instance CPO_eR : CPO eR. *)
 (* Proof. constructor; intros f ?; apply eR_complete. Qed. *)
 
 (* #[global] *)
@@ -1948,13 +1948,13 @@ Lemma eRmult_half_div_2 a :
   1 / 2 * a = a / 2.
 Proof. unfold eRdiv; rewrite eRmult_1_l; apply eRmult_comm. Qed.
 
-Lemma continuous_sup_eR {A} `{dCPO A} (f : A -> eR) (ch : nat -> A) :
+Lemma continuous_sup_eR {A} `{CPO A} (f : A -> eR) (ch : nat -> A) :
   directed ch ->
   continuous f ->
   f (sup ch) = sup (f ∘ ch).
 Proof. intros Hch Hf; apply equ_eR, continuous_sup; auto. Qed.
 
-Lemma cocontinuous_sup_eR {A} `{dCPO A} (f : A -> eR) (ch : nat -> A) :
+Lemma cocontinuous_sup_eR {A} `{CPO A} (f : A -> eR) (ch : nat -> A) :
   directed ch ->
   cocontinuous f ->
   f (sup ch) = inf (f ∘ ch).

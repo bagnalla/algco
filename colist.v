@@ -426,12 +426,12 @@ Proof.
 Qed.
 
 #[global]
-  Instance dCPO_colist {A} : dCPO (@colist A).
+  Instance CPO_colist {A} : CPO (@colist A).
 Proof.
   constructor; intros ch Hch.
   exists (colist_sup ch); apply colist_sup_supremum; auto.
 Qed.
-#[global] Hint Resolve dCPO_colist : colist.
+#[global] Hint Resolve CPO_colist : colist.
 
 Fixpoint inj {A} (l : list A) : colist A :=
   match l with
@@ -753,13 +753,13 @@ Qed.
 
 (** Computation lemmas for cofolds. *)
 
-Lemma co_fold_nil {A B} `{dCPO B} (z : B) (f : A -> B -> B) :
+Lemma co_fold_nil {A B} `{CPO B} (z : B) (f : A -> B -> B) :
   co (fold z f) conil === z.
 Proof.
   apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
-Lemma co_fold_cons {A B} `{dCPO B}
+Lemma co_fold_cons {A B} `{CPO B}
   (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
   (forall b, z ⊑ fold z f b) ->
   (forall a, continuous (f a)) ->
@@ -780,12 +780,12 @@ Qed.
 
 (** Equality computaton lemmas for cofolds. *)
 
-Lemma co_fold_nil' {A B} {o : OType B} `{@ExtType B o} `{@dCPO B o}
+Lemma co_fold_nil' {A B} {o : OType B} `{@ExtType B o} `{@CPO B o}
   (z : B) (f : A -> B -> B) :
   co (fold z f) conil = z.
 Proof. apply ext, co_fold_nil. Qed.
 
-Lemma co_fold_cons' {A B} {o : OType B} `{@ExtType B o} `{@dCPO B o}
+Lemma co_fold_cons' {A B} {o : OType B} `{@ExtType B o} `{@CPO B o}
   (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
   (forall b, z ⊑ fold z f b) ->
   (forall a, continuous (f a)) ->
@@ -793,13 +793,13 @@ Lemma co_fold_cons' {A B} {o : OType B} `{@ExtType B o} `{@dCPO B o}
   co (fold z f) (cocons a l) = f a (co (fold z f) l).
 Proof. intros Hz Hf Hfaz; apply ext, co_fold_cons; auto. Qed.
 
-Lemma coop_fold_nil {A B} `{ldCPO B} (z : B) (f : A -> B -> B) :
+Lemma coop_fold_nil {A B} `{lCPO B} (z : B) (f : A -> B -> B) :
   coop (fold z f) conil === z.
 Proof.
   apply infimum_inf, infimum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
-Lemma coop_fold_cons {A B} `{ldCPO B}
+Lemma coop_fold_cons {A B} `{lCPO B}
   (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
   (forall b, fold z f b ⊑ z) ->
   (forall a, dec_continuous (f a)) ->
@@ -818,12 +818,12 @@ Proof with eauto with colist order.
   apply equ_arrow; intro i; reflexivity.
 Qed.
 
-Lemma coop_fold_nil' {A B} {o : OType B} `{@ExtType B o} `{@ldCPO B o}
+Lemma coop_fold_nil' {A B} {o : OType B} `{@ExtType B o} `{@lCPO B o}
   (z : B) (f : A -> B -> B) :
   coop (fold z f) conil = z.
 Proof. apply ext, coop_fold_nil. Qed.
 
-Lemma coop_fold_cons' {A B} {o : OType B} `{@ExtType B o} `{@ldCPO B o}
+Lemma coop_fold_cons' {A B} {o : OType B} `{@ExtType B o} `{@lCPO B o}
   (z : B) (f : A -> B -> B) (a : A) (l : colist A) :
   (forall b, fold z f b ⊑ z) ->
   (forall a, dec_continuous (f a)) ->
@@ -1214,43 +1214,43 @@ Definition cofold {A B} `{o: PType B} (f : A -> B -> B) : colist A -> B :=
 Definition coopfold {A B} `{o: TType B} (f : A -> B -> B) : colist A -> B :=
   coop (fold ⊤ f).
 
-Lemma cofold_nil {A B} `{o : OType B} `{@PType B o} `{@dCPO B o} (f : A -> B -> B) :
+Lemma cofold_nil {A B} `{o : OType B} `{@PType B o} `{@CPO B o} (f : A -> B -> B) :
    cofold f conil === ⊥.
 Proof. apply co_fold_nil. Qed.
 
-Lemma cofold_cons {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+Lemma cofold_cons {A B} `{o : OType B} `{@PType B o} `{@CPO B o}
   (f : A -> B -> B) (a : A) (l : colist A) :
   (forall x, continuous (f x)) ->
   cofold f (cocons a l) === f a (cofold f l).
 Proof. intro Hf; apply co_fold_cons; auto; try intro; apply bot_le. Qed.
 
-Lemma cofold_nil' {A B} `{o : OType B} `{@ExtType _ o} `{@PType B o} `{@dCPO B o}
+Lemma cofold_nil' {A B} `{o : OType B} `{@ExtType _ o} `{@PType B o} `{@CPO B o}
   (f : A -> B -> B) :
   cofold f conil = ⊥.
 Proof. apply ext, co_fold_nil. Qed.
 
-Lemma cofold_cons' {A B} `{o : OType B} `{@ExtType _ o} `{@PType B o} `{@dCPO B o}
+Lemma cofold_cons' {A B} `{o : OType B} `{@ExtType _ o} `{@PType B o} `{@CPO B o}
   (f : A -> B -> B) (a : A) (l : colist A) :
   (forall x, continuous (f x)) ->
   cofold f (cocons a l) = f a (cofold f l).
 Proof. intro Hf; apply ext, co_fold_cons; auto; try intro; apply bot_le. Qed.
 
-Lemma coopfold_nil {A B} `{o : OType B} `{@TType B o} `{@ldCPO B o} (f : A -> B -> B) :
+Lemma coopfold_nil {A B} `{o : OType B} `{@TType B o} `{@lCPO B o} (f : A -> B -> B) :
    coopfold f conil === ⊤.
 Proof. apply coop_fold_nil. Qed.
 
-Lemma coopfold_cons {A B} `{o : OType B} `{@TType B o} `{@ldCPO B o}
+Lemma coopfold_cons {A B} `{o : OType B} `{@TType B o} `{@lCPO B o}
   (f : A -> B -> B) (a : A) (l : colist A) :
   (forall x, dec_continuous (f x)) ->
   coopfold f (cocons a l) === f a (coopfold f l).
 Proof. intro Hf; apply coop_fold_cons; auto; try intro; apply le_top. Qed.
 
-Lemma coopfold_nil' {A B} `{o : OType B} `{@ExtType _ o} `{@TType B o} `{@ldCPO B o}
+Lemma coopfold_nil' {A B} `{o : OType B} `{@ExtType _ o} `{@TType B o} `{@lCPO B o}
   (f : A -> B -> B) :
   coopfold f conil = ⊤.
 Proof. apply ext, coop_fold_nil. Qed.
 
-Lemma coopfold_cons' {A B} `{o : OType B} `{@ExtType _ o} `{@TType B o} `{@ldCPO B o}
+Lemma coopfold_cons' {A B} `{o : OType B} `{@ExtType _ o} `{@TType B o} `{@lCPO B o}
   (f : A -> B -> B) (a : A) (l : colist A) :
   (forall x, dec_continuous (f x)) ->
   coopfold f (cocons a l) = f a (coopfold f l).

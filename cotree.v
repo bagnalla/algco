@@ -466,12 +466,12 @@ Proof.
 Qed.
 
 #[global]
-  Instance dCPO_cotree {I A} : dCPO (@cotree I A).
+  Instance CPO_cotree {I A} : CPO (@cotree I A).
 Proof.
   constructor; intros ch Hch.
   exists (cotree_sup ch); apply cotree_sup_supremum; auto.
 Qed.
-#[global] Hint Resolve dCPO_cotree : cotree.
+#[global] Hint Resolve CPO_cotree : cotree.
 
 Lemma supremum_coleaf {I A} (x : A) (ch : nat -> cotree I A) :
   supremum (coleaf x) ch ->
@@ -967,18 +967,18 @@ Qed.
 
 (** Computation lemmas for co tfolds. *)
 
-Lemma co_tfold_bot {A B} `{dCPO B} (z : B) (f : A -> B) (h : (bool -> B) -> B) :
+Lemma co_tfold_bot {A B} `{CPO B} (z : B) (f : A -> B) (h : (bool -> B) -> B) :
   co (tfold z f h) cobot === z.
 Proof.
   apply supremum_sup, supremum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
-Lemma co_tfold_bot' {A B} `{o : OType B} `{@dCPO B o} `{@ExtType B o}
+Lemma co_tfold_bot' {A B} `{o : OType B} `{@CPO B o} `{@ExtType B o}
   (z : B) (f : A -> B) (h : (bool -> B) -> B) :
   co (tfold z f h) cobot = z.
 Proof. apply ext, co_tfold_bot. Qed.
 
-Lemma co_tfold_leaf {A B} `{dCPO B}
+Lemma co_tfold_leaf {A B} `{CPO B}
   (z : B) (f : A -> B) (h : (bool -> B) -> B) (x : A) :
   z ⊑ f x ->
   co (tfold z f h) (coleaf x) === f x.
@@ -990,13 +990,13 @@ Proof.
   exists (S O); intros n Hn; destruct n; try lia; reflexivity.
 Qed.
 
-Lemma co_tfold_leaf' {A B} `{o : OType B} `{@dCPO B o} `{@ExtType B o}
+Lemma co_tfold_leaf' {A B} `{o : OType B} `{@CPO B o} `{@ExtType B o}
   (z : B) (f : A -> B) (h : (bool -> B) -> B) (x : A) :
   z ⊑ f x ->
   co (tfold z f h) (coleaf x) = f x.
 Proof. intro Hz; apply ext, co_tfold_leaf; auto. Qed.
 
-(* Lemma co_tfold_node {A B} `{dCPO B} *)
+(* Lemma co_tfold_node {A B} `{CPO B} *)
 (*   (z : B) (f : A -> B) (g : (bool -> B) -> B) (k : bool -> cotree bool A) : *)
 (*   Proper (leq ==> leq) g -> *)
 (*   (forall b, z ⊑ tfold z f g b) -> *)
@@ -1013,7 +1013,7 @@ Proof. intro Hz; apply ext, co_tfold_leaf; auto. Qed.
 (*       destruct i. *)
 (*       * simpl. *)
 
-Lemma co_tfold_node {A B} `{dCPO B}
+Lemma co_tfold_node {A B} `{CPO B}
   (z : B) (f : A -> B) (h : (bool -> B) -> B) (k : bool -> cotree bool A) :
   wcontinuous h ->
   (forall b, z ⊑ tfold z f h b) ->
@@ -1039,7 +1039,7 @@ Proof.
   apply equ_arrow; intro i; reflexivity.
 Qed.
 
-Lemma co_tfold_node' {A B} `{o : OType B} `{@dCPO B o} `{@ExtType B o}
+Lemma co_tfold_node' {A B} `{o : OType B} `{@CPO B o} `{@ExtType B o}
   (z : B) (f : A -> B) (g : (bool -> B) -> B) (k : bool -> cotree bool A) :
   wcontinuous g ->
   (forall b, z ⊑ tfold z f g b) ->
@@ -1048,13 +1048,13 @@ Lemma co_tfold_node' {A B} `{o : OType B} `{@dCPO B o} `{@ExtType B o}
 Proof. intros Hg Hz Hg'; apply ext, co_tfold_node; auto. Qed.
 
 (** Computation lemmas for coop tfolds. *)
-Lemma coop_tfold_bot {A B} `{ldCPO B} (z : B) (f : A -> B) (h : (bool -> B) -> B) :
+Lemma coop_tfold_bot {A B} `{lCPO B} (z : B) (f : A -> B) (h : (bool -> B) -> B) :
   coop (tfold z f h) cobot === z.
 Proof.
   apply infimum_inf, infimum_const', equ_arrow; intros []; reflexivity.
 Qed.
 
-Lemma coop_tfold_leaf {A B} `{ldCPO B}
+Lemma coop_tfold_leaf {A B} `{lCPO B}
   (z : B) (f : A -> B) (h : (bool -> B) -> B) (x : A) :
   f x ⊑ z ->
   coop (tfold z f h) (coleaf x) === f x.
@@ -1066,7 +1066,7 @@ Proof.
   exists (S O); intros n Hn; destruct n; try lia; reflexivity.
 Qed.
 
-Lemma coop_tfold_node {A B} `{ldCPO B}
+Lemma coop_tfold_node {A B} `{lCPO B}
   (z : B) (f : A -> B) (h : (bool -> B) -> B) (k : bool -> cotree bool A) :
   dec_wcontinuous h ->
   (forall b, tfold z f h b ⊑ z) ->
@@ -1092,22 +1092,22 @@ Definition tcofold {A B} `{PType B} (f : A -> B) (g : (bool -> B) -> B)
   : cotree bool A -> B :=
   co (tfold ⊥ f g).
 
-Lemma tcofold_bot {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+Lemma tcofold_bot {A B} `{o : OType B} `{@PType B o} `{@CPO B o}
   (f : A -> B) (g : (bool -> B) -> B) :
   tcofold f g cobot === ⊥.
 Proof. apply co_tfold_bot. Qed.
 
-Lemma tcofold_leaf {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+Lemma tcofold_leaf {A B} `{o : OType B} `{@PType B o} `{@CPO B o}
   (f : A -> B) (g : (bool -> B) -> B) (x : A) :
   tcofold f g (coleaf x) === f x.
 Proof. apply co_tfold_leaf, bot_le. Qed.
 
-Lemma tcofold_leaf' {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+Lemma tcofold_leaf' {A B} `{o : OType B} `{@PType B o} `{@CPO B o}
   `{@ExtType B o} (f : A -> B) (g : (bool -> B) -> B) (x : A) :
   tcofold f g (coleaf x) = f x.
 Proof. apply ext, co_tfold_leaf, bot_le. Qed.
 
-Lemma tfold_le_tcofold {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+Lemma tfold_le_tcofold {A B} `{o : OType B} `{@PType B o} `{@CPO B o}
   (t : cotree bool A) i (f : A -> B) g :
   Proper (leq ==> leq) g ->
   tfold ⊥ f g (tprefix i t) ⊑ tcofold f g t.
@@ -1145,7 +1145,7 @@ Proof.
   f_equal; ext i; auto.
 Qed.
 
-Lemma tcofold_node {A B} `{o : OType B} `{@PType B o} `{@dCPO B o}
+Lemma tcofold_node {A B} `{o : OType B} `{@PType B o} `{@CPO B o}
   (f : A -> B) (g : (bool -> B) -> B) (k : bool -> cotree bool A) :
   wcontinuous g ->
   tcofold f g (conode k) === g (tcofold f g ∘ k).
@@ -1155,17 +1155,17 @@ Definition tcoopfold {A B} `{TType B} (f : A -> B) (g : (bool -> B) -> B)
   : cotree bool A -> B :=
   coop (tfold ⊤ f g).
 
-Lemma tcoopfold_bot {A B} `{o : OType B} `{@TType B o} `{@ldCPO B o}
+Lemma tcoopfold_bot {A B} `{o : OType B} `{@TType B o} `{@lCPO B o}
   (f : A -> B) (g : (bool -> B) -> B) :
   tcoopfold f g cobot === ⊤.
 Proof. apply coop_tfold_bot. Qed.
 
-Lemma tcoopfold_leaf {A B} `{o : OType B} `{@TType B o} `{@ldCPO B o}
+Lemma tcoopfold_leaf {A B} `{o : OType B} `{@TType B o} `{@lCPO B o}
   (f : A -> B) (g : (bool -> B) -> B) (x : A) :
   tcoopfold f g (coleaf x) === f x.
 Proof. apply coop_tfold_leaf; apply le_top. Qed.
 
-Lemma tcoopfold_node {A B} `{o : OType B} `{@TType B o} `{@ldCPO B o}
+Lemma tcoopfold_node {A B} `{o : OType B} `{@TType B o} `{@lCPO B o}
   (f : A -> B) (g : (bool -> B) -> B) (k : bool -> cotree bool A) :
   dec_wcontinuous g ->
   tcoopfold f g (conode k) === g (tcoopfold f g ∘ k).

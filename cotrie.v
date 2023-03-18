@@ -961,7 +961,7 @@ Qed.
 #[global] Hint Resolve antimonotone_fold : cotrie.
 
 Lemma co_fold_node {n B C} `{oB: OType B} `{@PType B oB}
-  `{@pLattice _ oB _} `{@Compact _ oB} `{dCPO C}
+  `{@pLattice _ oB _} `{@Compact _ oB} `{CPO C}
   (z : C) (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (leq ==> leq ==> leq) f ->
   (forall b, wcontinuous (f b)) ->
@@ -987,7 +987,7 @@ Proof.
 Qed.
 
 Lemma co_fold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
-  `{@Compact _ oB} `{oC : OType C} `{@dCPO _ oC} `{@ExtType _ oC}
+  `{@Compact _ oB} `{oC : OType C} `{@CPO _ oC} `{@ExtType _ oC}
   (z : C) (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (leq ==> leq ==> leq) f ->
   (forall b, wcontinuous (f b)) ->
@@ -1003,7 +1003,7 @@ Definition cofold {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   co (fold ⊥ f).
 
 Lemma cofold_node {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
-  `{@Compact _ oB} `{oC : OType C} `{@PType _ oC} `{@dCPO _ oC}
+  `{@Compact _ oB} `{oC : OType C} `{@PType _ oC} `{@CPO _ oC}
   (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (leq ==> leq ==> leq) f ->
   (forall b, wcontinuous (f b)) ->
@@ -1017,7 +1017,7 @@ Proof.
 Qed.
 
 Lemma cofold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
-  `{@Compact _ oB} `{oC : OType C} `{@PType _ oC} `{@dCPO _ oC} `{@ExtType _ oC}
+  `{@Compact _ oB} `{oC : OType C} `{@PType _ oC} `{@CPO _ oC} `{@ExtType _ oC}
   (f : B -> (Fin.t  n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (leq ==> leq ==> leq) f ->
   (forall b, wcontinuous (f b)) ->
@@ -1037,7 +1037,7 @@ Definition coopfold {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
   coop (fold ⊤ f).
 
 Lemma coop_fold_node {n B C} `{oB: OType B} `{@PType B oB}
-  `{@pLattice _ oB _} `{@Compact _ oB} `{ldCPO C}
+  `{@pLattice _ oB _} `{@Compact _ oB} `{lCPO C}
   (z : C) (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (flip leq ==> leq ==> leq) f ->
   (forall b, dec_wcontinuous (f b)) ->
@@ -1062,7 +1062,7 @@ Proof.
 Qed.
 
 Lemma coop_fold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
-  `{@Compact _ oB} `{oC : OType C} `{@ldCPO _ oC} `{@ExtType _ oC}
+  `{@Compact _ oB} `{oC : OType C} `{@lCPO _ oC} `{@ExtType _ oC}
   (z : C) (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (flip leq ==> leq ==> leq) f ->
   (forall b, dec_wcontinuous (f b)) ->
@@ -1073,7 +1073,7 @@ Lemma coop_fold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
 Proof. intros Hprop Hf Hz Hzf Hf'; apply ext, coop_fold_node; auto. Qed.
 
 Lemma coopfold_node {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
-  `{@Compact _ oB} `{oC : OType C} `{@TType _ oC} `{@ldCPO _ oC}
+  `{@Compact _ oB} `{oC : OType C} `{@TType _ oC} `{@lCPO _ oC}
   (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (flip leq ==> leq ==> leq) f ->
   (forall b, dec_wcontinuous (f b)) ->
@@ -1087,7 +1087,7 @@ Proof.
 Qed.
 
 Lemma coopfold_node' {n B C} `{oB: OType B} `{@PType B oB} `{@pLattice _ oB _}
-  `{@Compact _ oB} `{oC : OType C} `{@TType _ oC} `{@ldCPO _ oC} `{@ExtType _ oC}
+  `{@Compact _ oB} `{oC : OType C} `{@TType _ oC} `{@lCPO _ oC} `{@ExtType _ oC}
   (f : B -> (Fin.t n -> C) -> C) (b : B) (k : Fin.t n -> cotrie (Fin.t n) B) :
   Proper (flip leq ==> leq ==> leq) f ->
   (forall b, dec_wcontinuous (f b)) ->

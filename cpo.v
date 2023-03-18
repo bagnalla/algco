@@ -6,6 +6,7 @@ From Coq Require Import
   Equivalence
   ClassicalChoice
   IndefiniteDescription (* for suprema/infima *)
+  Lia
 .
 
 Local Open Scope program_scope.
@@ -20,41 +21,42 @@ From algco Require Import
 
 Local Open Scope order_scope.
 
-(** [A] is a dCPO (directed-complete partial order) whenever suprema of
-    directed countable collections exist. *)
-Class dCPO (A : Type) `{OType A} : Prop :=
+(** [A] is a CPO (complete partial order) when suprema of ω-chains
+    exist. *)
+Class CPO (A : Type) `{OType A} : Prop :=
   { exists_sup : forall f : nat -> A, directed f -> exists s, supremum s f }.
 
-(** [A] is a ldCPO (lower-directed-complete partial order) whenever
-    infima of downward-directed countable collections exist. *)
-Class ldCPO (A : Type) `{OType A} : Prop :=
+(** [A] is a lCPO (lower-complete partial order) when infima of
+    decreasing ω-chains exist. *)
+Class lCPO (A : Type) `{OType A} : Prop :=
   { exists_inf : forall f : nat -> A, downward_directed f -> exists s, infimum s f }.
 
-Class dLattice (A : Type) {o : OType A} `{@dCPO A o} `{@ldCPO A o} : Prop := {}.
+(** [A] ω-lattice when it has suprema and infima for all chains and
+    decreasing chains. *)
+Class wLattice (A : Type) {o : OType A} `{@CPO A o} `{@lCPO A o} : Prop := {}.
 
 (** Pointed lattice.  For convenience -- deviates slightly from
-    standard definition by quantifying over only countable
-    collections. *)
+    standard definition of complete lattice by quantifying over only
+    countable collections. *)
 Class pLattice (A : Type) {o : OType A} {p : @PType _ o} : Prop := {
     lattice_exists_sup : forall f : nat -> A, exists s, supremum s f
   ; lattice_exists_inf : forall f : nat -> A, exists s, infimum s f
   }.
 
 #[global]
-  Instance pLattice_dCPO {A} `{pLattice A} : dCPO A.
+  Instance pLattice_CPO {A} `{pLattice A} : CPO A.
 Proof. firstorder. Qed.
-#[global] Hint Resolve pLattice_dCPO : order.
+#[global] Hint Resolve pLattice_CPO : order.
 
 #[global]
-  Instance pLattice_ldCPO {A} `{pLattice A} : ldCPO A.
+  Instance pLattice_lCPO {A} `{pLattice A} : lCPO A.
 Proof. firstorder. Qed.
-#[global] Hint Resolve pLattice_ldCPO : order.
+#[global] Hint Resolve pLattice_lCPO : order.
 
 #[global]
-  Instance pLattice_dLattice {A} `{pLattice A} : dLattice A.
+  Instance pLattice_wLattice {A} `{pLattice A} : wLattice A.
 Qed.
-#[global] Hint Resolve pLattice_dLattice : order.
-
+#[global] Hint Resolve pLattice_wLattice : order.
 
 Lemma ex_ex_supremum {A} `{OType A} (f : nat -> A) :
   exists x : A, (exists b : A, supremum b f) -> supremum x f.
@@ -90,8 +92,8 @@ Definition inf_prim {A} `{OType A} (f : nat -> A)
 Definition sup {A} `{OType A} (f : nat -> A) : A := proj1_sig (sup_prim f).
 
 (* [sup f] is the supremum of [f] whenever [A] is a dCPO and [f] is
-   directed. *)
-Lemma sup_spec {A} `{dCPO A} (f : nat -> A) :
+   a chain. *)
+Lemma sup_spec {A} `{CPO A} (f : nat -> A) :
   directed f -> supremum (sup f) f.
 Proof. intro Hf; unfold sup; destruct sup_prim; simpl; apply s, H0; auto. Qed.
 
@@ -102,9 +104,9 @@ Proof. unfold sup; destruct sup_prim; simpl; apply s; firstorder. Qed.
 (* Take the infimum of countable collection [f]. *)
 Definition inf {A} `{OType A} (f : nat -> A) : A := proj1_sig (inf_prim f).
 
-(* [inf f] is the infimum of [f] whenever [A] is an ldCPO and [f] is
+(* [inf f] is the infimum of [f] whenever [A] is an lCPO and [f] is
    downward-directed. *)
-Lemma inf_spec {A} `{ldCPO A} (f : nat -> A) :
+Lemma inf_spec {A} `{lCPO A} (f : nat -> A) :
   downward_directed f -> infimum (inf f) f.
 Proof. intro Hf; unfold inf; destruct inf_prim; simpl; apply i, H0; auto. Qed.
 
@@ -137,13 +139,13 @@ Qed.
 (* #[global] Hint Resolve dCPO_Prop : order. *)
 
 (* #[global] *)
-(*   Instance ldCPO_Prop : ldCPO Prop. *)
+(*   Instance lCPO_Prop : lCPO Prop. *)
 (* Proof. *)
 (*   constructor; intros f; exists (forall i, f i); split. *)
 (*   - intros i Hi; auto. *)
 (*   - intros ub Hub x i; apply Hub; auto. *)
 (* Qed. *)
-(* #[global] Hint Resolve ldCPO_Prop : order. *)
+(* #[global] Hint Resolve lCPO_Prop : order. *)
 
 (* #[global] *)
 (*   Instance dLattice_Prop : dLattice Prop. Qed. *)
@@ -180,7 +182,7 @@ Qed.
 (* #[global] Hint Resolve dCPO_bool : order. *)
 
 (* #[global] *)
-(*   Instance ldCPO_bool : ldCPO bool. *)
+(*   Instance lCPO_bool : lCPO bool. *)
 (* Proof. *)
 (*   constructor; intro f. *)
 (*   destruct (classic (exists i, f i = false)). *)
@@ -194,7 +196,7 @@ Qed.
 (*       exfalso; apply H; exists i; auto. *)
 (*     + intros x Hx; destruct x; reflexivity. *)
 (* Qed. *)
-(* #[global] Hint Resolve ldCPO_bool : order. *)
+(* #[global] Hint Resolve lCPO_bool : order. *)
 
 (* #[global] *)
 (*   Instance dLattice_bool : dLattice bool. Qed. *)
@@ -228,7 +230,7 @@ Qed.
 #[global] Hint Resolve Lattice_Prop : order.
 
 #[global]
-  Instance ldCPO_arrow {A B} `{ldCPO B} : ldCPO (A -> B).
+  Instance lCPO_arrow {A B} `{lCPO B} : lCPO (A -> B).
 Proof.
   constructor; intros f Hf.
   exists (fun x => inf (fun n => f n x)).
@@ -246,7 +248,7 @@ Proof.
 Qed.
 
 #[global]
-  Instance dCPO_arrow {A B} `{dCPO B} : dCPO (A -> B).
+  Instance CPO_arrow {A B} `{CPO B} : CPO (A -> B).
 Proof.
   constructor; intros f Hf.
   exists (fun x => sup (fun n => f n x)).
@@ -264,7 +266,7 @@ Proof.
 Qed.
 
 #[global]
-  Instance dCPO_prod {A B} `{dCPO A} `{dCPO B} : dCPO (A * B).
+  Instance CPO_prod {A B} `{CPO A} `{CPO B} : CPO (A * B).
 Proof.
   constructor; intros ch Hch.
   destruct H0.
@@ -277,7 +279,7 @@ Proof.
 Qed.
 
 #[global]
-  Instance dCPO_sum {A B} `{dCPO A} `{dCPO B} : dCPO (A + B).
+  Instance CPO_sum {A B} `{CPO A} `{CPO B} : CPO (A + B).
 Proof.
   constructor; intros ch Hch.
   destruct (classic (exists i a, ch i = inl a)) as [Ha|Ha].
@@ -356,7 +358,7 @@ Proof.
       destruct (ch i); auto; inv Hx.
 Qed.
 
-Lemma le_sup {A} `{dCPO A} (f : nat -> A) (a : A) (i : nat) :
+Lemma le_sup {A} `{CPO A} (f : nat -> A) (a : A) (i : nat) :
   directed f ->
   a ⊑ f i ->
   a ⊑ sup f.
@@ -375,7 +377,7 @@ Proof.
   etransitivity; eauto.
 Qed.
 
-Lemma le_inf {A} `{ldCPO A} (f : nat -> A) (a : A) :
+Lemma le_inf {A} `{lCPO A} (f : nat -> A) (a : A) :
   downward_directed f ->
   lower_bound a f ->
   a ⊑ inf f.
@@ -390,7 +392,7 @@ Proof.
   intros Hbound; generalize (lattice_inf_spec f); intros [Hlb Hglb]; auto.
 Qed.
 
-Lemma ge_sup {A} `{dCPO A} (f : nat -> A) (a : A) :
+Lemma ge_sup {A} `{CPO A} (f : nat -> A) (a : A) :
   directed f ->
   upper_bound a f ->
   sup f ⊑ a.
@@ -405,7 +407,7 @@ Proof.
   intros Hbound; generalize (lattice_sup_spec f); intros [Hub Hlub]; auto.
 Qed.
 
-Lemma ge_inf {A} `{ldCPO A} (f : nat -> A) (a : A) (i : nat) :
+Lemma ge_inf {A} `{lCPO A} (f : nat -> A) (a : A) (i : nat) :
   downward_directed f ->
   f i ⊑ a ->
   inf f ⊑ a.
@@ -424,7 +426,7 @@ Proof.
   etransitivity; eauto.
 Qed.
 
-Lemma supremum_sup {A} `{dCPO A} (f : nat -> A) (a : A) :
+Lemma supremum_sup {A} `{CPO A} (f : nat -> A) (a : A) :
   supremum a f ->
   sup f === a.
 Proof.
@@ -432,7 +434,7 @@ Proof.
   unfold sup; destruct (sup_prim f); apply s; exists a; auto.
 Qed.
 
-Lemma infimum_inf {A} `{ldCPO A} (f : nat -> A) (a : A) :
+Lemma infimum_inf {A} `{lCPO A} (f : nat -> A) (a : A) :
   infimum a f ->
   inf f === a.
 Proof.
@@ -440,7 +442,7 @@ Proof.
   unfold inf; destruct (inf_prim f); apply i; exists a; auto.
 Qed.
 
-Lemma sup_apply {A B} `{dCPO B} (f : nat -> A -> B) (x : A) :
+Lemma sup_apply {A B} `{CPO B} (f : nat -> A -> B) (x : A) :
   directed f ->
   sup f x === sup (fun i => f i x).
 Proof.
@@ -453,7 +455,7 @@ Proof.
   symmetry; apply supremum_sup, apply_supremum, lattice_sup_spec; auto.
 Qed.
 
-Lemma inf_apply {A B} `{ldCPO B} (f : nat -> A -> B) (x : A) :
+Lemma inf_apply {A B} `{lCPO B} (f : nat -> A -> B) (x : A) :
   downward_directed f ->
   inf f x === inf (fun i => f i x).
 Proof.
@@ -468,7 +470,7 @@ Proof.
   apply apply_infimum, lattice_inf_spec; auto.
 Qed.
 
-Lemma continuous_sup {A B} `{dCPO A} `{dCPO B} (f : A -> B) (ch : nat -> A) :
+Lemma continuous_sup {A B} `{CPO A} `{CPO B} (f : A -> B) (ch : nat -> A) :
   continuous f ->
   directed ch ->
   f (sup ch) === sup (f ∘ ch).
@@ -478,7 +480,7 @@ Proof.
   apply sup_spec; auto.
 Qed.
 
-Lemma cocontinuous_sup {A B} `{dCPO A} `{ldCPO B} (f : A -> B) (ch : nat -> A) :
+Lemma cocontinuous_sup {A B} `{CPO A} `{lCPO B} (f : A -> B) (ch : nat -> A) :
   cocontinuous f ->
   directed ch ->
   f (sup ch) === inf (f ∘ ch).
@@ -488,7 +490,7 @@ Proof.
   apply sup_spec; auto.
 Qed.
 
-Lemma wcontinuous_sup {A B} `{dCPO A} `{dCPO B} (f : A -> B) (ch : nat -> A) :
+Lemma wcontinuous_sup {A B} `{CPO A} `{CPO B} (f : A -> B) (ch : nat -> A) :
   wcontinuous f ->
   chain ch ->
   f (sup ch) === sup (f ∘ ch).
@@ -498,7 +500,7 @@ Proof.
   apply sup_spec; auto with order.
 Qed.
 
-Lemma dec_continuous_inf {A B} `{ldCPO A} `{ldCPO B} (f : A -> B) (ch : nat -> A) :
+Lemma dec_continuous_inf {A B} `{lCPO A} `{lCPO B} (f : A -> B) (ch : nat -> A) :
   dec_continuous f ->
   downward_directed ch ->
   f (inf ch) === inf (f ∘ ch).
@@ -508,7 +510,7 @@ Proof.
   apply inf_spec; auto.
 Qed.
 
-Lemma dec_cocontinuous_inf {A B} `{ldCPO A} `{dCPO B} (f : A -> B) (ch : nat -> A) :
+Lemma dec_cocontinuous_inf {A B} `{lCPO A} `{CPO B} (f : A -> B) (ch : nat -> A) :
   dec_cocontinuous f ->
   downward_directed ch ->
   f (inf ch) === sup (f ∘ ch).
@@ -518,7 +520,7 @@ Proof.
   apply inf_spec; auto.
 Qed.
 
-Lemma dec_wcontinuous_inf {A B} `{ldCPO A} `{ldCPO B} (f : A -> B) (ch : nat -> A) :
+Lemma dec_wcontinuous_inf {A B} `{lCPO A} `{lCPO B} (f : A -> B) (ch : nat -> A) :
   dec_wcontinuous f ->
   dec_chain ch ->
   f (inf ch) === inf (f ∘ ch).
@@ -528,7 +530,7 @@ Proof.
   apply inf_spec; auto with order.
 Qed.
 
-Lemma Proper_sup {A} `{dCPO A} (f g : nat -> A) :
+Lemma Proper_sup {A} `{CPO A} (f g : nat -> A) :
   directed f ->
   directed g ->
   f === g ->
@@ -540,7 +542,7 @@ Proof.
   - rewrite Hfg; apply sup_spec; auto.
 Qed.
 
-Lemma sup_shift {A} `{dCPO A} (f : nat -> A) :
+Lemma sup_shift {A} `{CPO A} (f : nat -> A) :
   chain f ->
   sup (shift f) === sup f.
 Proof.
@@ -549,7 +551,7 @@ Proof.
   apply sup_spec; auto with order.
 Qed.
 
-Lemma sup_shift' {A} `{dCPO A} (f g : nat -> A) :
+Lemma sup_shift' {A} `{CPO A} (f g : nat -> A) :
   chain f ->
   g === shift f ->
   sup f === sup g.
@@ -560,7 +562,7 @@ Proof.
   rewrite Heq; apply supremum_shift, sup_spec; auto with order.
 Qed.
 
-Lemma inf_shift' {A} `{ldCPO A} (f g : nat -> A) :
+Lemma inf_shift' {A} `{lCPO A} (f g : nat -> A) :
   dec_chain f ->
   g === shift f ->
   inf f === inf g.
@@ -603,7 +605,7 @@ Definition dec_iter {A} `{OType A} (F : A -> A) (z : A) : A :=
   inf (iter_n F z).
 
 (** [iter F z] is a fixed point of [F]. *)
-Lemma iter_unfold {A} `{dCPO A} (F : A -> A) (z : A) :
+Lemma iter_unfold {A} `{CPO A} (F : A -> A) (z : A) :
   wcontinuous F ->
   z ⊑ F z ->
   iter F z === F (iter F z).
@@ -622,7 +624,7 @@ Proof.
 Qed.
 
 (** [dec_iter F z] is a fixed point of [F]. *)
-Lemma dec_iter_unfold {A} `{ldCPO A} (F : A -> A) (z : A) :
+Lemma dec_iter_unfold {A} `{lCPO A} (F : A -> A) (z : A) :
   dec_wcontinuous F ->
   F z ⊑ z ->
   dec_iter F z === F (dec_iter F z).
@@ -639,14 +641,14 @@ Proof.
   apply equ_arrow; intro i; reflexivity.
 Qed.
 
-Lemma sup_apply_ext {A B} `{dCPO B} {_ : ExtType B} (f : nat -> A -> B) (x : A) :
+Lemma sup_apply_ext {A B} `{CPO B} {_ : ExtType B} (f : nat -> A -> B) (x : A) :
   directed f ->
   sup f x = sup (fun i => f i x).
 Proof.
   intro Hf; symmetry; apply ext, supremum_sup, apply_supremum, sup_spec; auto.
 Qed.
 
-Lemma monotone_sup {A} `{dCPO A} (f g : nat -> A) :
+Lemma monotone_sup {A} `{CPO A} (f g : nat -> A) :
   directed f ->
   directed g ->
   (forall i, f i ⊑ g i) ->
@@ -656,7 +658,7 @@ Proof.
   intro i; etransitivity; eauto; apply sup_spec; auto.
 Qed.
 
-Lemma monotone_inf {A} `{ldCPO A} (f g : nat -> A) :
+Lemma monotone_inf {A} `{lCPO A} (f g : nat -> A) :
   downward_directed f ->
   downward_directed g ->
   (forall i, f i ⊑ g i) ->
@@ -666,7 +668,7 @@ Proof.
   intro i; etransitivity; eauto; apply inf_spec; auto.
 Qed.
 
-Lemma Proper_inf {A} `{ldCPO A} (f g : nat -> A) :
+Lemma Proper_inf {A} `{lCPO A} (f g : nat -> A) :
   downward_directed f ->
   downward_directed g ->
   f === g ->
@@ -675,7 +677,7 @@ Proof.
   intros Hf Hg Hfg; split; apply monotone_inf; auto; intro i; apply Hfg.
 Qed.
 
-Lemma continuous_supP {A} `{dCPO A} (f : A -> Prop) (ch : nat -> A) :
+Lemma continuous_supP {A} `{CPO A} (f : A -> Prop) (ch : nat -> A) :
   continuous f ->
   directed ch ->
   f (sup ch) <-> sup (f ∘ ch).
@@ -684,7 +686,7 @@ Proof.
   apply equ_iff, continuous_sup; auto.
 Qed.
 
-Lemma sup_const {A} `{dCPO A} (a : A) :
+Lemma sup_const {A} `{CPO A} (a : A) :
   sup (fun _ => a) === a.
 Proof.
   eapply supremum_unique.
@@ -692,7 +694,7 @@ Proof.
   apply supremum_const.
 Qed.
 
-Lemma sup_const' {A} `{dCPO A} (f : nat -> A) (a : A) :
+Lemma sup_const' {A} `{CPO A} (f : nat -> A) (a : A) :
   f === const a ->
   sup f === a.
 Proof.

@@ -47,9 +47,9 @@ Class Dense (A B : Type) `{OType A} `{OType B} : Type :=
   ; ideal : A -> nat -> B
   }.
 
-(** A is a dCPO with basis B (B is compact and dense in A). *)
+(** A is a CPO with basis B (B is compact and dense in A). *)
 Class aCPO (A B : Type) `{oA : OType A} `{oB : OType B}
-  { compact : Compact B} {dense : Dense A B} {cpoA : dCPO A} : Prop :=
+  { compact : Compact B} {dense : Dense A B} {cpoA : CPO A} : Prop :=
   { incl_order : forall x y : B, x ⊑ y <-> incl x ⊑ incl y
   ; chain_ideal : forall a : A, chain (ideal a)
   ; monotone_ideal : monotone (@ideal _ _ _ _ dense)
@@ -194,7 +194,7 @@ Section aCPO.
   (** [co f] is the unique morphism (continuous function) satisfying
       this equation. [co f] is equal to f on all basis elements for
       which f was originally defined. *)
-  Theorem co_incl {C} `{dCPO C} (f : basis A -> C) :
+  Theorem co_incl {C} `{CPO C} (f : basis A -> C) :
     monotone f ->
     co f ∘ incl === f.
   Proof.
@@ -208,13 +208,13 @@ Section aCPO.
   Qed.
 
   (** Pointwise variant. *)
-  Corollary co_incl' {C} `{dCPO C} (f : basis A -> C) (b : basis A) :
+  Corollary co_incl' {C} `{CPO C} (f : basis A -> C) (b : basis A) :
     monotone f ->
     co f (incl b) === f b.
   Proof. intro Hmono; revert b; apply equ_arrow, co_incl; auto. Qed.
 
   (** Pointwise variant. *)
-  Corollary co_incl'_ext {C} `{o : OType C} `{@dCPO C o} `{@ExtType C o}
+  Corollary co_incl'_ext {C} `{o : OType C} `{@CPO C o} `{@ExtType C o}
     (f : basis A -> C) (b : basis A) :
     monotone f ->
     co f (incl b) = f b.
@@ -223,7 +223,7 @@ Section aCPO.
   (** [coop f] is the unique morphism (continuous function) satisfying
       this equation. [coop f] is equal to f on all basis elements for
       which f was originally defined. *)
-  Theorem coop_incl {C} `{ldCPO C} (f : basis A -> C) :
+  Theorem coop_incl {C} `{lCPO C} (f : basis A -> C) :
     antimonotone f ->
     coop f ∘ incl === f.
   Proof.
@@ -237,14 +237,14 @@ Section aCPO.
   Qed.
 
   (** Pointwise variant. *)
-  Corollary coop_incl' {C} `{ldCPO C} (f : basis A -> C) (b : basis A) :
+  Corollary coop_incl' {C} `{lCPO C} (f : basis A -> C) (b : basis A) :
     antimonotone f ->
     coop f (incl b) === f b.
   Proof. intro Hmono; revert b; apply equ_arrow, coop_incl; auto. Qed.
 
   (** The co-version of any monotone basis function is monotone. *)
   #[global]
-    Instance monotone_co {C} `{dCPO C}
+    Instance monotone_co {C} `{CPO C}
     (f : basis A -> C) {_ : Proper (leq ==> leq) f}
     : Proper (leq ==> leq) (co f).
   Proof.
@@ -260,7 +260,7 @@ Section aCPO.
 
   (** The coop-version of any antimonotone basis function is antimonotone. *)
   #[global]
-    Instance antimonotone_coop {C} `{ldCPO C}
+    Instance antimonotone_coop {C} `{lCPO C}
     (f : basis A -> C) {_ : Proper (leq ==> flip leq) f}
     : Proper (leq ==> flip leq) (coop f).
   Proof.
@@ -297,7 +297,7 @@ Section aCPO.
   Qed.
 
   (** The co-version of any monotone basis function is continuous. *)
-  Theorem continuous_co {C} `{dCPO C} (f : B -> C) :
+  Theorem continuous_co {C} `{CPO C} (f : B -> C) :
     monotone f ->
     continuous (co f).
   Proof.
@@ -321,7 +321,7 @@ Section aCPO.
   Hint Resolve continuous_co : aCPO.
 
   (** The coop-version of any antimonotone basis function is cocontinuous. *)
-  Theorem cocontinuous_coop {C} `{ldCPO C} (f : basis A -> C) :
+  Theorem cocontinuous_coop {C} `{lCPO C} (f : basis A -> C) :
     antimonotone f ->
     cocontinuous (coop f).
   Proof.
@@ -352,7 +352,7 @@ Section aCPO.
   Qed.
   Hint Resolve monotone_incl : aCPO.
     
-  Theorem co_le {C} `{dCPO C} (f : basis A -> C) (g : A -> C) :
+  Theorem co_le {C} `{CPO C} (f : basis A -> C) (g : A -> C) :
     monotone f ->
     wcontinuous g ->
     f ⊑ g ∘ incl ->
@@ -372,7 +372,7 @@ Section aCPO.
 Qed.
 
   (** Uniqueness property. This is the primary proof principle. *)
-  Theorem co_unique {C} `{dCPO C} (f : basis A -> C) (g : A -> C) :
+  Theorem co_unique {C} `{CPO C} (f : basis A -> C) (g : A -> C) :
     monotone f ->
     wcontinuous g ->
     g ∘ incl === f ->
@@ -405,7 +405,7 @@ Qed.
   Qed.
 
   (* (** Uniqueness property. This is the primary proof principle. *) *)
-  (* Theorem co_unique {C} `{dCPO C} (f : basis A -> C) (g : A -> C) : *)
+  (* Theorem co_unique {C} `{CPO C} (f : basis A -> C) (g : A -> C) : *)
   (*   monotone f -> *)
   (*   continuous g -> *)
   (*   g ∘ incl === f -> *)
@@ -437,7 +437,7 @@ Qed.
   (*     etransitivity; eauto. *)
   (* Qed. *)
   
-  Corollary co_unique_ext {C} `{o : OType C} `{@dCPO C o} `{@ExtType C o}
+  Corollary co_unique_ext {C} `{o : OType C} `{@CPO C o} `{@ExtType C o}
     (f : basis A -> C) (g : A -> C) :
     monotone f ->
     wcontinuous g ->
@@ -478,7 +478,7 @@ Qed.
   Qed.
 
   (* (** Continuously constrained uniqueness principle (more powerful). *) *)
-  (* Theorem co_unique_continuous_P {C} `{dCPO C} (P : A -> Prop) (f : basis A -> C) (g : A -> C) (a : A) : *)
+  (* Theorem co_unique_continuous_P {C} `{CPO C} (P : A -> Prop) (f : basis A -> C) (g : A -> C) (a : A) : *)
   (*   continuous P -> *)
   (*   monotone f -> *)
   (*   continuous g -> *)
@@ -514,7 +514,7 @@ Qed.
   (* Qed. *)
 
   (* (** Cocontinuously constrained uniqueness principle (more powerful). *) *)
-  (* Theorem co_unique_cocontinuous_R {C} `{dCPO C} *)
+  (* Theorem co_unique_cocontinuous_R {C} `{CPO C} *)
   (*   (R : A -> A -> Prop) (f : basis A -> C) (g : A -> C) (a b : A) : *)
   (*   cocontinuous R -> *)
   (*   monotone f -> *)
@@ -552,7 +552,7 @@ Qed.
   (* Qed. *)
 
   (* (** Cocontinuously constrained uniqueness principle (more powerful). *) *)
-  (* Theorem co_unique_cocontinuous_P {C} `{dCPO C} *)
+  (* Theorem co_unique_cocontinuous_P {C} `{CPO C} *)
   (*   (P : A -> Prop) (f : basis A -> C) (g : A -> C) (a : A) : *)
   (*   cocontinuous P -> *)
   (*   monotone f -> *)
@@ -588,7 +588,7 @@ Qed.
   (* Qed. *)
 
   (* (** Cocontinuously constrained uniqueness principle (more powerful). *) *)
-  (* Theorem co_unique_cocontinuous_P {C} `{dCPO C} (P : A -> Prop) (f : basis A -> C) (g : A -> C) : *)
+  (* Theorem co_unique_cocontinuous_P {C} `{CPO C} (P : A -> Prop) (f : basis A -> C) (g : A -> C) : *)
   (*   cocontinuous P -> *)
   (*   monotone f -> *)
   (*   continuous g -> *)
@@ -623,7 +623,7 @@ Qed.
   (* Qed. *)
 
   (** The comorphism lemma. *)
-  Lemma co_exists_unique {C} `{dCPO C} (f : basis A -> C) :
+  Lemma co_exists_unique {C} `{CPO C} (f : basis A -> C) :
     monotone f ->
     co f ∘ incl === f /\ forall g, continuous g -> g ∘ incl === f -> g === co f.
   Proof.
@@ -633,7 +633,7 @@ Qed.
   Qed.
 
   (** Useful variant. *)
-  Corollary co_unique' {C} `{dCPO C} (f : basis A -> C) (g : A -> C) (a : A) :
+  Corollary co_unique' {C} `{CPO C} (f : basis A -> C) (g : A -> C) (a : A) :
     monotone f ->
     continuous g ->
     (forall b, g (incl b) === f b) ->
@@ -645,7 +645,7 @@ Qed.
     apply equ_arrow; auto.
   Qed.
 
-  Corollary Proper_coop {C} `{ldCPO C} (f g : basis A -> C) :
+  Corollary Proper_coop {C} `{lCPO C} (f g : basis A -> C) :
     antimonotone f ->
     antimonotone g ->
     f === g ->
@@ -659,7 +659,7 @@ Qed.
     split; apply Hfg.
   Qed.
 
-  Corollary Proper_coop' {C} `{ldCPO C} (f g : basis A -> C) (x y : A) :
+  Corollary Proper_coop' {C} `{lCPO C} (f g : basis A -> C) (x y : A) :
     antimonotone f ->
     antimonotone g ->
     f === g ->
@@ -672,7 +672,7 @@ Qed.
     revert y; apply equ_arrow, Proper_coop; auto.
   Qed.
 
-  Theorem coop_unique {C} `{ldCPO C} (f : basis A -> C) (g : A -> C) :
+  Theorem coop_unique {C} `{lCPO C} (f : basis A -> C) (g : A -> C) :
     antimonotone f ->
     cocontinuous g ->
     g ∘ incl === f ->
@@ -697,7 +697,7 @@ Qed.
     - apply directed_f_ideal, monotone_incl.
   Qed.
 
-  Corollary coop_unique_ext {C} `{o : OType C} `{@ldCPO C o} `{@ExtType C o}
+  Corollary coop_unique_ext {C} `{o : OType C} `{@lCPO C o} `{@ExtType C o}
     (f : basis A -> C) (g : A -> C) :
     antimonotone f ->
     cocontinuous g ->
@@ -708,7 +708,7 @@ Qed.
   Qed.
 
   (* (** Cocontinuously constrained uniqueness principle (more powerful). *) *)
-  (* Theorem coop_unique_constrained {C} `{ldCPO C} (P : A -> Prop) (f : basis A -> C) (g : A -> C) : *)
+  (* Theorem coop_unique_constrained {C} `{lCPO C} (P : A -> Prop) (f : basis A -> C) (g : A -> C) : *)
   (*   cocontinuous P -> *)
   (*   antimonotone f -> *)
   (*   cocontinuous g -> *)
@@ -742,7 +742,7 @@ Qed.
   (*     eauto. *)
   (* Qed. *)
 
-  Corollary coop_unique' {C} `{ldCPO C} (f : basis A -> C) (g : A -> C) (a : A) :
+  Corollary coop_unique' {C} `{lCPO C} (f : basis A -> C) (g : A -> C) (a : A) :
     antimonotone f ->
     cocontinuous g ->
     (forall b, g (incl b) === f b) ->
@@ -755,7 +755,7 @@ Qed.
   Qed.
 
   (** The anticomorphism lemma. *)
-  Lemma coop_exists_unique {C} `{ldCPO C} (f : basis A -> C) :
+  Lemma coop_exists_unique {C} `{lCPO C} (f : basis A -> C) :
     antimonotone f ->
     coop f ∘ incl === f /\ forall g, cocontinuous g -> g ∘ incl === f -> g === coop f.
   Proof.
@@ -764,7 +764,7 @@ Qed.
     - intros; apply coop_unique; auto.
   Qed.
 
-  Lemma monotone_co_f {C} `{dCPO C} (f g : basis A -> C) :
+  Lemma monotone_co_f {C} `{CPO C} (f g : basis A -> C) :
     monotone f ->
     monotone g ->
     f ⊑ g ->
@@ -779,7 +779,7 @@ Qed.
     apply Hfg.
   Qed.
 
-  Lemma monotone_coop_f {C} `{ldCPO C} (f g : basis A -> C) :
+  Lemma monotone_coop_f {C} `{lCPO C} (f g : basis A -> C) :
     antimonotone f ->
     antimonotone g ->
     f ⊑ g ->
@@ -797,7 +797,7 @@ Qed.
   (** Two comorphisms are equal whenever their initial morphisms
       are. Alternate version of the uniqueness property that is
       sometimes useful. *)
-  Corollary Proper_co {C} `{dCPO C} (f g : basis A -> C) :
+  Corollary Proper_co {C} `{CPO C} (f g : basis A -> C) :
     monotone f ->
     monotone g ->
     f === g ->
@@ -810,7 +810,7 @@ Qed.
     apply co_incl'; auto.
   Qed.
 
-  Corollary Proper_co' {C} `{dCPO C} (f g : basis A -> C) (x y : A) :
+  Corollary Proper_co' {C} `{CPO C} (f g : basis A -> C) (x y : A) :
     monotone f ->
     monotone g ->
     f === g ->
@@ -823,7 +823,7 @@ Qed.
     revert y; apply equ_arrow, Proper_co; auto.
   Qed.
 
-  Corollary Proper_co_ext {C} `{oC: OType C} `{@dCPO _ oC} `{@ExtType _ oC}
+  Corollary Proper_co_ext {C} `{oC: OType C} `{@CPO _ oC} `{@ExtType _ oC}
     (f g : basis A -> C) (x : A) :
     monotone f ->
     monotone g ->
@@ -968,7 +968,7 @@ Qed.
 
   (** Every continuous function is a comorphism that is fully
       determined by its behavior on basis elements. *)
-  Corollary continuous_co_incl {C} `{dCPO C} (g : A -> C) :
+  Corollary continuous_co_incl {C} `{CPO C} (g : A -> C) :
     continuous g ->
     g === co (g ∘ incl).
   Proof.
@@ -981,7 +981,7 @@ Qed.
     apply supremum_ideal.
   Qed.
 
-  Theorem cocontinuous_coop_incl {C} `{ldCPO C} (g : A -> C) :
+  Theorem cocontinuous_coop_incl {C} `{lCPO C} (g : A -> C) :
     cocontinuous g ->
     g === coop (g ∘ incl).
   Proof.
@@ -994,7 +994,7 @@ Qed.
     apply supremum_ideal.
   Qed.
 
-  Corollary continuous_ind {C} `{dCPO C} (f : A -> C) (g : A -> C) :
+  Corollary continuous_ind {C} `{CPO C} (f : A -> C) (g : A -> C) :
     continuous f ->
     continuous g ->
     f ∘ incl === g ∘ incl ->
@@ -1015,7 +1015,7 @@ Qed.
     auto.
   Qed.
 
-  Corollary cocontinuous_ind {C} `{ldCPO C} (f : A -> C) (g : A -> C) :
+  Corollary cocontinuous_ind {C} `{lCPO C} (f : A -> C) (g : A -> C) :
     cocontinuous f ->
     cocontinuous g ->
     f ∘ incl === g ∘ incl ->
@@ -1036,7 +1036,7 @@ Qed.
     auto.
   Qed.
 
-  (* Corollary Proper_co_R {C} `{dCPO C} (f g : basis A -> C) (R : basis A -> A -> Prop) (a b : A) : *)
+  (* Corollary Proper_co_R {C} `{CPO C} (f g : basis A -> C) (R : basis A -> A -> Prop) (a b : A) : *)
   (*   antimonotone R -> *)
   (*   monotone f -> *)
   (*   monotone g -> *)
@@ -1052,7 +1052,7 @@ Qed.
   (*   eapply coop_elim in HPa; eauto. *)
   (* Qed. *)
 
-  (* Corollary Proper_co_P {C} `{dCPO C} (f g : basis A -> C) (P : basis A -> Prop) (a : A) : *)
+  (* Corollary Proper_co_P {C} `{CPO C} (f g : basis A -> C) (P : basis A -> Prop) (a : A) : *)
   (*   antimonotone P -> *)
   (*   monotone f -> *)
   (*   monotone g -> *)
@@ -1068,7 +1068,7 @@ Qed.
   (*   eapply coop_elim in HPa; eauto. *)
   (* Qed. *)
 
-  (* Corollary Proper_co_P_ext {C} `{oC: OType C} `{@dCPO _ oC} `{@ExtType _ oC} *)
+  (* Corollary Proper_co_P_ext {C} `{oC: OType C} `{@CPO _ oC} `{@ExtType _ oC} *)
   (*   (f g : basis A -> C) (P : basis A -> Prop) (a : A) : *)
   (*   antimonotone P -> *)
   (*   monotone f -> *)
@@ -1102,7 +1102,7 @@ End aCPO.
     chain is a comorphism. We only need to maintain an algebraic hold
     over the input space.  *)
 
-Theorem co_co {A aB B C} `{aCPO A aB} `{dCPO B} `{dCPO C}
+Theorem co_co {A aB B C} `{aCPO A aB} `{CPO B} `{CPO C}
   (f : basis A -> B) (g : B -> C) :
   monotone f ->
   wcontinuous g ->
@@ -1119,7 +1119,7 @@ Proof.
 Qed.
 
 (** Pointwise variant of the fusion rule. *)
-Corollary co_co' {A aB B C} `{aCPO A aB} `{dCPO B} `{dCPO C}
+Corollary co_co' {A aB B C} `{aCPO A aB} `{CPO B} `{CPO C}
   (f : basis A -> B) (g : B -> C) (x : A) :
   monotone f ->
   wcontinuous g ->
@@ -1129,15 +1129,15 @@ Proof.
 Qed.
 
 (** ExtType variant of fusion rule. *)
-Corollary co_co_ext {A aB B C} `{aCPO A aB} `{dCPO B}
-  `{oC : OType C} `{@dCPO _ oC} `{@ExtType _ oC}
+Corollary co_co_ext {A aB B C} `{aCPO A aB} `{CPO B}
+  `{oC : OType C} `{@CPO _ oC} `{@ExtType _ oC}
   (f : basis A -> B) (g : B -> C) (x : A) :
   monotone f ->
   wcontinuous g ->
   g (co f x) = co (g ∘ f) x.
 Proof. intros Hf Hg; apply ext, co_co'; auto. Qed.
 
-Corollary co_co'' {A aB B bB C} `{aCPO A aB} `{aCPO B bB} `{dCPO C}
+Corollary co_co'' {A aB B bB C} `{aCPO A aB} `{aCPO B bB} `{CPO C}
   (f : basis A -> B) (g : basis B -> C) (x : A) :
   monotone f ->
   monotone g ->
@@ -1146,7 +1146,7 @@ Proof.
   intros Hf Hg; revert x; apply equ_arrow, co_co; auto with aCPO order.
 Qed.
 
-Theorem coop_coop {A aB B C} `{aCPO A aB} `{ldCPO B} `{ldCPO C}
+Theorem coop_coop {A aB B C} `{aCPO A aB} `{lCPO B} `{lCPO C}
   (f : basis A -> B) (g : B -> C) :
   antimonotone f ->
   dec_continuous g ->
@@ -1163,7 +1163,7 @@ Proof.
   reflexivity.
 Qed.
 
-Theorem co_coop {A aB B C} `{aCPO A aB} `{dCPO B} `{ldCPO C}
+Theorem co_coop {A aB B C} `{aCPO A aB} `{CPO B} `{lCPO C}
   (f : basis A -> B) (g : B -> C) :
   monotone f ->
   cocontinuous g ->
@@ -1181,7 +1181,7 @@ Proof.
 Qed.
 
 (** Pointwise variant. *) 
-Corollary co_coop' {A aB B C} `{aCPO A aB} `{dCPO B} `{ldCPO C}
+Corollary co_coop' {A aB B C} `{aCPO A aB} `{CPO B} `{lCPO C}
   (f : basis A -> B) (g : B -> C) (a : A) :
   monotone f ->
   cocontinuous g ->
@@ -1191,7 +1191,7 @@ Proof.
   apply co_coop; auto with aCPO.
 Qed.
 
-Theorem coop_co {A aB B C} `{aCPO A aB} `{ldCPO B} `{dCPO C}
+Theorem coop_co {A aB B C} `{aCPO A aB} `{lCPO B} `{CPO C}
   (f : basis A -> B) (g : B -> C) :
   antimonotone f ->
   dec_cocontinuous g ->
@@ -1209,7 +1209,7 @@ Proof.
 Qed.
 
 (** Pointwise variant. *) 
-Corollary coop_co' {A aB B C} `{aCPO A aB} `{ldCPO B} `{dCPO C}
+Corollary coop_co' {A aB B C} `{aCPO A aB} `{lCPO B} `{CPO C}
   (f : basis A -> B) (g : B -> C) (a : A) :
   antimonotone f ->
   dec_cocontinuous g ->
@@ -1219,21 +1219,21 @@ Proof.
   apply coop_co; auto with aCPO.
 Qed.
 
-Corollary co_coP {A aB B} `{aCPO A aB} `{dCPO B}
+Corollary co_coP {A aB B} `{aCPO A aB} `{CPO B}
   (f : basis A -> B) (g : B -> Prop) (x : A) :
   monotone f ->
   continuous g ->
   g (co f x) <-> co (g ∘ f) x.
 Proof. intros Hf Hg; apply equ_iff, co_co'; auto with order. Qed.
 
-Theorem co_coopP {A aB B C} `{aCPO A aB} `{dCPO B} `{ldCPO C}
+Theorem co_coopP {A aB B C} `{aCPO A aB} `{CPO B} `{lCPO C}
   (f : basis A -> B) (g : B -> Prop) (a : A) :
   monotone f ->
   cocontinuous g ->
   g (co f a) <-> coop (g ∘ f) a.
 Proof. intros Hf Hg; apply equ_iff, co_coop'; auto. Qed.
 
-Corollary coop_coP {A aB B} `{aCPO A aB} `{ldCPO B}
+Corollary coop_coP {A aB B} `{aCPO A aB} `{lCPO B}
   (f : basis A -> B) (g : B -> Prop) (x : A) :
   antimonotone f ->
   dec_cocontinuous g ->
