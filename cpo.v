@@ -55,7 +55,7 @@ Proof. firstorder. Qed.
 #[global] Hint Resolve pLattice_lCPO : order.
 
 #[global]
-  Instance pLattice_wLattice {A} `{pLattice A} : wLattice A.
+  Instance pLattice_wLattice {A} `{pLattice A} : dLattice A.
 Qed.
 #[global] Hint Resolve pLattice_wLattice : order.
 
