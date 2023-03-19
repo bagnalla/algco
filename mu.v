@@ -285,7 +285,7 @@ Proof.
 Qed.
 #[global] Hint Resolve monotone_atree_lang : mu.
 
-Theorem cotwp_mu_lang {A} :
+Lemma cotwp_mu_lang {A} :
   @cotwp A (const 1) = tcosum (fun bs => 1 / 2 ^ length bs) ∘ cotree_lang.
 Proof
   with eauto with aCPO cotcwp order mu.
