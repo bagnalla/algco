@@ -1035,7 +1035,8 @@ Definition list_colist_le {A} : list A ->  colist A -> Prop :=
                              end).
 
 #[global]
-  Instance antimonotone_list_colist_le {A} : Proper (leq ==> flip leq) (@list_colist_le A).
+  Instance antimonotone_list_colist_le {A}
+  : Proper (leq ==> flip leq) (@list_colist_le A).
 Proof.
   apply antimonotone_fold.
   - intros ? ? ?; apply I.
@@ -1680,16 +1681,35 @@ Proof with eauto with colist order aCPO.
   apply coop_elim with (i:=i) in Hord...
 Qed.
 
+Lemma list_forall_forall_afilter {A} (P : A -> bool) (Q : A -> Prop) l :
+  list_forall Q l ->
+  colist_forall Q (afilter P l).
+Proof.
+  unfold afilter, filter_f.
+  induction l; intro Hall; simpl.
+  { apply colist_forall_nil. }
+  inv Hall; destruct (P a); auto.
+  apply colist_forall_cons; split; auto.
+Qed.
+
 Lemma colist_forall_cofilter' {A} (P : A -> Prop) (Q : A -> bool) (l : colist A) :
   colist_forall P l ->
   colist_forall P (cofilter Q l).
 Proof with eauto with colist order aCPO.
-  intro Hl; apply coop_intro... intro i.
-  generalize (prefix_cofilter Q l i); intros [j Hj].
-  simpl; unfold flip; rewrite Hj.
-  apply coop_elim with (i:=j) in Hl...
-  apply list_forall_filter'; auto.
+  intro Hall; unfold cofilter, cofold; apply co_coopP... (* Fusion *)
+  apply coop_intro.
+  { apply monotone_antimonotone_compose... }
+  unfold compose; intro i.
+  apply list_forall_forall_afilter.
+  apply coop_elim with (i:=i) in Hall...
 Qed.
+
+(*   intro Hl; apply coop_intro... intro i. *)
+(*   generalize (prefix_cofilter Q l i); intros [j Hj]. *)
+(*   simpl; unfold flip; rewrite Hj. *)
+(*   apply coop_elim with (i:=j) in Hl... *)
+(*   apply list_forall_filter'; auto. *)
+(* Qed. *)
 
 Lemma colist_forall_cofilter_conj {A} (P : A -> Prop) (Q : A -> bool) (l : colist A) :
   colist_forall P l ->
