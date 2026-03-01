@@ -31,11 +31,11 @@ Defined in [theories/cotree.v](theories/cotree.v), weakest pre-expectation seman
 
 ## Extraction Demos
 
-- Sieve:
+Sieve:
   ```sh
   cd extract/sieve && make && ./main
   ```
-- Regex:
+Regex:
   `theories/RE_test.v` extracts to `extract/re/RE.hs`.
   ```sh
   cd extract/re && make && ./main
