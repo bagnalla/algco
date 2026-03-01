@@ -121,7 +121,7 @@ Definition downward_directed {I A : Type} `{OType A} (f : I -> A) : Prop :=
 
 #[global]
   Program Instance OType_Prop : OType Prop := {| leq := impl |}.
-Next Obligation. constructor; intuition. Qed.
+Next Obligation. constructor; intuition (auto with *). Qed.
 
 #[global]
   Program
@@ -252,7 +252,7 @@ Qed.
 
 #[global]
   Instance Symmetric_equ A `{OType A} : Symmetric equ.
-Proof. unfold Symmetric, equ; intuition. Qed.
+Proof. unfold Symmetric, equ; intuition (auto with *). Qed.
 
 #[global]
   Program
@@ -1137,7 +1137,7 @@ Proof. revert z ub; induction n; intros z ub Hz HF; simpl; auto. Qed.
 (** Types for which the symmetric closure of the order relation
     coincides with propositional equality. Obviously, depends on the
     choice of order relation. *)
-Class ExtType (A : Type) `{OType A} : Type :=
+Class ExtType (A : Type) `{OType A} : Prop :=
   { ext : forall (a b : A), a === b -> a = b }.
 
 #[global]

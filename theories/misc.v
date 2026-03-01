@@ -96,7 +96,7 @@ Proof. induction n; simpl; auto. Qed.
 
 Corollary length_seq_prefix {A} (f : nat -> A) (n : nat) :
   length (seq_prefix f n) = n.
-Proof. unfold seq_prefix; rewrite rev_length; apply length_seq_prefix_aux. Qed.
+Proof. unfold seq_prefix; rewrite length_rev; apply length_seq_prefix_aux. Qed.
 
 Lemma map_seq_prefix_aux {A B} (f : nat -> A) (g : A -> B) (n : nat) :
   map g (seq_prefix_aux f n) = seq_prefix_aux (g ∘ f) n.
@@ -230,7 +230,7 @@ Qed.
 Lemma range_length (n : nat) :
   length (range n) = n.
 Proof.
-  induction n; simpl; auto; rewrite app_length; simpl; rewrite IHn; lia.
+  induction n; simpl; auto; rewrite length_app; simpl; rewrite IHn; lia.
 Qed.
 
 Lemma range_seq (n : nat) :

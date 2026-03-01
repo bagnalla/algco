@@ -41,4 +41,5 @@ Definition matches (l : list bool) : bool :=
 
 From Coq Require Import ExtrHaskellBasic.
 Extraction Language Haskell.
-Extraction "extract/re/RE.hs" matches.
+Set Extraction Output Directory "extract/re".
+Extraction "RE.hs" matches.

@@ -89,4 +89,4 @@ Ltac contra H :=
 Lemma contrapositive (P Q : Prop) :
   (~ Q -> ~ P) ->
   P -> Q.
-Proof. intros H HP. destruct (classic Q); intuition. Qed.
+Proof. intros H HP. destruct (classic Q); intuition (auto with *). Qed.

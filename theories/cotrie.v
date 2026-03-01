@@ -4,7 +4,6 @@ Set Implicit Arguments.
 Set Contextual Implicit.
 
 From Coq Require Import
-  Vector
   Basics
   Equivalence
   Lia
@@ -1290,7 +1289,7 @@ Fixpoint tunion {n} (x y : tlang n) : tlang n :=
 
 #[global]
  Instance monotone_orb : Proper (leq ==> leq) orb.
-Proof. intros [] []; simpl; intuition; destruct x; auto. Qed.
+Proof. intros [] []; simpl; intuition (auto with *); destruct x; auto. Qed.
 
 CoFixpoint union {n} (a b : lang n) : lang n :=
   match a, b with
@@ -1645,10 +1644,10 @@ Lemma in_lang_single {n} (l : list (Fin.t n)) (x : Fin.t n) :
 Proof.
   split.
   - intro Hl; destruct l; inv Hl.
-    replace Fin.eqb with eqb in H0 by reflexivity.
-    destruct (eqb_spec t x); subst.
-    + apply in_lang_epsilon in H0; subst; auto.
-    +  apply in_lang_empty in H0; contradiction.
+    destruct (Fin.eqb t x) eqn:Htx.
+    + apply Fin.eqb_eq in Htx; subst.
+      apply in_lang_epsilon in H0; subst; auto.
+    + apply in_lang_empty in H0; contradiction.
   - intros ->; constructor; rewrite eqb_refl; constructor.
 Qed.
 

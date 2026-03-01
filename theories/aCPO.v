@@ -458,7 +458,7 @@ Qed.
     { apply supremum_ideal. }
     apply HP in Ha.
     2: { apply directed_f_ideal, monotone_incl. }
-    apply supremum_Prop' in Ha; intuition.
+    apply supremum_Prop' in Ha; intuition (auto with *).
   Qed.
 
   Lemma cocontinuous_incl_ideal (P : A -> Prop) (a : A) (i : nat) :

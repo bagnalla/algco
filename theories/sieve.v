@@ -436,7 +436,8 @@ Proof. reflexivity. Qed.
 
 From Coq Require Import ExtrHaskellBasic.
 Extraction Language Haskell.
-Extraction "extract/sieve/Sieve.hs" sieve''.
+Set Extraction Output Directory "extract/sieve".
+Extraction "Sieve.hs" sieve''.
 
 Lemma sieve_cons a l :
   sieve' (cocons a l) = sieve_f a (sieve' l).

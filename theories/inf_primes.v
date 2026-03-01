@@ -44,7 +44,7 @@ Proof.
   unfold not; intros.
   absurd (In U (Add U A x) x).
   firstorder.
-  intuition.
+  intuition (auto with *).
 Qed.
 
 Lemma finite'_ne_inhabited : forall (U: Type) (A: Ensemble U),
@@ -54,7 +54,7 @@ Proof.
   induction A_finite.
   firstorder.
   exists x.
-  intuition.
+  intuition (auto with *).
 Qed.
 
 Lemma Zdivide_Zabs_r a b : (a | b) -> (a | Z.abs b).
@@ -109,7 +109,7 @@ Proof.
   split.
   apply Z.lt_gt.
   apply Z.mul_pos_pos.
-  intuition.
+  intuition (auto with *).
   apply Z.abs_pos.
   { apply A0_nonzero; right; constructor. }
   intros.
@@ -119,7 +119,7 @@ Proof.
     rewrite m_eq_n_mul.
     apply Z.divide_mul_r.
     apply Zdivide_Zabs_r.
-    intuition.
+    intuition (auto with *).
     (* m <> n_add *)
     intros.
     apply Z.divide_mul_l.
@@ -129,12 +129,12 @@ Proof.
     inversion H0.
     { apply IHdivides.
       inversion H; subst; auto.
-      intuition. }
+      intuition (auto with *). }
     apply Pos.eq_dec.
     apply Pos.eq_dec.
   intros m m_in_A0.
   apply A0_nonzero.
-  intuition.
+  intuition (auto with *).
   exact A_finite.
 Qed.
 
@@ -160,7 +160,7 @@ Proof.
   inversion all_divides' as [n_pos all_divides]; clear all_divides'.
   exists (n+1).
   split.
-  intuition.
+  intuition (auto with *).
   
   intros p p_in_P.
   pose proof p_in_P as prime_p.
@@ -190,7 +190,7 @@ Proof.
   apply rel_prime_1.
   exact P_finite.
   intros p p_in_P.
-  { intuition; subst.
+  { intuition (auto with *); subst.
     apply P_primes in p_in_P.
     apply not_prime_0; auto. }
   exact P_finite.
@@ -228,7 +228,7 @@ Proof.
   unfold is_empty_set in H.
   firstorder.
   inversion H1.
-  intuition.
+  intuition (auto with *).
   (* A0 is non-empty, it contains n' *)
   assert (exists m : Z, In Z A0 m) as A0_non_empty.
   exists n'.
@@ -259,7 +259,7 @@ Proof.
   rewrite Z.max_r.
   apply Union_introl.
   exact n0_in_A0.
-  intuition.
+  intuition (auto with *).
   (* n_add = n0 \/ n0 < n_add *)
   intros.
   elim H; clear H.
@@ -272,7 +272,7 @@ Proof.
   rewrite Z.max_l.
   apply Union_intror.
   firstorder.
-  intuition.
+  intuition (auto with *).
   
   (** Show that the element is an upper bound **)
   intros n n_in_Anew.
@@ -283,8 +283,8 @@ Proof.
   (* n = n_add *)
   intros n_eq_n_add.
   rewrite Z.max_r.
-  intuition.
-  intuition.
+  intuition (auto with *).
+  intuition (auto with *).
   (* n <> n_add *)
   intros n_neq_n_add.
   rewrite Z.max_r.
@@ -294,7 +294,7 @@ Proof.
   inversion H0.
   exfalso.
   firstorder.
-  intuition.
+  intuition (auto with *).
   apply Pos.eq_dec.
   apply Pos.eq_dec.
   (* n_add = n0 \/ n0 < n_add  *)
@@ -312,8 +312,8 @@ Proof.
   inversion n_in_Anew; clear x H1.
   { apply n0_is_UB in H0; lia. }
   inversion H0.
-  intuition.
-  intuition.
+  intuition (auto with *).
+  intuition (auto with *).
   (* Finally A is finite *)
   exact A_is_finite.
 Qed.
@@ -332,19 +332,19 @@ Proof.
   unfold not; intros n_in_apleq_p.
   inversion n_in_apleq_p as [n_leq_p n_prime].
   inversion n_prime as [n_geq_1 _].
-  intuition.
+  intuition (auto with *).
 
   intros.
   induction ub.
   (* n = 0 *)
   apply no_primes_finite.
-  intuition.
+  intuition (auto with *).
   (* n > 0 *)
   apply Pos.peano_ind with (P :=
     fun n => Finite' Z (all_primes_leq (Z.pos n))).
   (* n = 1 *)
   apply no_primes_finite.
-  intuition.
+  intuition (auto with *).
   (* n > 1, induction step *)
   intros n0 IH.
   set (n := Z.pos (Pos.succ n0)).
@@ -470,7 +470,7 @@ Proof.
   intros n n_pos.
   induction n.
   absurd (0 > 1).
-  intuition.
+  intuition (auto with *).
   assumption.
   (* Z.pos p > 0 *)
   (* A suffienctly strong IH (total induction) *)
@@ -485,7 +485,7 @@ Proof.
     forall n1, 1 < n1 <= Z.pos np -> exists p, prime p /\ (p | n1)).
   intros.
   exfalso.
-  intuition.
+  intuition (auto with *).
 
   (* Induction "step" *)
   intros p0 IH n1 n1_n2_rel.
@@ -641,7 +641,7 @@ Proof.
   assert (exists m : Z, In Z P m) as P_nonempty.
   exists p'.
   inversion P1_P_rel.
-  intuition.
+  intuition (auto with *).
   (* Get a maximal element *)
   assert (exists N, In Z P N /\ (forall n, In Z P n -> n <= N))
     as ex_maximal_element'.

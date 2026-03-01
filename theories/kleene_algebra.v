@@ -3,7 +3,6 @@ Set Implicit Arguments.
 Set Contextual Implicit.
 
 From Coq Require Import
-  Vector
   Basics
   Equivalence
   Lia
@@ -11,7 +10,6 @@ From Coq Require Import
   Equality
   List
   Nat
-  Fin
 .
 Local Open Scope program_scope.
 Local Open Scope equiv_scope.
