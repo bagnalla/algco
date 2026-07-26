@@ -14,6 +14,13 @@ The hypothesis to test is:
 > operational lifting, finite observations, and realization relation from one
 > description.
 
+Proof ergonomics is a primary acceptance criterion, not a later polishing
+step.  For the common instances, users should define operations over familiar
+native types and reduce their main obligations to ordinary structural
+induction over familiar basis elements.  Shapes, positions, dependent
+transports, and representation conversions may occur in the generic kernel or
+the one-time instance proof, but should not occur in routine program proofs.
+
 A rewrite is justified only if one complete vertical slice is clearer and at
 least as usable as the current type-specific development. Until that decision
 point, all generic work should live alongside the current modules.
@@ -23,6 +30,140 @@ This plan grew out of the investigation in
 report remains the record of the extraction problem and the observation-indexed
 productivity results. This document concerns the broader architecture suggested
 by that work.
+
+## Milestone 1 checkpoint: fixed-point representation
+
+Status on July 26, 2026: **technically successful with qualifications**.
+
+The first feasibility spike is implemented in:
+
+- [`theories/generic/container.v`](../theories/generic/container.v), containing
+  containers, their inductive and coinductive fixed points, and structural
+  bisimilarity;
+- [`theories/generic/colist_instance.v`](../theories/generic/colist_instance.v),
+  containing the pointed colist signature and conversions to the existing
+  native `list` and `colist` types.
+
+### Positive results
+
+- Coq accepts the generic `μ` and `ν` definitions with recursive children
+  represented by `Pos s → μ C` and `Pos s → ν C`.
+- The automatically generated induction principle for `μ C` supplies an
+  induction hypothesis for every recursive position.
+- The pointed colist container can be defined directly with an empty position
+  type for `conil` and `unit` for `cocons`.
+- Dependent pattern matching in the conversions is local and manageable.
+- Both inductive conversions are inverse, and both coinductive conversions are
+  inverse up to their respective structural bisimilarities.
+- The coinductive conversion proofs use the same one-layer unfolding style as
+  the native colist development; no new guardedness workaround was required.
+
+### Equality and axiom audit
+
+| Result | Additional assumption |
+|---|---|
+| Generic `ν` bisimilarity reflexivity and symmetry | none |
+| Generic `ν` bisimilarity transitivity | `Eq_rect_eq.eq_rect_eq` |
+| `μ ColistC → list → μ ColistC` round trip | functional extensionality |
+| `list → μ ColistC → list` round trip | none |
+| Both coinductive round trips as bisimulations | none |
+| Native-colist round trip as Coq equality | existing `colist_ext` axiom |
+
+Transitivity is the first place where eliminating equal dependent container
+indices becomes nontrivial. The current proof uses `dependent destruction` and
+therefore inherits `eq_rect_eq`, an axiom already present elsewhere in this
+development. Before treating generic bisimilarity as foundational, a short
+follow-up should determine whether a path-explicit formulation can avoid that
+assumption without making routine proofs substantially worse.
+
+CoFixpoints do not unfold by reflexivity when their result is observed only by
+an equality goal. Explicit one-step unfolding lemmas solve this, just as
+`colist.unf_eq` does for the native type.
+
+### Extraction finding
+
+Direct extraction of the generic fixed points succeeds, but Coq erases their
+dependent container indices to a representation of the following form:
+
+```haskell
+type Shape = Any
+type Position = Any
+
+data Mu = In_mu Shape (Position -> Mu)
+data Nu = In_nu Shape (Position -> Nu)
+```
+
+The specialized colist conversions consequently contain `unsafeCoerce` at
+shape and child accesses.  This is an expected way for Haskell extraction to
+erase source-level dependencies, not by itself a correctness failure.  It is
+reasonable for closed extracted code whose values and uses all originate in
+well-typed Coq.
+
+It is less attractive as a public Haskell API: exposed constructors would let
+handwritten code violate the erased shape/position invariant, all container
+instances share an opaque representation, and malformed external values could
+reach branches that were impossible in Coq.  The prototype should therefore
+keep both extraction routes open.  Native datatypes with proved
+specializations are likely to provide the clearer public boundary, while
+direct generic extraction remains a valid option for closed programs.
+
+### Checkpoint decision
+
+Milestone 1 provides enough evidence to continue to the generic order and
+truncation experiment. It does **not** justify a source or runtime rewrite yet.
+The next milestone should preserve native colists as the extraction boundary
+and compare every generically derived relation with the existing native one.
+
+## Milestone 1.5 checkpoint: proof-level colist specialization
+
+Status on July 26, 2026: **the first specialization boundary works**.
+
+[`theories/generic/pointed_container.v`](../theories/generic/pointed_container.v)
+now adds the least-shape structure needed by AlgCo and derives:
+
+- inductive and coinductive approximation preorders;
+- least elements and the corresponding `OType` and `PType` instances;
+- structural inclusion from `μ C` into `ν C`;
+- depth truncation from `ν C` into `μ C`;
+- monotonicity, growth of successive truncations, and soundness of an included
+  truncation below its source value.
+
+The colist instance proves that this is not merely an abstract parallel API:
+
+- generic `μ` approximation is equivalent to native `list_le`;
+- generic `ν` approximation is equivalent to native `colist_le`;
+- generic inclusion computes as native `inj`;
+- generic truncation computes as `prefix`, and inclusion after truncation
+  computes as `coprefix`.
+
+Consequently, dependent matches and container indices can remain inside the
+generic kernel and the one-time instance module.  Statements presented to a
+colist user can still use only `list`, `colist`, `list_le`, `colist_le`, `inj`,
+`prefix`, and `coprefix`.
+
+The assumption audit follows the pattern already seen in Milestone 1:
+
+| Result | Additional assumption |
+|---|---|
+| Generic order reflexivity | none |
+| Generic order transitivity and the resulting preorder instances | `Eq_rect_eq.eq_rect_eq` |
+| Generic monotonicity, truncation growth, and truncation soundness | none |
+| Generic/native order correspondence | none |
+| Inclusion and truncation computation lemmas | none |
+| Canonical native-colist order equivalence stated through both round trips | existing `colist_ext` axiom |
+
+Thus dependent equality has not leaked into the colist-facing statements, but
+it remains in the current proof that the generic relations are transitive.  A
+path-explicit order formulation remains worth testing before treating this
+kernel as foundational; it is not necessary to answer the present ergonomics
+question.
+
+This is encouraging but not yet the decisive proof-ergonomics result.  The
+prototype has not derived the complete algebraic CPO structure or reconstructed
+a representative operation such as `comap`.  That vertical slice is the next
+gate: its definition, continuity proof, constructor equations, and ordinary
+program proofs should expose no container machinery and should be comparable
+in size and clarity to the current AlgCo proofs.
 
 ## Motivation
 
@@ -403,9 +544,16 @@ equivalence. Do not replace native lists or colists.
 
 ### Milestone 2: generic algebraic structure
 
-Define the pointed prefix order, inclusion, and depth truncation generically.
-Prove the `aCPO` laws under finite branching, then transport or compare them to
-the existing colist instance.
+The pointed prefix order, inclusion, depth truncation, and their colist
+correspondence are complete as Milestone 1.5.  Next prove the remaining `aCPO`
+laws under finite branching, then expose them through native colist-specific
+lemmas rather than requiring users to transport goals manually.
+
+As the proof-ergonomics test, reconstruct `comap` from structural recursion on
+the native list basis and the generically supplied continuous extension.
+Recover its continuity and `conil`/`cocons` equations with statements that do
+not mention containers or conversions.  Compare those proof scripts directly
+with the current implementation before proceeding.
 
 Repeat only the essential fixed-point and truncation results for Boolean
 cotrees. Success on cotrees is the first evidence that the abstraction is not
@@ -583,14 +731,25 @@ representation rewrite are separate decisions.
 
 ## Immediate next experiment
 
-The smallest informative implementation task is Milestone 1 only:
+Milestones 1 and 1.5 establish the representation and proof-specialization
+boundary.  The next informative task is one complete algebraic-operation
+slice:
 
-1. Define a simple container by shapes and positions.
-2. Define its generic inductive and coinductive fixed points.
-3. Instantiate the pointed colist signature.
-4. Construct conversions to the existing `list` and `colist` types.
-5. Prove the inductive round trip and a coinductive bisimulation round trip.
-6. Record every required axiom, guardedness workaround, and extraction artifact.
+1. State the minimal finite-position interface needed by the generic
+   compactness and density arguments.
+2. Complete the pointed-container `aCPO` construction, reusing generic
+   inclusion and truncation.
+3. Package the result so the native colist instance can use it without visible
+   transports.
+4. Define native-list basis map structurally and obtain `comap` by continuous
+   extension.
+5. Recover continuity and the two native constructor equations.
+6. Compare the resulting user proof with the existing `comap` development,
+   including required axioms, simplification behavior, error messages, and
+   proof length.
 
-Do not implement the generic order or operational lifting until this experiment
-shows that the fixed-point representation itself is workable in Coq.
+Do not add a functor-code language yet.  If this slice succeeds but the
+one-time instance contains repetitive structural boilerplate, codes become a
+promising derivation frontend with containers as their semantic backend.  If
+the user-facing proof remains transport-heavy, adding another abstraction
+layer would not address the primary failure.
