@@ -47,6 +47,14 @@ applications as atomic and terminating. Observation-indexed coinductive
 results and an adequacy connection to an independently formalized target
 language remain open.
 
+The possibility of retaining an open-recursive container presentation and
+deriving both semantic and operational fixed points is broader than this
+extraction question. Its prototype, success criteria, and possible migration
+path are tracked separately in the
+[`Containerized AlgCo prototype plan`](containerized-algco-plan.md). That plan
+is exploratory and is not a prerequisite for the remaining program-specific
+extraction results in this report.
+
 ## The present development
 
 The denotational definition is
