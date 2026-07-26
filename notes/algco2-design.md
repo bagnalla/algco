@@ -13,10 +13,11 @@ The empirical record remains in:
 - [`cofold-extraction-productivity.md`](cofold-extraction-productivity.md), for
   the extraction problem and observation-indexed account of productivity.
 
-The rewrite gate remains conservative.  Milestone 2F recovers a complete
-native `comap` slice with competitive proof ergonomics, but a successor design
-should also pass a branching-type slice before replacing any existing
-type-specific development.
+The rewrite gate remains conservative.  Milestones 2F and 2G recover complete
+native `comap` and branching `cotree_map` slices with competitive proof
+ergonomics.  The remaining question is whether a small derivation frontend and
+the operational layer make a rewrite worthwhile, not whether containers can
+support native constructor reasoning.
 
 ## Emerging design thesis
 
@@ -434,6 +435,32 @@ identity, as proposed above, rather than recovering its basis type through an
 opaque typeclass-indexed abbreviation.  The seam does not occur in the public
 operation theorem.
 
+Milestone 2G passes the same boundary for a genuinely branching signature.
+The Boolean-cotree descriptor has nullary bottom and leaf shapes and a node
+whose position type is `bool`.  Registering only bottom decidability and finite
+positions again selects the generic wrapper `aCPO` directly.  Native inclusion
+and ideal equations compute as `tinj` and `tprefix`.
+
+The reusable indexed `tfold` node rule assembles the two child suprema
+pointwise with `supremum_apply` and transports the resulting function-space
+supremum through a `wcontinuous` node algebra.  Consequently, the public
+`cotree_map_node` proof supplies only continuity of `conode`; its statement and
+proof contain no generic representation details.  This answers the main
+branching ergonomics question positively.
+
+The internal proof exposed two API details.  Nested child simplification can
+reveal `value_ideal` before a native ideal rewrite, so the specialization layer
+needs deliberate projection/simplification lemmas.  Coq also made the node
+algebra implicit until an explicit `Arguments` declaration restored a useful
+call shape.  These are manageable and local, but AlgCo 2 should treat
+elaboration behavior as part of the generated specialization interface.
+
+The remaining cost is volume rather than client ergonomics.  Raw native
+conversions, inverse proofs, and order correspondences are structurally
+similar across colists and cotrees.  Containers are now validated as a
+semantic backend; functor codes remain attractive chiefly as a frontend that
+derives this repeated material and the corresponding fold API.
+
 ## Provisional decisions
 
 1. Do not replace sequential approximation with arbitrary directed sets.
@@ -454,6 +481,11 @@ operation theorem.
    by `S` rather than putting them in the carrier index.
 9. Treat native fold/cofold computation rules as part of the specialization
    boundary, not as proofs to repeat for each continuous operation.
+10. Retain containers as the working semantic backend for linear and finite
+    branching signatures; judge functor codes by how much specialization
+    boilerplate they derive, not by a need to repair client proof ergonomics.
+11. Treat simplification lemmas and explicit argument declarations as part of
+    a native specialization's supported interface.
 
 These are working decisions for experiments, not yet compatibility promises.
 
@@ -476,9 +508,9 @@ These are working decisions for experiments, not yet compatibility promises.
 - What is the cleanest division of monotonicity, continuity, density, and
   compact-basis laws between `Approx`, `Dense`, and the algebraic structure?
 - Which structure should contain ordered nonrecursive payload fields?
-- Can the successful colist `cofold` specialization be generalized to
-  branching signatures so that function-valued recursive children also have
-  native constructor equations without visible transports?
+- What is the smallest functor-code or combinator frontend that can derive the
+  repeated descriptor, capability, conversion, and fold infrastructure while
+  leaving type-specific native isomorphism obligations understandable?
 - How much of the semantic layer can remain constructive if operational
   productivity is treated separately?
 
@@ -489,14 +521,14 @@ Milestone 2D proves Scott compactness for arbitrary nonempty directed
 families, and Milestone 2E confirms deterministic generic instance reuse for
 descriptor-indexed wrappers.  Milestone 2F reconstructs native colist `comap`
 and restores short operation proofs through reusable indexed `cofold` rules.
-The remaining experiments are:
+Milestone 2G obtains the corresponding result for Boolean cotrees and a
+function-valued family of children.  The remaining experiments are:
 
-1. Repeat only the essential wrapper, approximation, and operation results for
-   a Boolean cotree signature, deriving a reusable native node computation
-   rule for its family of recursive children.
-2. Audit whether capability coherence, transports, and typeclass elaboration
-   remain confined to the one-time specialization boundary in that branching
-   case.
-3. Use both vertical slices, rather than the elegance of the generic kernel
-   alone, to choose between wrappers, descriptor-indexed fixed points, and a
-   code language, and to decide whether a larger rewrite is justified.
+1. Audit the colist and cotree specializations side by side and classify every
+   repeated definition and proof as derivable or inherently native-specific.
+2. Design the smallest code/combinator frontend that derives the former while
+   continuing to interpret codes as the validated container semantics.
+3. Prototype that frontend only far enough to regenerate the two existing
+   slices and compare proof terms, error messages, and extraction boundaries.
+4. Use the measured reduction in boilerplate, together with the still-pending
+   operational lifting, to decide whether a larger rewrite is justified.

@@ -14,6 +14,9 @@ theories/generic/indexed_container.v
 theories/generic/colist_instance.v
 theories/generic/indexed_colist_instance.v
 theories/generic/indexed_colist_comap.v
+theories/generic/cotree_instance.v
+theories/generic/indexed_cotree_instance.v
+theories/generic/indexed_cotree_map.v
 theories/productivity.v
 theories/cofold_operational.v
 theories/conat.v

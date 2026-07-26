@@ -24,8 +24,10 @@ the one-time instance proof, but should not occur in routine program proofs.
 A rewrite is justified only if one complete vertical slice is clearer and at
 least as usable as the current type-specific development. Until that decision
 point, all generic work should live alongside the current modules.
-Milestone 2F now passes that test for colist `comap`; a branching type remains
-the next gate before drawing a rewrite conclusion.
+Milestones 2F and 2G now pass that test for both linear colist `comap` and
+branching Boolean-cotree `map`.  The remaining decision is whether the generic
+derivation and operational layers justify a larger rewrite, not whether native
+constructor equations can survive the representation boundary.
 
 This plan grew out of the investigation in
 [`cofold-extraction-productivity.md`](cofold-extraction-productivity.md). That
@@ -683,9 +685,137 @@ only the dependent-equality assumption already identified in the generic
 container order.  It introduces no new axiom.
 
 This is enough to accept descriptor-indexed wrappers as viable for the colist
-slice.  It is not yet evidence that branching constructor equations and
-function-valued recursive positions remain equally clean; that is the next
-experiment.
+slice.  Milestone 2G below tests the corresponding branching boundary.
+
+## Milestone 2G checkpoint: branching Boolean cotrees
+
+Status on July 26, 2026: **the branching representation and operation slice
+also succeeds**.
+
+Three new modules implement the slice:
+
+- [`theories/generic/cotree_instance.v`](../theories/generic/cotree_instance.v)
+  defines the raw pointed container and native fixed-point conversions;
+- [`theories/generic/indexed_cotree_instance.v`](../theories/generic/indexed_cotree_instance.v)
+  registers the two descriptor capabilities and exposes the native boundary;
+- [`theories/generic/indexed_cotree_map.v`](../theories/generic/indexed_cotree_map.v)
+  derives indexed `tfold`/`tcofold` rules and reconstructs native `cotree_map`.
+
+The Boolean-cotree signature is:
+
+```text
+shape = bottom | leaf A | node
+position bottom   = Empty
+position (leaf a) = Empty
+position node     = bool
+```
+
+Its initial and final fixed points convert to `atree bool A` and
+`cotree bool A`.  Both round trips are proved, with the coinductive ones first
+stated as structural bisimulations.  Generic approximation is exactly native
+`atree_le`/`cotree_le`; generic inclusion computes as `tinj`; and generic
+truncation computes as `tprefix`.
+
+### Indexed specialization and instance reuse
+
+The concrete indexed module registers only:
+
+```text
+DecidableBottom (cotree_pointed_container A)
+FinitePositions (cotree_pointed_container A)
+```
+
+It declares no cotree-specific wrapper `OType`, `Compact`, `CPO`, `Dense`, or
+`aCPO`.  The durable smoke test elaborates directly to:
+
+```text
+aCPO_indexed_container
+  (cotree_pointed_container A)
+  (DecidableBottom_cotree A)
+  (FinitePositions_cotree A)
+```
+
+The public boundary remains native:
+
+```text
+indexed_value_to_cotree (incl (atree_to_indexed_basis t)) = tinj t
+indexed_basis_to_atree (ideal (cotree_to_indexed_value t) n) = tprefix n t
+scott_compact (incl (atree_to_indexed_basis t))
+```
+
+Thus the wrapper result from Milestone 2E is not colist-specific.
+
+### Branching `tcofold` and `cotree_map`
+
+The reusable specialization API contains:
+
+```text
+indexed_tfold
+indexed_co_tfold
+indexed_tcofold
+indexed_co_tfold_bot' / leaf' / node'
+indexed_tcofold_bot' / leaf' / node'
+```
+
+The node theorem is the decisive case.  Each Boolean child supplies its own
+indexed ideal chain.  `supremum_apply` assembles their suprema into a
+pointwise function-space supremum, and `wcontinuous` transports that supremum
+through the node algebra.  The shifted parent truncation is identified with
+one node layer over the child truncations.  All wrapper and supremum reasoning
+is confined to this reusable theorem.
+
+The reconstructed map has native statements:
+
+```text
+continuous (indexed_cotree_map f)
+indexed_cotree_map f cobot = cobot
+indexed_cotree_map f (coleaf a) = coleaf (f a)
+indexed_cotree_map f (conode k) = conode (indexed_cotree_map f ∘ k)
+indexed_cotree_map f (tinj t) = tinj (atree_map f t)
+```
+
+The operation-level node proof applies `indexed_tcofold_node'` and discharges
+only `wcontinuous conode` using the existing continuity theorem.  It contains
+no container shape, position, wrapper conversion, or dependent transport.
+The old `cotree_map` is used only afterward as a coinductive regression oracle.
+
+Two internal elaboration details are worth retaining as design evidence:
+
+- under the nested child function, simplification exposed the generic
+  `value_ideal` projection before the native ideal rewrite could fire; the
+  reusable node proof therefore unfolds the wrapper projections once and uses
+  the raw truncation theorem pointwise;
+- Coq initially inferred the node algebra as an implicit argument of the
+  computation theorem.  An explicit `Arguments` declaration makes `leaf`,
+  `node`, and `children` visible at call sites and restores predictable
+  operation proofs.
+
+These are specialization-API issues, not transports in client theorems.  They
+support providing deliberate simplification and argument declarations rather
+than relying on automatic unfolding.
+
+### Milestone 2G assumption audit
+
+| Result | Assumptions |
+|---|---|
+| Shape, position, capabilities, raw conversions, and coinductive round trips as bisimulations | none |
+| Initial-algebra round trips as Coq equalities | functional extensionality, because node and even nullary child functions must be equated |
+| Native/indexed order and continuity bridges | `Eq_rect_eq.eq_rect_eq` inherited from the generic wrapper order; no `cotree_ext` |
+| Indexed `tfold` node rule and native map continuity | functional extensionality, classical logic, constructive indefinite description, and `Eq_rect_eq.eq_rect_eq` inherited from the generic `aCPO` |
+| Native map constructor, finite-tree, and regression equalities | the preceding assumptions plus the existing `cotree_ext` axiom |
+
+The existing native `cotree_map` equations have the same assumptions except
+for `Eq_rect_eq.eq_rect_eq`.  As in the colist experiment, dependent equality
+is the only additional axiom and is inherited from the current generic
+container order; the branching construction introduces no new axiom.
+
+The two operation slices now establish that enriched containers are a viable
+semantic backend for both linear and finitely branching types.  They do not
+show that handwritten specialization is economical: the raw conversion and
+order proofs remain substantial and structurally repetitive.  A functor-code
+language is therefore most plausible as a derivation frontend over this
+container semantics, not as a replacement motivated by failed proof
+ergonomics.
 
 ## Motivation
 
@@ -1091,10 +1221,10 @@ from structural recursion on the native list basis and the generically supplied
 continuous extension.  It recovers continuity and native `conil`/`cocons`
 equations, and factors the shifted-supremum reasoning into reusable indexed
 `cofold` rules so routine proofs do not mention containers or conversions.
-
-Repeat only the essential fixed-point and truncation results for Boolean
-cotrees. Success on cotrees is the first evidence that the abstraction is not
-colist-specific.
+Milestone 2G repeats the boundary for Boolean cotrees, reuses the same generic
+instance stack, derives branching `tfold`/`tcofold` computation rules, and
+recovers the native `cotree_map` node equation.  This is the first evidence
+that the abstraction is not colist-specific.
 
 ### Milestone 3: lifted operational fixed point
 
@@ -1268,27 +1398,20 @@ representation rewrite are separate decisions.
 
 ## Immediate next experiment
 
-Milestone 2F completes the colist algebraic-operation slice.  The next
-informative task is the smallest branching test:
+Milestones 2F and 2G complete linear and branching algebraic-operation slices.
+The next informative task is consolidation rather than a third datatype:
 
-1. Instantiate the descriptor-indexed wrappers for the existing Boolean
-   cotree signature while preserving native `atree` and `cotree` at the public
-   boundary.
-2. Reuse the generic compactness, truncation, density, and `aCPO` stack without
-   declaring a concrete replacement stack.
-3. Specialize structural recursion on the native finite-tree basis and derive
-   one representative continuous operation.
-4. Recover the native leaf/node equations, especially the function-valued
-   family of recursive children, through a reusable computation theorem rather
-   than an operation-specific supremum proof.
-5. Compare statement size, proof size, assumptions, elaboration failures, and
-   error messages with the current cotree development.
-6. Use the result to decide whether enriched containers remain a satisfactory
-   semantic backend or whether functor codes would materially improve the
-   derivation and specialization interface.
-
-Do not add a functor-code language yet.  If this slice succeeds but the
-one-time instance contains repetitive structural boilerplate, codes become a
-promising derivation frontend with containers as their semantic backend.  If
-the user-facing proof remains transport-heavy, adding another abstraction
-layer would not address the primary failure.
+1. Compare the colist and cotree descriptor, conversion, order-correspondence,
+   inclusion, truncation, and computation-rule modules field by field.
+2. Separate genuinely type-specific native isomorphism proofs from structural
+   boilerplate that can be derived from a signature description.
+3. Specify the smallest derivation frontend needed to generate descriptors,
+   capabilities, indexed fold interfaces, simplification lemmas, and argument
+   declarations while retaining containers as the semantic backend.
+4. Prototype a functor-code layer only if it eliminates measured duplication;
+   do not replace the already-working container theorems.
+5. Decide whether that frontend is sufficiently small and proof-transparent to
+   justify an AlgCo 2 rewrite, or whether the generic core should remain an
+   optional library beneath hand-written native modules.
+6. Once the semantic representation is settled, return to Milestone 3's
+   lifted operational fixed point and observation-indexed productivity.
