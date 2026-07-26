@@ -5,6 +5,7 @@ theories/axioms.v
 theories/cocwp.v
 theories/cocwp_facts.v
 theories/colist.v
+theories/productivity.v
 theories/conat.v
 theories/cotree.v
 theories/cotrie.v

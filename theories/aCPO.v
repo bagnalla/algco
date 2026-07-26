@@ -26,10 +26,17 @@ Create HintDb aCPO.
     still worth it? *)
 
 (** Just as the continuous functions are the approximable functions,
-    the (co)continuous properties are the approximable properties. A
-    continuous property is true globally whenever it is true locally
-    *somewhere*. A cocontinuous property is true globally whenever it
-    is true locally *everywhere*. *)
+    the (co)continuous properties are the approximable properties.  Because
+    [Prop] is ordered by implication, in this classical development a
+    continuous property is an omega-Scott-open predicate: it is true at a
+    directed limit exactly when it is true at some finite stage.  Dually, a
+    cocontinuous property behaves as an omega-Scott-closed predicate: it is
+    true at the limit exactly when it is true at every stage.
+
+    These are topological statements relative to an [OType].  They describe
+    finite computational observations only when that order represents
+    operational approximation; AlgCo also uses semantic orders such as
+    implication and the truth order on [bool]. *)
 
 Definition compact {A} `{OType A} (x : A) : Prop :=
   forall f : nat -> A, directed f -> supremum x f -> exists i, f i === x.
@@ -447,6 +454,8 @@ Qed.
     intros Hf Hg Heq; apply ext, co_unique; auto; rewrite Heq; reflexivity.
   Qed.
 
+  (** The basis-witness form of Scott openness: if an open property holds of
+      [a], it already holds of one element of [a]'s canonical ideal chain. *)
   Lemma continuous_incl_ideal (P : A -> Prop) (a : A) :
     continuous P ->
     P a ->

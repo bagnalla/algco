@@ -542,6 +542,15 @@ Proof.
       intro z; transitivity (f z); auto.
 Qed.
 
+(** A continuous function preserves suprema of the countable directed
+    families used by this development.
+
+    An important special case is [B = Prop], ordered by implication.  Then a
+    continuous predicate [P : A -> Prop] is upward closed and omega-Scott-open:
+    if [P] holds at the supremum of a directed family, it already holds at one
+    finite stage.  See [continuous_Prop_supremum] below.  "Omega" matters here:
+    the usual Scott topology quantifies over arbitrary directed sets, whereas
+    this interface quantifies over [nat]-indexed families. *)
 Definition continuous {A B : Type} `{OType A} `{OType B} (f : A -> B) :=
   forall g : nat -> A,
     directed g ->
@@ -1206,6 +1215,22 @@ Proof.
     eapply Hlub; auto.
   - intros [i Hi].
     eapply Hub; eauto.
+Qed.
+
+(** A continuous Prop-valued predicate is an omega-Scott-open observation.
+    This formulation uses [supremum_Prop'], and hence the development's
+    existing classical logic, to expose the finite witnessing stage. *)
+Lemma continuous_Prop_supremum {A : Type} `{OType A}
+  (P : A -> Prop) (f : nat -> A) (x : A) :
+  continuous P ->
+  directed f ->
+  supremum x f ->
+  (P x <-> exists i, P (f i)).
+Proof.
+  intros HP Hdirected Hsupremum.
+  specialize (HP f Hdirected x Hsupremum).
+  apply supremum_Prop' in HP.
+  unfold compose in HP; exact HP.
 Qed.
 
 Lemma infimum_Prop (P : Prop) (f : nat -> Prop) :
