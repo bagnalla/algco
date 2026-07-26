@@ -5,9 +5,11 @@
 The original working notes behind this unfinished idea have now been recovered
 from `/mnt/c/Users/nubin/Dropbox/notes/reals.txt`, last modified May 16, 2023.
 They propose a semantic notion of productivity stated using compact input
-approximations, strict output progress, and maximal output values. That proposal
-has not been formalized, and several side conditions were left implicit. A
-verbatim copy of the relevant passage is preserved in the appendix below.
+approximations, strict output progress, and maximal output values. The original
+proposal has not been formalized verbatim, and several side conditions were
+left implicit. A corrected observation-indexed replacement has now been
+formalized in [`theories/productivity.v`](../theories/productivity.v). A
+verbatim copy of the recovered passage is preserved in the appendix below.
 
 The recovered definition identifies an important direction, but arbitrary
 strict output progress is not by itself a characterization of totality. A
@@ -25,6 +27,16 @@ it cannot play that role uniformly because AlgCo also uses non-operational
 orders such as implication on `Prop` and `false ⊑ true` on `bool`. A final
 correctness result must separately establish semantic soundness, operational
 adequacy, and productivity of the extracted computation.
+
+The first operational regression model is now formalized in
+[`theories/cofold_operational.v`](../theories/cofold_operational.v). It uses
+`option bool` to distinguish a pending computation from a returned `false`,
+models the lazy demand behavior of `colist_existsb`, and proves that every
+returned finite result agrees with the AlgCo denotation. It also proves the
+central counterexample: `bad_bool` denotes `false`, while no finite operational
+evaluation returns any Boolean. This initial model treats colist constructors
+and predicate applications as atomic and terminating; a generic lifted
+`cofold` and an adequacy connection to target-language evaluation remain open.
 
 ## The present development
 
