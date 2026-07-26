@@ -25,9 +25,11 @@ A rewrite is justified only if one complete vertical slice is clearer and at
 least as usable as the current type-specific development. Until that decision
 point, all generic work should live alongside the current modules.
 Milestones 2F and 2G now pass that test for both linear colist `comap` and
-branching Boolean-cotree `map`.  The remaining decision is whether the generic
-derivation and operational layers justify a larger rewrite, not whether native
-constructor equations can survive the representation boundary.
+branching Boolean-cotree `map`, and Milestone 2H isolates the smallest
+derivation experiment justified by their duplication.  The remaining decision
+is whether that frontend and the operational layer justify a larger rewrite,
+not whether native constructor equations can survive the representation
+boundary.
 
 This plan grew out of the investigation in
 [`cofold-extraction-productivity.md`](cofold-extraction-productivity.md). That
@@ -817,6 +819,248 @@ language is therefore most plausible as a derivation frontend over this
 container semantics, not as a replacement motivated by failed proof
 ergonomics.
 
+## Milestone 2H checkpoint: specialization audit and frontend boundary
+
+Status on July 26, 2026: **the audit is complete and a minimal implementation
+experiment is specified**.
+
+This checkpoint compares the complete colist and Boolean-cotree slices before
+introducing another representation.  The six specialization modules contain
+1,817 lines in total:
+
+| Layer | Colist | Boolean cotree |
+|---|---:|---:|
+| Raw descriptor, conversions, and order correspondence | 493 | 393 |
+| Descriptor-indexed native boundary | 161 | 168 |
+| Fold/cofold rules and reconstructed map | 267 | 335 |
+
+The colist raw module also contains an older concrete `OType`/`CPO`/`aCPO`
+instance stack that the cotree slice deliberately does not repeat.  It should
+not be counted as a requirement for a future specialization.  Conversely, the
+larger cotree operation module contains the genuinely new function-space
+argument for a branching node.  Raw line counts therefore overstate exact
+duplication, but they identify the two large repeated seams: native
+presentation plumbing and fold/cofold infrastructure.
+
+### Field-by-field classification
+
+| Material in the two slices | Classification | Intended home |
+|---|---|---|
+| Shape and position definitions | Derivable from a small strictly-positive code | Frontend interpretation into `container` |
+| Distinguished nullary bottom, its decision procedure, and finite position enumeration | Derivable when pointedness and finite recursive families are represented by the code | Frontend capabilities |
+| `μ`/native-basis conversions and their inverse proofs | Inherently tied to the chosen native datatype unless that datatype is generated too | Native presentation obligation |
+| `ν`/native-value conversions and bisimulation round trips | Inherently tied to the native coinductive constructors and equality | Native presentation obligation |
+| Generic/native order correspondence | Structurally regular, but its proof analyzes the native order constructors | Native presentation obligation, packaged once |
+| Inclusion and truncation as `inj`/`prefix` or `tinj`/`tprefix` | Type-specific commuting laws with a common statement schema | Native presentation obligation |
+| Indexed aliases and `DecidableBottom`/`FinitePositions` registrations | Entirely derivable | Frontend |
+| Wrapper conversions and basis-conversion monotonicity | Derivable from a packaged order isomorphism | Generic native-presentation layer |
+| Native-to-indexed monotonicity and continuity | The two proofs are the same order-isomorphism argument | Generic native-presentation layer |
+| Indexed inclusion, ideal, and Scott-compactness corollaries | Derivable from the presentation laws and existing container theorems | Generic native-presentation layer |
+| Structural basis fold and continuous extension | Container-generic; code generation would duplicate a theorem | Generic container backend |
+| Shifted-supremum constructor proof | Container-generic once each algebra branch is weakly continuous | Generic container backend |
+| Named native constructor equations and useful `Arguments` declarations | A thin, type-specific public facade; Gallina data cannot emit commands or theorem names | Native specialization module |
+| `amap`, `atree_cotree_map`, algebra continuity, finite-input results, and regression against old operations | Operation-specific | Client/program module |
+
+The most important correction to the earlier plan is that a frontend should
+not generate a colist fold theorem and a cotree fold theorem independently.
+The shifted-supremum argument in both modules has the same source: depth
+`S n` exposes one container layer over the depth-`n` child approximants.  It
+belongs in one theorem over `Basis S` and `Value S`.  Branching changes only
+the continuity obligation for the algebra at a shape; `supremum_apply` already
+handles its pointwise child family.
+
+The other important boundary is negative.  A signature code cannot derive an
+isomorphism to an independently declared native `list`, `colist`, `atree`, or
+`cotree` merely by computation.  Claiming otherwise would either hide the
+same proofs in automation or require the frontend to generate the native
+datatypes themselves.  The first prototype should package and reuse these
+proofs, not pretend to eliminate them.
+
+### Minimal code language
+
+The smallest compositional grammar needed by the two completed slices is:
+
+```text
+D ::= K A                 constant payload
+    | Rᶠ I                an I-indexed finite family of recursive occurrences
+    | D + D               choice of constructor form
+    | D × D               paired fields
+
+P D ::= 1 + D             canonical pointed signature
+```
+
+Its ordinary functor interpretation is:
+
+```text
+⟦K A⟧ X     = A
+⟦Rᶠ I⟧ X    = I → X
+⟦D + E⟧ X   = ⟦D⟧ X + ⟦E⟧ X
+⟦D × E⟧ X   = ⟦D⟧ X × ⟦E⟧ X
+⟦P D⟧ X     = 1 + ⟦D⟧ X
+```
+
+The frontend compiles this interpretation to the already-tested `container`
+representation; it does not introduce a second fixed-point semantics.  The
+left `1` of `P D` is the distinguished semantic bottom.  Its position type is
+empty, and the outer sum gives a canonical bottom-shape decision.  Position
+enumeration is derived structurally.  `Rᶠ I` therefore carries an explicit
+finite enumeration of `I`; arbitrary constant payloads need no finiteness
+assumption because they contribute no recursive positions.  Write `R` for
+`Rᶠ unit`.
+
+The two existing signatures become:
+
+```text
+ColistCode A = P (K A × R)
+CotreeCode A = P (K A + Rᶠ bool)
+```
+
+`K unit` can serve as a nonbottom nullary constructor, so no additional
+constructor is needed for the present experiment.
+
+A general field-former `Πᶠ i : I. D i` is deliberately absent.  Its standard
+container compilation uses a function of component shapes.  Even the special
+case `Π b : bool. R` then has shapes of type `bool → unit`, introducing
+functional extensionality and multiple intensional representatives for what
+should be the single cotree-node shape.  The primitive `Rᶠ I` compiles
+canonically to one shape with position type `I`.  General dependent fields can
+be reconsidered only when a datatype requires them.  Empty signatures, nested
+types, ordered payloads, and negative occurrences are likewise outside the
+first grammar.
+
+The code must have an explicit interpretation.  It is a frontend for defining
+one canonical pointed container and its computational capabilities, not an
+alternative axiomatization of `μ`, `ν`, approximation, or algebraicity.
+
+### Native presentation package
+
+The frontend alone stops at generic fixed points.  A separate presentation
+record should connect them to the public native types.  In schematic form it
+contains:
+
+```text
+NativePresentation D:
+  NativeBasis, NativeValue
+
+  basis_to_generic : NativeBasis → Basis ⟦P D⟧
+  basis_to_native  : Basis ⟦P D⟧ → NativeBasis
+  value_to_generic : NativeValue → Value ⟦P D⟧
+  value_to_native  : Value ⟦P D⟧ → NativeValue
+
+  basis round trips
+  value round trips, initially up to the native equivalence
+  basis-order correspondence
+  value-order correspondence
+  inclusion commuting law
+  truncation commuting law
+```
+
+This package should state order and coinductive laws using equivalence where
+possible.  Conversion to Coq equality remains a specialization corollary and
+may use the existing native extensionality axiom.  Generic lemmas can then
+derive the indexed conversion wrappers, monotonicity, continuity, ideal
+equation, inclusion equation, and compactness result.  The duplicated
+continuity proofs in `indexed_colist_instance.v` and
+`indexed_cotree_instance.v` should disappear.
+
+The package is a proof boundary, not a new global instance stack.  Its
+descriptor remains explicit, and the generic kernel should not ask typeclass
+search to reconstruct a proof-rich presentation from a projected carrier.
+
+### Generic fold/cofold target
+
+Before implementing syntax, factor the operation-independent core into a
+generic container theorem.  For a pointed algebra
+
+```text
+α : ∀ s, (position s → B) → B
+```
+
+define structural recursion on `Basis S` and extend it continuously to
+`Value S`.  Under a pointed result type, a bottom equation for the designated
+shape, and weak continuity of every `α s`, the target computation rule is:
+
+```text
+cofold α (in_value s children)
+  === α s (fun p => cofold α (children p))
+```
+
+The exact general theorem may retain the more permissive base-value premises
+used by `indexed_co_fold`; the first frontend only needs the pointed
+specialization.  One theorem must instantiate to all of:
+
+```text
+cofold step conil
+cofold step (cocons a l)
+tcofold leaf node cobot
+tcofold leaf node (coleaf a)
+tcofold leaf node (conode children)
+```
+
+This is the highest-value and highest-risk part of the next implementation
+slice.  If the apparent common theorem requires type-specific truncation
+reasoning after all, a code frontend would hide duplication rather than remove
+it.
+
+### What the first frontend should and should not produce
+
+It should produce, by transparent definitions and ordinary lemmas:
+
+- the interpreted `container` and `pointed_container`;
+- canonical `DecidableBottom` and `FinitePositions` capabilities;
+- descriptor-indexed `Basis` and `Value` aliases;
+- the generic fold/cofold interface and its shape-indexed computation theorem;
+- generic consequences of a supplied `NativePresentation`;
+- predictable simplification lemmas for wrapper projections.
+
+It should not attempt to produce:
+
+- native inductive or coinductive declarations;
+- native conversion functions or their round-trip proofs;
+- native order-correspondence proofs;
+- native extensionality principles;
+- operation algebras or their continuity proofs;
+- theorem names, hint registrations, or `Arguments` commands through heavy
+  metaprogramming.
+
+The last group should remain a short handwritten facade in the first version.
+If those declarations are still numerous after the semantic duplication is
+removed, lightweight generation can be evaluated separately.  MetaCoq, Elpi,
+or a custom plugin is not justified by the present evidence.
+
+### Implementation experiment and acceptance gate
+
+The next slice should proceed in this order:
+
+1. Add a generic structural fold and prove its continuous-extension layer
+   equation over the existing indexed container backend.
+2. Add the minimal constant/finite-recursion/sum/product grammar and transparent
+   compilation to containers, deriving pointedness and finite-position
+   capabilities.
+3. Add the native-presentation package and derive its wrapper-level order and
+   continuity consequences.
+4. Define parallel coded colist and cotree descriptors without deleting the
+   current modules.
+5. Recover the existing native `comap` and `cotree_map` constructor proofs
+   through the common fold theorem.
+6. Compare declarations, proof terms, build assumptions, error messages, and
+   extraction boundaries against Milestones 2F and 2G.
+
+The experiment succeeds only if:
+
+- the shifted-supremum proof occurs once;
+- descriptor capability registrations are no longer handwritten per type;
+- the native-to-indexed continuity bridge occurs once;
+- public operation equations retain their current native statements and short
+  continuity-only proofs;
+- no new axiom appears in the assumption audit; and
+- the remaining handwritten presentation laws are visibly about the native
+  datatype rather than wrapper bookkeeping.
+
+This gate measures reduction of real duplication, not merely movement of the
+same proof scripts behind tactics.  Operational lifting remains the following
+milestone once this representation decision is settled.
+
 ## Motivation
 
 AlgCo already follows the initial-algebra/final-coalgebra pattern
@@ -1224,7 +1468,10 @@ equations, and factors the shifted-supremum reasoning into reusable indexed
 Milestone 2G repeats the boundary for Boolean cotrees, reuses the same generic
 instance stack, derives branching `tfold`/`tcofold` computation rules, and
 recovers the native `cotree_map` node equation.  This is the first evidence
-that the abstraction is not colist-specific.
+that the abstraction is not colist-specific.  Milestone 2H audits both slices,
+separates generic fold and wrapper theorems from unavoidable native
+presentation obligations, and specifies a minimal pointed-polynomial frontend
+with an explicit container interpretation.
 
 ### Milestone 3: lifted operational fixed point
 
@@ -1398,20 +1645,20 @@ representation rewrite are separate decisions.
 
 ## Immediate next experiment
 
-Milestones 2F and 2G complete linear and branching algebraic-operation slices.
-The next informative task is consolidation rather than a third datatype:
+Milestone 2H completes the consolidation audit and narrows the frontend.  The
+next informative task is its first implementation gate:
 
-1. Compare the colist and cotree descriptor, conversion, order-correspondence,
-   inclusion, truncation, and computation-rule modules field by field.
-2. Separate genuinely type-specific native isomorphism proofs from structural
-   boilerplate that can be derived from a signature description.
-3. Specify the smallest derivation frontend needed to generate descriptors,
-   capabilities, indexed fold interfaces, simplification lemmas, and argument
-   declarations while retaining containers as the semantic backend.
-4. Prototype a functor-code layer only if it eliminates measured duplication;
-   do not replace the already-working container theorems.
-5. Decide whether that frontend is sufficiently small and proof-transparent to
-   justify an AlgCo 2 rewrite, or whether the generic core should remain an
-   optional library beneath hand-written native modules.
-6. Once the semantic representation is settled, return to Milestone 3's
-   lifted operational fixed point and observation-indexed productivity.
+1. Prove one generic structural fold/continuous-extension layer theorem over
+   the existing indexed container backend.
+2. Check that it specializes to both colist cons and cotree leaf/node without
+   repeating shifted-supremum reasoning.
+3. Only then implement the minimal `K`/finite-recursion/sum/product code and
+   its transparent container interpretation.
+4. Add the native-presentation record and factor the duplicated indexed
+   monotonicity and continuity bridge through it.
+5. Re-express the two descriptors in parallel modules and compare the complete
+   native `comap`/`cotree_map` proof boundary; do not delete the current
+   regression oracles.
+6. If this gate passes, freeze the semantic representation and return to
+   Milestone 3's lifted operational fixed point and observation-indexed
+   productivity.
