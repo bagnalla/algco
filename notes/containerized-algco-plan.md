@@ -24,6 +24,8 @@ the one-time instance proof, but should not occur in routine program proofs.
 A rewrite is justified only if one complete vertical slice is clearer and at
 least as usable as the current type-specific development. Until that decision
 point, all generic work should live alongside the current modules.
+Milestone 2F now passes that test for colist `comap`; a branching type remains
+the next gate before drawing a rewrite conclusion.
 
 This plan grew out of the investigation in
 [`cofold-extraction-productivity.md`](cofold-extraction-productivity.md). That
@@ -160,12 +162,11 @@ path-explicit order formulation remains worth testing before treating this
 kernel as foundational; it is not necessary to answer the present ergonomics
 question.
 
-This is encouraging but not yet the decisive proof-ergonomics result.  The
-prototype has not derived the complete algebraic CPO structure or reconstructed
-a representative operation such as `comap`.  That vertical slice is the next
-gate: its definition, continuity proof, constructor equations, and ordinary
-program proofs should expose no container machinery and should be comparable
-in size and clarity to the current AlgCo proofs.
+At this checkpoint the prototype had not yet derived the complete algebraic
+CPO structure or reconstructed a representative operation such as `comap`.
+Milestones 2A through 2F below record that vertical slice, including its
+definition, continuity proof, constructor equations, and proof-ergonomics
+comparison.
 
 ## Milestone 2A checkpoint: directed completeness
 
@@ -225,9 +226,9 @@ visible inside the semantic supremum.  This is acceptable for the current
 semantic experiment but should be kept out of a public extracted runtime
 representation unless a specialization removes it.
 
-Compactness is complete as Milestone 2B below, and Milestone 2C completes
-density through truncation and the resulting `aCPO` instance.  `comap` remains
-the decisive test of the user-facing proof interface.
+Compactness is completed as Milestone 2B below, Milestone 2C completes density
+through truncation and the resulting `aCPO` instance, and Milestone 2F records
+the eventual `comap` test of the user-facing proof interface.
 
 ## Milestone 2B checkpoint: compactness of the generic basis
 
@@ -571,10 +572,10 @@ Two qualifications remain important:
   nullary-bottom proof.  A final design may separate signature data from this
   law more aggressively.
 
-The wrapper therefore solves the tested typeclass-resolution problem, but it
-does not by itself decide between containers and a functor-code language, nor
-does it establish user-facing proof ergonomics.  Reconstructing native
-`comap` is now the decisive test.
+The wrapper therefore solves the tested typeclass-resolution problem, but at
+the end of this checkpoint it did not by itself decide between containers and
+a functor-code language or establish operation-level proof ergonomics.
+Milestone 2F below records the decisive native `comap` test.
 
 ### Milestone 2E assumption audit
 
@@ -586,6 +587,105 @@ does it establish user-facing proof ergonomics.  Reconstructing native
 | Wrapper Scott-compactness theorem | the same three assumptions |
 
 No new axiom or universe constraint appears at the wrapper boundary.
+
+## Milestone 2F checkpoint: native `comap` through the indexed presentation
+
+Status on July 26, 2026: **the colist operation slice succeeds, including the
+proof-ergonomics criterion**.
+
+The new
+[`theories/generic/indexed_colist_comap.v`](../theories/generic/indexed_colist_comap.v)
+defines the native-list basis computation and extends it through the generic
+indexed `aCPO`:
+
+```text
+indexed_amap f b       = amap f (indexed_basis_to_list b)
+indexed_comap_value f  = co (indexed_amap f)
+indexed_comap f l      = indexed_comap_value f (colist_to_indexed_value l)
+```
+
+The operation accepts and returns native colists.  Its public results likewise
+mention only native constructors and operations:
+
+```text
+continuous (indexed_comap f)
+indexed_comap f conil = conil
+indexed_comap f (cocons a l) = cocons (f a) (indexed_comap f l)
+indexed_comap f (inj xs) = inj (List.map f xs)
+```
+
+The old `comap` is not used to prove any of these facts.  Only after the direct
+constructor equations are established does a coinductive regression theorem
+prove `indexed_comap f l = comap f l`.
+
+### Reusable `cofold` boundary
+
+Proving the `cocons` equation directly first exposed the same shifted-supremum
+argument that the existing `co_fold_cons` theorem hides.  Leaving that proof
+inside every operation would fail the ergonomics criterion.  The prototype
+therefore factors it into a one-time specialization API:
+
+```text
+indexed_fold
+indexed_co_fold
+indexed_cofold
+indexed_co_fold_nil'
+indexed_co_fold_cons'
+indexed_cofold_nil'
+indexed_cofold_cons'
+```
+
+`indexed_co_fold_cons'` drops the bottom approximation, transports the native
+prefix computation across the wrapper, and applies continuity to the tail
+supremum.  Once this is available, the `comap` constructor proof is again just
+an application of the `cofold` rule plus continuity of `cocons`, matching the
+shape of the current AlgCo proof.  The wrapper conversion and dependent
+container representation do not appear in the operation statement or its
+routine proof.
+
+There is one concrete implementation wrinkle.  The generic `co` definition
+uses the alias `basis A`, so the shifted-supremum proof must explicitly
+`unfold basis` before native ideal-computation lemmas rewrite.  This is local
+to the reusable specialization theorem, but it is evidence that AlgCo 2 should
+make the approximation presentation an explicit stable parameter instead of
+recovering it through an opaque typeclass-indexed alias.
+
+The native-to-indexed conversion is proved monotone and continuous once in
+`indexed_colist_instance.v`.  The proof deliberately uses the coinductive
+native/generic equivalence as an order equivalence rather than converting it
+to Coq equality.  Consequently, neither bridge theorem needs `colist_ext`.
+Native continuity is then a short composition of that bridge with generic
+continuity of `co`.
+
+### Proof and assumption comparison
+
+| Result | Comparison with existing `comap` |
+|---|---|
+| Basis-map monotonicity | one native monotonicity application plus the one-time basis conversion lemma |
+| Continuity | composition through the native/indexed bridge; no visible transport in the statement |
+| `conil` and `cocons` equations | same operation-level proof pattern after the reusable indexed `cofold` lemmas |
+| Finite-list equation | ordinary induction using the two native constructor equations |
+| Extensional equality | proved coinductively only as a final regression check |
+
+The assumption audit is:
+
+| Result | Assumptions |
+|---|---|
+| Native/indexed monotonicity and continuity bridges | `Eq_rect_eq.eq_rect_eq` inherited from the generic wrapper order |
+| Indexed basis-map monotonicity | the same dependent-equality assumption |
+| Indexed and native `comap` continuity | functional extensionality, classical logic, constructive indefinite description, and `Eq_rect_eq.eq_rect_eq` inherited from the generic `aCPO` |
+| Native constructor, basis-inclusion, finite-list, and regression equalities | the preceding assumptions plus the existing `colist_ext` axiom |
+
+The old `continuous_comap` has the same functional-extensionality, classical,
+and indefinite-description assumptions but not `Eq_rect_eq.eq_rect_eq`; its
+constructor equations already use `colist_ext`.  Thus the indexed route adds
+only the dependent-equality assumption already identified in the generic
+container order.  It introduces no new axiom.
+
+This is enough to accept descriptor-indexed wrappers as viable for the colist
+slice.  It is not yet evidence that branching constructor equations and
+function-valued recursive positions remain equally clean; that is the next
+experiment.
 
 ## Motivation
 
@@ -986,13 +1086,11 @@ Milestone 2D separately proves standard Scott compactness of every included
 constructing arbitrary directed suprema of `ν C`.  Milestone 2E wraps both
 fixed points in descriptor-indexed carriers and recovers the complete generic
 instance stack from two keyed capabilities; the colist specialization no
-longer reassembles that stack concretely.
-
-As the proof-ergonomics test, reconstruct `comap` from structural recursion on
-the native list basis and the generically supplied continuous extension.
-Recover its continuity and `conil`/`cocons` equations with statements that do
-not mention containers or conversions.  Compare those proof scripts directly
-with the current implementation before proceeding.
+longer reassembles that stack concretely.  Milestone 2F reconstructs `comap`
+from structural recursion on the native list basis and the generically supplied
+continuous extension.  It recovers continuity and native `conil`/`cocons`
+equations, and factors the shifted-supremum reasoning into reusable indexed
+`cofold` rules so routine proofs do not mention containers or conversions.
 
 Repeat only the essential fixed-point and truncation results for Boolean
 cotrees. Success on cotrees is the first evidence that the abstraction is not
@@ -1170,20 +1268,24 @@ representation rewrite are separate decisions.
 
 ## Immediate next experiment
 
-Milestones 1, 1.5, and 2A establish the representation, specialization
-boundary, and generic CPO.  The next informative task completes the
-algebraic-operation slice:
+Milestone 2F completes the colist algebraic-operation slice.  The next
+informative task is the smallest branching test:
 
-1. Use the finite position enumeration to prove compactness of `μ C`.
-2. Prove that the included truncation chain has supremum `x` and package the
-   generic `Dense` and `aCPO` instances.
-3. Expose the result to native colists without visible transports.
-4. Define the native-list basis map structurally and obtain `comap` by
-   continuous extension.
-5. Recover continuity and the two native constructor equations.
-6. Compare the resulting user proof with the existing `comap` development,
-   including required axioms, simplification behavior, error messages, and
-   proof length.
+1. Instantiate the descriptor-indexed wrappers for the existing Boolean
+   cotree signature while preserving native `atree` and `cotree` at the public
+   boundary.
+2. Reuse the generic compactness, truncation, density, and `aCPO` stack without
+   declaring a concrete replacement stack.
+3. Specialize structural recursion on the native finite-tree basis and derive
+   one representative continuous operation.
+4. Recover the native leaf/node equations, especially the function-valued
+   family of recursive children, through a reusable computation theorem rather
+   than an operation-specific supremum proof.
+5. Compare statement size, proof size, assumptions, elaboration failures, and
+   error messages with the current cotree development.
+6. Use the result to decide whether enriched containers remain a satisfactory
+   semantic backend or whether functor codes would materially improve the
+   derivation and specialization interface.
 
 Do not add a functor-code language yet.  If this slice succeeds but the
 one-time instance contains repetitive structural boilerplate, codes become a

@@ -13,6 +13,7 @@ theories/generic/algebraic_container.v
 theories/generic/indexed_container.v
 theories/generic/colist_instance.v
 theories/generic/indexed_colist_instance.v
+theories/generic/indexed_colist_comap.v
 theories/productivity.v
 theories/cofold_operational.v
 theories/conat.v

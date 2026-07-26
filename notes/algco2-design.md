@@ -13,9 +13,10 @@ The empirical record remains in:
 - [`cofold-extraction-productivity.md`](cofold-extraction-productivity.md), for
   the extraction problem and observation-indexed account of productivity.
 
-The rewrite gate is unchanged: a successor design must recover a complete
-vertical slice, including native proof ergonomics, before replacing any of the
-existing type-specific development.
+The rewrite gate remains conservative.  Milestone 2F recovers a complete
+native `comap` slice with competitive proof ergonomics, but a successor design
+should also pass a branching-type slice before replacing any existing
+type-specific development.
 
 ## Emerging design thesis
 
@@ -408,9 +409,30 @@ transport through representation isomorphisms.
 Milestone 2E passes the preliminary test: native colist statements for
 inclusion, truncation, and Scott compactness hide the wrappers, and the only
 nondefinitional supremum transport is proved once generically.  It deliberately
-uses no coercions.  The `comap` reconstruction remains the first decisive test
-of this boundary because it exercises definition, continuity, and constructor
-equations together.
+uses no coercions.
+
+Milestone 2F passes the operation-level test.  The basis map is ordinary
+structural recursion on a native list after one specialization conversion;
+continuous extension uses the generic indexed `aCPO`; and the resulting
+continuity and constructor statements mention only native colists.  The old
+`comap` appears only in a final regression theorem, after the new `conil` and
+`cocons` equations have been proved independently.
+
+The first direct `cocons` proof revealed an important placement rule.  It
+repeated the shifted-supremum argument hidden by AlgCo's existing
+`co_fold_cons`.  That argument is representation infrastructure, not an
+operation obligation.  Factoring it once into `indexed_co_fold` and
+`indexed_cofold` constructor rules restores the existing proof shape: the
+`comap` proof supplies only continuity of `cocons`.  AlgCo 2 should therefore
+derive or specialize fold/cofold computation principles together with each
+signature, rather than exposing only a bare algebraic CPO.
+
+One elaboration seam remains visible inside that reusable proof.  Rewriting a
+native ideal equation requires explicitly unfolding the current `basis A`
+alias.  This supports giving the approximation presentation a stable explicit
+identity, as proposed above, rather than recovering its basis type through an
+opaque typeclass-indexed abbreviation.  The seam does not occur in the public
+operation theorem.
 
 ## Provisional decisions
 
@@ -430,6 +452,8 @@ equations together.
 8. Retain a stable semantic descriptor in the generic `Basis S` and `Value S`
    type heads, while keying optional decidability and finiteness capabilities
    by `S` rather than putting them in the carrier index.
+9. Treat native fold/cofold computation rules as part of the specialization
+   boundary, not as proofs to repeat for each continuous operation.
 
 These are working decisions for experiments, not yet compatibility promises.
 
@@ -452,8 +476,9 @@ These are working decisions for experiments, not yet compatibility promises.
 - What is the cleanest division of monotonicity, continuity, density, and
   compact-basis laws between `Approx`, `Dense`, and the algebraic structure?
 - Which structure should contain ordered nonrecursive payload fields?
-- Can native constructor equations for `comap` be recovered without exposing
-  conversions or dependent transports?
+- Can the successful colist `cofold` specialization be generalized to
+  branching signatures so that function-valued recursive children also have
+  native constructor equations without visible transports?
 - How much of the semantic layer can remain constructive if operational
   productivity is treated separately?
 
@@ -462,15 +487,16 @@ These are working decisions for experiments, not yet compatibility promises.
 Sequential density and the generic `aCPO` were completed in Milestone 2C,
 Milestone 2D proves Scott compactness for arbitrary nonempty directed
 families, and Milestone 2E confirms deterministic generic instance reuse for
-descriptor-indexed wrappers.  The remaining experiments are:
+descriptor-indexed wrappers.  Milestone 2F reconstructs native colist `comap`
+and restores short operation proofs through reusable indexed `cofold` rules.
+The remaining experiments are:
 
-1. Reconstruct native colist `comap` using the wrapper-supplied algebraic
-   structure, and compare its definition, continuity proof, constructor
-   equations, and client proof scripts directly with the existing
-   implementation.
-2. If that boundary remains ergonomic, repeat only the essential wrapper and
-   operation results for a branching cotree signature while auditing
-   capability coherence.
-3. Use those results, rather than the elegance of the generic kernel alone,
-   to choose between wrappers, descriptor-indexed fixed points, and a code
-   language, and to decide whether a larger rewrite is justified.
+1. Repeat only the essential wrapper, approximation, and operation results for
+   a Boolean cotree signature, deriving a reusable native node computation
+   rule for its family of recursive children.
+2. Audit whether capability coherence, transports, and typeclass elaboration
+   remain confined to the one-time specialization boundary in that branching
+   case.
+3. Use both vertical slices, rather than the elegance of the generic kernel
+   alone, to choose between wrappers, descriptor-indexed fixed points, and a
+   code language, and to decide whether a larger rewrite is justified.

@@ -18,6 +18,7 @@ From algco Require Import
 From algco.generic Require Import
   indexed_container
   colist_instance
+  pointed_container
   scott_container
 .
 
@@ -54,6 +55,12 @@ Definition indexed_basis_to_list {A : Type} (x : indexed_colist_basis A) :
   list A :=
   mu_to_list (basis_carrier x).
 
+Lemma monotone_indexed_basis_to_list {A : Type} :
+  monotone (@indexed_basis_to_list A).
+Proof.
+  intros [x] [y] Hxy; apply mu_le_to_list_le; exact Hxy.
+Qed.
+
 Definition colist_to_indexed_value {A : Type} (l : colist A) :
   indexed_colist_value A :=
   @Build_Value (colist_pointed_container A) (colist_to_nu l).
@@ -61,6 +68,47 @@ Definition colist_to_indexed_value {A : Type} (l : colist A) :
 Definition indexed_value_to_colist {A : Type} (x : indexed_colist_value A) :
   colist A :=
   nu_to_colist (value_carrier x).
+
+(** The native-to-indexed conversion is an order embedding and preserves the
+    sequential suprema used by [co].  These lemmas are part of the one-time
+    specialization boundary rather than obligations for each operation. *)
+Lemma monotone_colist_to_indexed_value {A : Type} :
+  monotone (@colist_to_indexed_value A).
+Proof.
+  intros x y Hxy.
+  change
+    (nu_le (colist_pointed_container A) (colist_to_nu x) (colist_to_nu y)).
+  apply colist_le_to_nu_le.
+  pose proof (@nu_to_colist_colist_to_nu A x) as Hx.
+  pose proof (@nu_to_colist_colist_to_nu A y) as Hy.
+  apply colist_eq_equ in Hx; apply colist_eq_equ in Hy.
+  destruct Hx as [Hcx _]; destruct Hy as [_ Hyc].
+  etransitivity; [exact Hcx |].
+  etransitivity; [exact Hxy | exact Hyc].
+Qed.
+
+Lemma continuous_colist_to_indexed_value {A : Type} :
+  continuous (@colist_to_indexed_value A).
+Proof.
+  intros d Hdirected limit Hsup; split.
+  - intro i; apply monotone_colist_to_indexed_value, (proj1 Hsup).
+  - intros [ub] Hub.
+    change
+      (nu_le (colist_pointed_container A) (colist_to_nu limit) ub).
+    apply colist_le_to_nu_le.
+    pose proof (@nu_to_colist_colist_to_nu A limit) as Hlimit.
+    apply colist_eq_equ in Hlimit; destruct Hlimit as [Hconverted _].
+    etransitivity; [exact Hconverted |].
+    apply (proj2 Hsup); intro i.
+    specialize (Hub i).
+    change
+      (nu_le (colist_pointed_container A) (colist_to_nu (d i)) ub)
+      in Hub.
+    apply nu_le_to_colist_le in Hub.
+    pose proof (@nu_to_colist_colist_to_nu A (d i)) as Hi.
+    apply colist_eq_equ in Hi; destruct Hi as [_ Hnative].
+    etransitivity; [exact Hnative | exact Hub].
+Qed.
 
 Lemma indexed_basis_to_list_to_basis {A : Type} (l : list A) :
   indexed_basis_to_list (list_to_indexed_basis l) = l.
