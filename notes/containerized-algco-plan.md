@@ -27,8 +27,10 @@ point, all generic work should live alongside the current modules.
 Milestones 2F and 2G now pass that test for both linear colist `comap` and
 branching Boolean-cotree `map`, Milestone 2H isolates the smallest derivation
 experiment justified by their duplication, and Milestone 2I successfully
-factors their fold/cofold layer theorem.  The remaining decision is whether the
-signature frontend and operational layer justify a larger rewrite, not whether
+factors their fold/cofold layer theorem.  Milestone 2J then shows that semantic
+container combinators derive the required descriptor capabilities without a
+reified code language.  The remaining decision is whether native-presentation
+factoring and the operational layer justify a larger rewrite, not whether
 native constructor equations can survive the representation boundary.
 
 This plan grew out of the investigation in
@@ -1128,9 +1130,10 @@ would normally retain reconstruction as the law that makes the sequence a
 genuine presentation of each value, without also requiring every approximant
 to be compact.  An infinite-branching test case should then determine whether
 the generic layer theorem can be restated with that weaker structure.  This
-refactoring is not a prerequisite for the first code frontend: its initial
-`Rᶠ I` fragment is deliberately finitary, so the frontend can proceed while
-keeping this coupling visible as a later generalization boundary.
+refactoring is not a prerequisite for the direct-combinator experiment: its
+recursive-family primitive is deliberately finitary, so that experiment can
+proceed while keeping this coupling visible as a later generalization
+boundary.
 
 ### Three computation rules, one recursive argument
 
@@ -1239,13 +1242,125 @@ three operation modules confirms that `shift_supremum''` occurs only in
 
 ### Checkpoint decision
 
-The highest-risk semantic part of the frontend experiment has passed.  The
-next step is now the minimal `K`/`Rᶠ`/sum/product syntax and its transparent
-interpretation into the existing containers.  It should first reproduce the
-current colist and Boolean-cotree descriptors and derive their bottom and
-finite-position capabilities.  The `NativePresentation` packaging experiment
-follows only after that interpretation remains transparent and elaborates
-predictably.
+The highest-risk semantic part of the frontend experiment has passed.  At
+this checkpoint the proposed next step was a minimal `K`/`Rᶠ`/sum/product
+syntax.  Milestone 2J tests the strictly smaller alternative first: semantic
+container combinators carrying their finiteness evidence directly.
+
+## Milestone 2J checkpoint: semantic container combinators
+
+Status on July 26, 2026: **direct combinators derive the required structural
+facts; a reified code frontend is not presently justified**.
+
+The experiment is split into three modules:
+
+- [`theories/generic/container_combinators.v`](../theories/generic/container_combinators.v)
+  defines the pure semantic constructors and carries finite-position evidence;
+- [`theories/generic/indexed_container_combinators.v`](../theories/generic/indexed_container_combinators.v)
+  bridges that evidence to `DecidableBottom` and `FinitePositions`; and
+- [`theories/generic/container_combinator_examples.v`](../theories/generic/container_combinator_examples.v)
+  assembles parallel colist and Boolean-cotree descriptors and exercises the
+  generic fold rules.
+
+### Semantic interface
+
+`finite_index` packages an index type, an enumeration, and its completeness
+proof.  `finitary_container` packages an ordinary `container` with a complete
+enumeration of each shape's recursive positions.  The constructors immediately
+return this semantic bundle:
+
+```text
+finitary_constant A
+finitary_recursive I
+finitary_sum C D
+finitary_product C D
+```
+
+There is no signature AST and no interpretation function.  Constants may have
+arbitrary shape types because they contribute no recursive positions.
+Products enumerate the coproduct of their components' position types, while
+sums select the positions of the chosen shape.
+
+`finitary_point C` adds the outer nullary bottom shape.  Its bottom test is
+derived by case analysis on the outer sum, and its position enumeration is
+empty at bottom and inherited from `C` otherwise.  The pure module can package
+the result as the existing `finitary_pointed_container`; the separate indexed
+bridge registers:
+
+```text
+DecidableBottom (finitary_point C)
+FinitePositions (finitary_point C)
+```
+
+The important elaboration detail is that `C` remains in the descriptor head.
+Typeclass resolution receives the evidence-bearing bundle directly; it is not
+asked to reconstruct a finitary descriptor from a projected carrier, which is
+the inference problem encountered in Milestone 2E.
+
+### Two composed signatures
+
+The examples use the semantic equations formerly proposed as codes:
+
+```text
+ComposedColist A = point (constant A × recursive unit)
+ComposedCotree A = point (constant A + recursive bool)
+```
+
+For both descriptors, declarations of `value_fold` elaborate without naming
+either capability instance.  Complete basis-fold equations and value-fold
+bottom/cons and bottom/leaf/node equations also compile through the generic
+rules.
+
+The proof ergonomics are acceptable but expose the ordinary container
+encoding in two small places:
+
+- a product's positions form a coproduct, so the colist tail position is
+  `inr tt` rather than `tt`; a named `composed_colist_tail_position` hides it;
+- applications of the generic value-fold rules still spell out the descriptor
+  because Coq cannot infer it from a projected shape.  This is the same local
+  specialization-boundary annotation required by the handwritten descriptors.
+
+The cotree node position reduces definitionally to `bool`, so its branching
+algebra retains the desired `(bool → B) → B` type.  Named bottom, cons, leaf,
+and node shapes prevent nested sums and products from entering theorem
+statements.
+
+### What an explicit code would add
+
+This checkpoint corrects the earlier motivation for codes.  An arbitrary
+plain `container` does not determine a bottom shape or finite enumerations, but
+a container assembled through evidence-preserving combinators does provide
+those facts by construction.  A reified code would not improve that result.
+
+The distinctive extra feature of a code is induction over the way a signature
+was assembled.  That is useful only if a later generic transformation must
+distinguish constants, choices, products, and recursive fields rather than
+operate on the resulting shapes, positions, pointedness, and enumeration.
+Operational lifting is the remaining plausible test.  Until it demonstrates
+that need, adding an AST and interpretation layer would create a second
+description without eliminating any established obligation.
+
+### Milestone 2J assumption audit
+
+| Result | Assumptions |
+|---|---|
+| Container constructors, finite enumerations, pointing, and capability bridge | none |
+| Composed colist/cotree basis-fold equations | none |
+| Composed colist/cotree value-fold equations | `Eq_rect_eq.eq_rect_eq`, classical logic, and constructive indefinite description inherited from the existing indexed `aCPO` and selected supremum |
+
+No functional extensionality is needed by the composed Boolean-node equation;
+it enters the old specialization only when relating the generic fold to native
+`tfold`.  A full `make -B` and `coqchk` over the new modules pass, and no new
+axiom appears.
+
+### Checkpoint decision
+
+Do not implement the pointed-polynomial code AST now.  Retain the direct
+semantic combinators and proceed to the `NativePresentation` experiment,
+which tests the larger remaining source of specialization plumbing.  When the
+operational lifting begins, first attempt it over pointed containers and their
+capabilities.  Introduce reified codes only if that construction genuinely
+requires structural recursion over signature syntax.
 
 ## Motivation
 
@@ -1832,20 +1947,20 @@ representation rewrite are separate decisions.
 
 ## Immediate next experiment
 
-Milestone 2I passes the generic fold/cofold implementation gate.  The next
-informative task is the syntax frontend:
+Milestone 2J removes capability derivation as a reason to add reified syntax.
+The next informative task is the native-presentation boundary:
 
-1. Implement the minimal `K`/`Rᶠ`/sum/product code with a transparent
-   interpretation into `container`.
-2. Add the canonical outer bottom and derive `DecidableBottom` and
-   `FinitePositions` structurally from a code.
-3. Re-express the colist and Boolean-cotree descriptors in parallel modules,
-   proving that their indexed basis/value and fold APIs recover the current
-   ones without exposing transports.
-4. Add the native-presentation record and factor the duplicated indexed
-   monotonicity and continuity bridge through it.
-5. Compare the complete native `comap`/`cotree_map` proof boundary; do not
-   delete the current regression oracles.
-6. If this gate passes, freeze the semantic representation and return to
-   Milestone 3's lifted operational fixed point and observation-indexed
-   productivity.
+1. Define the smallest `NativePresentation` record containing native basis and
+   value conversions, round trips, order correspondence, and the inclusion and
+   truncation commuting laws.
+2. Derive the repeated wrapper monotonicity, continuity, ideal, and compactness
+   bridge lemmas once from that record.
+3. Instantiate the record for the existing colist and Boolean-cotree
+   presentations without deleting their current regression oracles.
+4. Recover the native `comap` and `cotree_map` proof boundaries and compare
+   declarations, proof terms, error messages, and assumptions.
+5. If that gate passes, freeze the semantic representation and attempt
+   Milestone 3's operational lifting directly over pointed containers and
+   their capabilities.
+6. Add a reified signature code only if operational lifting requires induction
+   over the construction of constants, products, sums, and recursive fields.
