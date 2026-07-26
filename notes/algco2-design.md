@@ -272,6 +272,22 @@ need the descriptor supplied explicitly.  Concrete registration is therefore
 a viable specialization boundary, but it does not remove the need for a
 descriptor-indexed generic design.
 
+Milestone 2E tests that generic design with actual record wrappers
+`Basis S` and `Value S`, indexed by a visible pointed descriptor.  Bottom
+decidability and finite positions are separate capabilities keyed by `S`.
+For colists, registering only those two capabilities is sufficient for
+ordinary typeclass search to derive the generic `OType`, `PType`, `Compact`,
+`CPO`, `Dense`, and `aCPO` instances.  The resulting proof term applies the
+generic `aCPO_indexed_container` directly; it does not reconstruct the five
+algebraicity obligations in the colist module.
+
+This isolates the earlier failure: the problem was the loss of descriptor
+identity in the raw carrier head, not an inherent inability of Coq to reuse
+the generic theorem.  It also exposes a remaining coherence condition.
+`DecidableBottom S` and `FinitePositions S` contain computational choices, so
+a public API should provide one canonical instance per descriptor or pass the
+choice explicitly.
+
 ### Approximation data, laws, and instance identity
 
 The current `Dense` class is data in `Type` containing only `incl` and `ideal`.
@@ -317,6 +333,9 @@ available to unification.
 
 This gives the most reliable generic instance search, at the cost of wrappers
 or duplication between fixed points over differently enriched descriptors.
+Milestone 2E confirms the instance-search claim for one-field wrappers.  It
+also shows that capabilities can be keyed by a stable pointed descriptor
+rather than included in the carrier index itself.
 
 #### 2. Separate signature data from canonical laws
 
@@ -354,8 +373,9 @@ The most promising design is a hybrid:
   typeclass search to reconstruct it;
 - separate computational signature data from optional proof evidence where
   possible;
-- expose native types through one-time specializations with a coherent,
-  concrete instance stack;
+- expose native types through one-time conversions and coherent capability
+  registrations; retain a concrete instance stack only when clients use raw
+  native carriers directly;
 - use a short raw-data interface such as `Approx`, and reserve `Dense` for
   actual convergence laws;
 - consider a bundled `Domain` interface wherever multiple orders on one
@@ -385,7 +405,12 @@ principles, continuity lemmas, and automation stated over the native API.  The
 generic representation is successful only if routine proofs do not repeatedly
 transport through representation isomorphisms.
 
-The `comap` reconstruction remains the first decisive test of this boundary.
+Milestone 2E passes the preliminary test: native colist statements for
+inclusion, truncation, and Scott compactness hide the wrappers, and the only
+nondefinitional supremum transport is proved once generically.  It deliberately
+uses no coercions.  The `comap` reconstruction remains the first decisive test
+of this boundary because it exercises definition, continuity, and constructor
+equations together.
 
 ## Provisional decisions
 
@@ -402,6 +427,9 @@ The `comap` reconstruction remains the first decisive test of this boundary.
    genuinely benefits from the generic representation.
 7. Reserve `Dense` for a law-bearing notion; use `Approx` as the working short
    name for raw inclusion and approximation data.
+8. Retain a stable semantic descriptor in the generic `Basis S` and `Value S`
+   type heads, while keying optional decidability and finiteness capabilities
+   by `S` rather than putting them in the carrier index.
 
 These are working decisions for experiments, not yet compatibility promises.
 
@@ -415,8 +443,12 @@ These are working decisions for experiments, not yet compatibility promises.
 - Can full `DCPO (ν C)` be constructed without making the
   universe-polymorphic API unpleasant or suggesting that its selected
   suprema are executable?
-- Should the descriptor-indexing problem be solved by enriched containers,
-  functor codes, wrappers, or bundled domains?
+- The wrapper solves descriptor-indexed inference, but should the stable public
+  descriptor be an enriched container or a functor code, and will wrapper
+  transports remain hidden in operation-level proofs?
+- Should computational capabilities such as bottom-shape decisions and
+  position enumerations be canonical fields, uniquely registered classes, or
+  explicit construction parameters?
 - What is the cleanest division of monotonicity, continuity, density, and
   compact-basis laws between `Approx`, `Dense`, and the algebraic structure?
 - Which structure should contain ordered nonrecursive payload fields?
@@ -428,14 +460,17 @@ These are working decisions for experiments, not yet compatibility promises.
 ## Next experiments
 
 Sequential density and the generic `aCPO` were completed in Milestone 2C,
-and Milestone 2D proves Scott compactness of every included basis element for
-arbitrary nonempty directed families.  Neither required refactoring the
-fixed-point representation.  The remaining experiments are:
+Milestone 2D proves Scott compactness for arbitrary nonempty directed
+families, and Milestone 2E confirms deterministic generic instance reuse for
+descriptor-indexed wrappers.  The remaining experiments are:
 
-1. Build a minimal descriptor-indexed wrapper or fixed point and confirm that
-   `OType`, `Compact`, and `CPO` resolution becomes deterministic and that a
-   generic algebraicity proof can be reused without concrete reassembly.
-2. Reconstruct native colist `comap` and compare its statements and proof
-   scripts directly with the existing implementation.
+1. Reconstruct native colist `comap` using the wrapper-supplied algebraic
+   structure, and compare its definition, continuity proof, constructor
+   equations, and client proof scripts directly with the existing
+   implementation.
+2. If that boundary remains ergonomic, repeat only the essential wrapper and
+   operation results for a branching cotree signature while auditing
+   capability coherence.
 3. Use those results, rather than the elegance of the generic kernel alone,
-   to decide whether a larger rewrite is justified.
+   to choose between wrappers, descriptor-indexed fixed points, and a code
+   language, and to decide whether a larger rewrite is justified.

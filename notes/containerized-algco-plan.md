@@ -377,9 +377,8 @@ use strong LPO or classical shape comparison; those enter finite-observation
 continuity through exposed-stage selection and generic child projection.
 
 The sequential algebraic vertical slice is now complete.  Milestone 2D below
-performs the first of the two contained follow-up experiments by generalizing
-compactness to arbitrary nonempty directed families.  The remaining experiment
-is a descriptor-indexed carrier that makes generic instance resolution
+generalizes compactness to arbitrary nonempty directed families, and Milestone
+2E tests a descriptor-indexed carrier that makes generic instance resolution
 deterministic.
 
 ## Milestone 2D checkpoint: Scott compactness of the included basis
@@ -474,6 +473,119 @@ No axiom is new to AlgCo.  Constructive indefinite description selects one
 witness index for each recursive position before finite aggregation; the
 classical and dependent-equality assumptions are inherited from generic child
 projection and shape transport.
+
+## Milestone 2E checkpoint: descriptor-indexed carriers
+
+Status on July 26, 2026: **the wrapper resolves the generic instance stack
+without concrete reassembly**.
+
+The new
+[`theories/generic/indexed_container.v`](../theories/generic/indexed_container.v)
+defines genuine one-field wrappers:
+
+```text
+Basis S = wrapper around μ (pc_container S)
+Value S = wrapper around ν (pc_container S)
+```
+
+They are records, not transparent aliases, so the pointed descriptor `S`
+remains visible at the type head.  The pointed descriptor determines the
+container, semantic bottom, and approximation order.  Capabilities needed only
+by later constructions are separate classes keyed by `S`:
+
+```text
+DecidableBottom S
+FinitePositions S
+```
+
+Adapters reconstruct the existing `decidable_pointed_container` and
+`finitary_pointed_container` packages.  This lets the experiment reuse all of
+the raw fixed-point theorems without changing their APIs.
+
+The generic wrapper module supplies the complete stack once:
+
+| Structure or theorem | Required descriptor capability |
+|---|---|
+| `OType` and `PType` for `Basis S` and `Value S` | pointed descriptor only |
+| canonical `Dense (Value S) (Basis S)` data | pointed descriptor only |
+| `CPO (Value S)` | `DecidableBottom S` |
+| `Compact (Basis S)` | `DecidableBottom S` and `FinitePositions S` |
+| `aCPO (Value S) (Basis S)` | both capabilities |
+| Scott compactness of `incl b` | both capabilities |
+
+The one-time `aCPO` proof transports the same five laws as the raw generic
+instance.  That transport is now paid once for all descriptors rather than
+repeated by every concrete datatype.
+
+The companion
+[`theories/generic/indexed_colist_instance.v`](../theories/generic/indexed_colist_instance.v)
+registers only:
+
+```text
+DecidableBottom (ColistS A)
+FinitePositions (ColistS A)
+```
+
+It declares no colist-specific wrapper `OType`, `Compact`, `CPO`, `Dense`, or
+`aCPO`.  Nevertheless, ordinary `typeclasses eauto` resolves the entire stack.
+Printing the durable smoke-test proof shows that Coq selected exactly:
+
+```text
+aCPO_indexed_container
+  (colist_pointed_container A)
+  (DecidableBottom_colist A)
+  (FinitePositions_colist A)
+```
+
+Thus the descriptor no longer has to be reconstructed from a projected raw
+carrier, and the particular compactness, density, and completeness instance
+terms agree automatically.
+
+### Initial proof-ergonomics result
+
+The basic native boundary remains shallow.  One-time conversions connect
+`Basis ColistS` with `list` and `Value ColistS` with `colist`.  The high-level
+operations using ordinary `incl` and `ideal` satisfy native statements:
+
+```text
+indexed_value_to_colist (incl (list_to_indexed_basis l)) = inj l
+indexed_basis_to_list (ideal (colist_to_indexed_value l) n) = prefix n l
+scott_compact (incl (list_to_indexed_basis l))
+```
+
+No coercions were introduced, so this experiment exposes the actual wrapper
+cost.  Directedness transports definitionally because it quantifies only over
+members of the supplied family.  Suprema need two small generic transport
+lemmas: their leastness clause quantifies over every possible upper bound, so
+the raw and wrapped carrier types are not definitionally interchangeable.
+Native conversion definitions also use the wrapper constructor or projection
+once.  These costs remain behind the specialization boundary in the current
+smoke tests.
+
+Two qualifications remain important:
+
+- capability classes contain computational deciders and enumerations; a
+  descriptor should have one coherent registered instance of each, or those
+  choices should be explicit;
+- the current stable index is a `pointed_container`, which still contains its
+  nullary-bottom proof.  A final design may separate signature data from this
+  law more aggressively.
+
+The wrapper therefore solves the tested typeclass-resolution problem, but it
+does not by itself decide between containers and a functor-code language, nor
+does it establish user-facing proof ergonomics.  Reconstructing native
+`comap` is now the decisive test.
+
+### Milestone 2E assumption audit
+
+| Result | Additional assumption |
+|---|---|
+| Wrappers, capabilities, adapters, orders, pointed structures, and `Dense` data | none |
+| Native conversion and inclusion/ideal computation lemmas | none |
+| Generic wrapper `Compact`, `CPO`, and `aCPO` instances | existing `classic`, constructive indefinite description, and `Eq_rect_eq.eq_rect_eq` inherited from the raw theorems |
+| Wrapper Scott-compactness theorem | the same three assumptions |
+
+No new axiom or universe constraint appears at the wrapper boundary.
 
 ## Motivation
 
@@ -871,7 +983,10 @@ assembles the generic `aCPO`; its concrete colist stack exposes the ideal as
 native `prefix` without requiring clients to reconstruct container packages.
 Milestone 2D separately proves standard Scott compactness of every included
 `μ C` basis element against arbitrary nonempty directed families, without yet
-constructing arbitrary directed suprema of `ν C`.
+constructing arbitrary directed suprema of `ν C`.  Milestone 2E wraps both
+fixed points in descriptor-indexed carriers and recovers the complete generic
+instance stack from two keyed capabilities; the colist specialization no
+longer reassembles that stack concretely.
 
 As the proof-ergonomics test, reconstruct `comap` from structural recursion on
 the native list basis and the generically supplied continuous extension.

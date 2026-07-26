@@ -10,7 +10,9 @@ theories/generic/pointed_container.v
 theories/generic/finitary_container.v
 theories/generic/scott_container.v
 theories/generic/algebraic_container.v
+theories/generic/indexed_container.v
 theories/generic/colist_instance.v
+theories/generic/indexed_colist_instance.v
 theories/productivity.v
 theories/cofold_operational.v
 theories/conat.v
