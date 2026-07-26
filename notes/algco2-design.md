@@ -69,18 +69,30 @@ Nonemptiness is not cosmetic.  The current sequence-based definitions hide it
 because `nat` is inhabited, whereas the existing definition of `directed` is
 vacuously true for an empty index type.
 
-Alongside this, AlgCo needs a canonical sequential presentation:
+Alongside this, AlgCo needs canonical sequential approximation data.  The
+current class called `Dense` contains only this data and does not prove
+density, so `Approx` is the shorter working name for its replacement:
 
 ```text
-SequentialPresentation A B =
+Approx A B =
   incl   : B → A
   approx : A → nat → B
 
+Dense (p : Approx A B) =
   approx x is increasing
   incl (approx x n) ⊑ x
   x is the supremum of λ n, incl (approx x n)
-  order and compactness laws for basis elements
+  monotonicity and finite-observation continuity laws
+
+Algebraic A B p =
+  Dense p
+  inclusion reflects the basis order
+  included basis elements are compact
 ```
+
+`Approx` is provisional, but it is deliberately short.  `Presentation` is
+another plausible name.  `Dense` should be reserved for a structure carrying
+the convergence laws that justify the term.
 
 For a pointed finitary signature `C`, the intended instance remains:
 
@@ -131,7 +143,9 @@ successor should distinguish the two levels explicitly:
 | arbitrary directed completeness | `DCPO` |
 | preservation of arbitrary directed suprema | `scott_continuous` |
 | standard directed compactness | `scott_compact` |
-| current `aCPO` data | `SequentialPresentation` or `PresentedDomain` |
+| current `Dense` data (`incl` and `ideal`) | `Approx` |
+| density laws currently stored in `aCPO` | `Dense` or `ApproxLaws` |
+| complete current `aCPO` package | `Algebraic` or `PresentedCPO` |
 
 The exact names are open.  The important point is that documentation should
 not silently call an ω-directed statement “Scott-open” or “compact” in the
@@ -145,6 +159,13 @@ The compactness prototype suggests the following factorization:
 - child projection transports existing suprema pointwise;
 - finite branching is used only to merge one witness per child;
 - the canonical depth truncations provide sequential density.
+
+Milestone 2C now verifies the last point generically.  Density needs only a
+pointed signature, and finite-truncation continuity needs the current
+decidable-pointed interface but not finite branching.  Continuity proves
+leastness independently at each child, so it does not need to synchronize a
+single stage across all positions.  This confirms that position finiteness is
+specific to compactness in the present sequential construction.
 
 The proof that `μ C` is compact should plausibly generalize from countable
 directed sequences to arbitrary nonempty directed families.  Finite branching
@@ -228,6 +249,40 @@ The same problem will recur for `PType`, `CPO`, `Dense`, `aCPO`, operational
 liftings, and realization structures.  It should be addressed before the
 generic representation becomes a user-facing foundation.
 
+Milestone 2C confirms both sides of this diagnosis.  A concrete colist module
+can register a coherent `OType`/`PType`/`Compact`/`CPO`/`Dense`/`aCPO` stack,
+after which ordinary typeclass search succeeds.  The generic instances still
+need the descriptor supplied explicitly.  Concrete registration is therefore
+a viable specialization boundary, but it does not remove the need for a
+descriptor-indexed generic design.
+
+### Approximation data, laws, and instance identity
+
+The current `Dense` class is data in `Type` containing only `incl` and `ideal`.
+Its name promises a theorem that is not present until the separate `aCPO`
+instance proves `supremum_ideal`.  The proposed split is therefore:
+
+```text
+Approx A B             raw inclusion and approximation functions
+Dense A B p            laws proving that p converges densely
+Algebraic A B p         compact-basis and order-embedding laws
+```
+
+Milestone 2C exposed a related Coq issue.  The current `aCPO` class is indexed
+by the particular `Compact`, `Dense`, and `CPO` instance terms selected during
+elaboration.  The concrete colist `aCPO` consequently had to reassemble five
+short obligations even though the generic theorem had already proved them for
+extensionally the same operations.
+
+The approximation data genuinely matters: two presentations of the same
+carrier can choose different inclusions or approximation sequences.  Proofs
+that a fixed presentation is compact or complete should not create the same
+identity friction.  The redesign should therefore give approximation data an
+explicit stable identity while keeping proof-only law instances reusable—by
+bundling the laws with the data, using proof-irrelevant fields carefully, or
+making generic construction parameters explicit rather than relying on an
+ambient instance stack.
+
 ### Design alternatives
 
 #### 1. Keep the full descriptor in the fixed-point type
@@ -285,6 +340,8 @@ The most promising design is a hybrid:
   possible;
 - expose native types through one-time specializations with a coherent,
   concrete instance stack;
+- use a short raw-data interface such as `Approx`, and reserve `Dense` for
+  actual convergence laws;
 - consider a bundled `Domain` interface wherever multiple orders on one
   carrier are legitimate.
 
@@ -326,6 +383,8 @@ The `comap` reconstruction remains the first decisive test of this boundary.
    carrier type.
 6. Keep generic machinery behind native specializations unless a use case
    genuinely benefits from the generic representation.
+7. Reserve `Dense` for a law-bearing notion; use `Approx` as the working short
+   name for raw inclusion and approximation data.
 
 These are working decisions for experiments, not yet compatibility promises.
 
@@ -339,6 +398,8 @@ These are working decisions for experiments, not yet compatibility promises.
   making universe-polymorphic APIs unpleasant?
 - Should the descriptor-indexing problem be solved by enriched containers,
   functor codes, wrappers, or bundled domains?
+- What is the cleanest division of monotonicity, continuity, density, and
+  compact-basis laws between `Approx`, `Dense`, and the algebraic structure?
 - Which structure should contain ordered nonrecursive payload fields?
 - Can native constructor equations for `comap` be recovered without exposing
   conversions or dependent transports?
@@ -347,13 +408,16 @@ These are working decisions for experiments, not yet compatibility promises.
 
 ## Next experiments
 
-1. Finish sequential density and the current generic `aCPO` instance without
-   refactoring the prototype.
-2. Re-run the compactness argument for an arbitrary nonempty directed family
+Sequential density and the generic `aCPO` were completed in Milestone 2C
+without refactoring the fixed-point representation.  The remaining experiments
+are:
+
+1. Re-run the compactness argument for an arbitrary nonempty directed family
    and record the proof, universe, and assumption costs.
-3. Build a minimal descriptor-indexed wrapper or fixed point and confirm that
-   `OType`, `Compact`, and `CPO` resolution becomes deterministic.
-4. Reconstruct native colist `comap` and compare its statements and proof
+2. Build a minimal descriptor-indexed wrapper or fixed point and confirm that
+   `OType`, `Compact`, and `CPO` resolution becomes deterministic and that a
+   generic algebraicity proof can be reused without concrete reassembly.
+3. Reconstruct native colist `comap` and compare its statements and proof
    scripts directly with the existing implementation.
-5. Use those results, rather than the elegance of the generic kernel alone,
+4. Use those results, rather than the elegance of the generic kernel alone,
    to decide whether a larger rewrite is justified.

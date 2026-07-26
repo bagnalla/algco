@@ -8,6 +8,7 @@ theories/colist.v
 theories/generic/container.v
 theories/generic/pointed_container.v
 theories/generic/finitary_container.v
+theories/generic/algebraic_container.v
 theories/generic/colist_instance.v
 theories/productivity.v
 theories/cofold_operational.v

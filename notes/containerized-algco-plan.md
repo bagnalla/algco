@@ -225,10 +225,9 @@ visible inside the semantic supremum.  This is acceptable for the current
 semantic experiment but should be kept out of a public extracted runtime
 representation unless a specialization removes it.
 
-Compactness is now complete as Milestone 2B below.  The remaining part of
-Milestone 2 is density through truncation and the resulting `aCPO` instance.
-Afterward `comap` remains the decisive test of the user-facing proof
-interface.
+Compactness is complete as Milestone 2B below, and Milestone 2C completes
+density through truncation and the resulting `aCPO` instance.  `comap` remains
+the decisive test of the user-facing proof interface.
 
 ## Milestone 2B checkpoint: compactness of the generic basis
 
@@ -299,15 +298,89 @@ selection could likely be replaced by a more cumbersome list-indexed proof,
 but doing so would not remove the classical assumptions already required by
 shape projection and exposed-stage selection.
 
-The next bounded step is density: prove that the included truncations of
-`x : ν C` have supremum `x`, install the generic `Dense` structure, discharge
-the remaining ideal monotonicity and continuity laws, and assemble the
-`aCPO (ν C) (μ C)` instance.  That should be kept separate from the subsequent
-`comap` ergonomics experiment so each failure mode remains easy to diagnose.
-The prototype will continue using countable directed sequences for this step.
-The proposed separation between standard DCPO semantics and the canonical
-sequential presentation is documented in
+Milestone 2C below completes sequential density and the generic `aCPO`.  The
+prototype continues to use countable directed sequences; the proposed
+separation between standard DCPO semantics and this canonical sequential
+presentation is documented in
 [`algco2-design.md`](algco2-design.md#directed-completeness-and-the-computational-presentation).
+
+## Milestone 2C checkpoint: sequential density and algebraicity
+
+Status on July 26, 2026: **the complete generic sequential `aCPO` assembles**.
+
+The new
+[`theories/generic/algebraic_container.v`](../theories/generic/algebraic_container.v)
+isolates the remaining algebraic structure from the fixed-point, order,
+completeness, and compactness modules.  It adds:
+
+- the canonical density theorem
+  `supremum x (λ n, incl_mu (truncate_nu n x))`;
+- pointwise transport of coinductive child suprema;
+- continuity of every finite truncation `truncate_nu n`;
+- the generic `Dense (ν C) (μ C)` presentation;
+- the complete `aCPO (ν C) (μ C)` instance for a finitary pointed container.
+
+The hypotheses separate more cleanly than expected:
+
+| Construction or theorem | Required signature structure |
+|---|---|
+| Included truncations have supremum `x` | pointed container only |
+| Canonical `Dense` data | pointed container only |
+| Finite-truncation continuity | decidable pointed container |
+| Directed completeness of `ν C` | decidable pointed container |
+| Compactness of `μ C` | finitary pointed container |
+| Complete generic `aCPO` | finitary pointed container, combining the preceding structures |
+
+Density is a short coinductive argument.  An upper bound of all truncations
+already bounds the first exposed layer; recursively, the bounds at depths
+`n + 1` bound each child at depth `n`.
+
+Continuity is the more informative result.  For a nonbottom supremum, one
+exposed stage forces an arbitrary upper bound of the truncated stages to have
+the correct outer shape.  Each child is then handled by the induction
+hypothesis at the smaller depth.  No common stage for all children is needed,
+because leastness is proved pointwise against a fixed upper bound.  Thus even
+finite-truncation continuity does **not** require finite branching.  Position
+enumeration remains confined to compactness.
+
+### Colist specialization and typeclass behavior
+
+[`theories/generic/colist_instance.v`](../theories/generic/colist_instance.v)
+now registers one coherent concrete stack for the generic colist carrier:
+
+```text
+OType, PType, Compact, CPO, Dense, aCPO
+```
+
+Direct `typeclasses eauto` smoke tests find every structure for
+`μ ColistC` and `ν ColistC`.  The dense inclusion and ideal also compute as
+the existing native `inj` and `prefix`, witnessed by
+`nu_to_colist_dense_incl_list` and `mu_to_list_dense_ideal_colist`.
+
+This is a successful specialization workaround, not a solution to generic
+descriptor inference.  The concrete module explicitly chooses the pointed
+and finitary packages and aliases their orders.  Generic clients still cannot
+expect Coq to reconstruct such a package from `μ (pc_container C)` alone.
+
+### Milestone 2C assumption audit
+
+| Result | Additional assumption |
+|---|---|
+| Canonical truncation density | `Eq_rect_eq.eq_rect_eq` |
+| `Dense` data | none |
+| Child-supremum transport, exposed-stage selection, and truncation continuity | existing `classic`, constructive indefinite description, and `Eq_rect_eq.eq_rect_eq` |
+| Generic and concrete-container `aCPO` instances | the same three assumptions, inherited from completeness, compactness, and continuity |
+| Colist inclusion/ideal computation corollaries | none |
+
+No new axiom is introduced.  In particular, the density proof itself does not
+use strong LPO or classical shape comparison; those enter finite-observation
+continuity through exposed-stage selection and generic child projection.
+
+The sequential algebraic vertical slice is now complete.  Before the native
+`comap` ergonomics test, the design plan calls for two contained experiments:
+generalize compactness to arbitrary nonempty directed families, and test a
+descriptor-indexed carrier that makes generic instance resolution
+deterministic.
 
 ## Motivation
 
@@ -624,18 +697,18 @@ evaluated.
 
 ## Proposed Coq organization
 
-Use a parallel namespace, tentatively:
+The prototype now uses the following parallel namespace:
 
 ```text
 theories/generic/container.v
-theories/generic/fixedpoint.v
-theories/generic/algebraic.v
-theories/generic/operational.v
+theories/generic/pointed_container.v
+theories/generic/finitary_container.v
+theories/generic/algebraic_container.v
 theories/generic/colist_instance.v
 ```
 
-These names are provisional. Avoid changing imports of existing modules during
-the prototype.
+An eventual operational layer remains provisional.  Avoid changing imports of
+existing non-generic modules during the prototype.
 
 The layers should have one-way dependencies:
 
@@ -700,9 +773,9 @@ The pointed prefix order, inclusion, depth truncation, and their colist
 correspondence are complete as Milestone 1.5.  Milestone 2A additionally
 provides the generic directed supremum and `CPO (ν C)` under a decidable-bottom
 interface.  Milestone 2B uses finite position enumeration to prove compactness
-of `μ C`.  Next prove density of truncations and the remaining `aCPO` laws.
-Expose the result through native colist-specific lemmas rather than requiring
-users to transport goals manually.
+of `μ C`.  Milestone 2C proves density and finite-truncation continuity and
+assembles the generic `aCPO`; its concrete colist stack exposes the ideal as
+native `prefix` without requiring clients to reconstruct container packages.
 
 As the proof-ergonomics test, reconstruct `comap` from structural recursion on
 the native list basis and the generically supplied continuous extension.

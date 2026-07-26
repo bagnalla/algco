@@ -14,6 +14,7 @@ Import ListNotations.
 From algco Require Import
   aCPO
   colist
+  cpo
   order
 .
 
@@ -21,6 +22,7 @@ From algco.generic Require Import
   container
   pointed_container
   finitary_container
+  algebraic_container
 .
 
 (** The hole shape is AlgCo's semantic bottom [conil].  A cons shape stores
@@ -83,15 +85,79 @@ Definition colist_finitary_container (A : Type) :
    ; position_enum_complete := @colist_position_enum_complete A
   |}.
 
+(** The full descriptor cannot be reconstructed from the projected carrier
+    type, so the colist specialization registers a coherent concrete instance
+    stack.  These aliases keep the chosen pointed order explicit and
+    deterministic for downstream typeclass search. *)
+#[global]
+Instance OType_container_colist_mu (A : Type) :
+  OType (mu (colist_container A)) :=
+  OType_container_mu (colist_pointed_container A).
+
+#[global]
+Instance PType_container_colist_mu (A : Type) :
+  @PType (mu (colist_container A)) (@OType_container_colist_mu A) :=
+  @PType_container_mu (colist_pointed_container A).
+
+#[global]
+Instance OType_container_colist_nu (A : Type) :
+  OType (nu (colist_container A)) :=
+  OType_container_nu (colist_pointed_container A).
+
+#[global]
+Instance PType_container_colist_nu (A : Type) :
+  @PType (nu (colist_container A)) (@OType_container_colist_nu A) :=
+  @PType_container_nu (colist_pointed_container A).
+
 (** A concrete registration keeps typeclass search ergonomic: the generic
     compactness instance is parameterized by the whole finitary-container
     package, which cannot in general be reconstructed from its carrier type. *)
 #[global]
 Instance Compact_colist_mu (A : Type) :
   @Compact (mu (colist_container A))
-    (OType_container_mu (colist_pointed_container A)).
+    (@OType_container_colist_mu A).
 Proof.
   exact (Compact_finitary_container_mu (colist_finitary_container A)).
+Qed.
+
+#[global]
+Instance CPO_container_colist_nu (A : Type) :
+  @CPO (nu (colist_container A)) (@OType_container_colist_nu A).
+Proof.
+  exact (CPO_decidable_container_nu (colist_decidable_container A)).
+Qed.
+
+#[global]
+Instance Dense_container_colist (A : Type) :
+  @Dense
+    (nu (colist_container A))
+    (mu (colist_container A))
+    (@OType_container_colist_nu A)
+    (@OType_container_colist_mu A) :=
+  {| incl := @incl_mu (colist_pointed_container A)
+   ; ideal := fun x n =>
+       @truncate_nu (colist_pointed_container A) n x
+  |}.
+
+#[global]
+Instance aCPO_container_colist (A : Type) :
+  @aCPO
+    (nu (colist_container A))
+    (mu (colist_container A))
+    (@OType_container_colist_nu A)
+    (@OType_container_colist_mu A)
+    (@Compact_colist_mu A)
+    (@Dense_container_colist A)
+    (@CPO_container_colist_nu A).
+Proof.
+  constructor.
+  - intros x y; apply incl_mu_order_iff.
+  - intro x; apply chain_truncate_nu.
+  - intros x y Hxy n; apply truncate_nu_monotone, Hxy.
+  - intro n.
+    exact (@truncate_nu_continuous (colist_decidable_container A) n).
+  - intro x.
+    exact (@incl_truncate_nu_supremum (colist_pointed_container A) x).
 Qed.
 
 (** ** Initial algebra and native lists *)
@@ -126,13 +192,11 @@ Proof.
 Qed.
 
 Corollary colist_mu_compact {A : Type} (x : mu (colist_container A)) :
-  @compact (mu (colist_container A))
-    (OType_container_mu (colist_pointed_container A)) x.
+  compact x.
 Proof. apply compact_spec. Qed.
 
 Corollary list_to_mu_compact {A : Type} (l : list A) :
-  @compact (mu (colist_container A))
-    (OType_container_mu (colist_pointed_container A)) (list_to_mu l).
+  compact (list_to_mu l).
 Proof. apply compact_spec. Qed.
 
 (** ** Final coalgebra and native colists *)
@@ -257,10 +321,7 @@ Proof. rewrite mu_le_iff_list_le, !mu_to_list_list_to_mu; reflexivity. Qed.
 Corollary colist_mu_compact_exact {A : Type}
   (x : mu (colist_container A))
   (ch : nat -> mu (colist_container A)) :
-  @directed nat (mu (colist_container A))
-    (OType_container_mu (colist_pointed_container A)) ch ->
-  @supremum nat (mu (colist_container A))
-    (OType_container_mu (colist_pointed_container A)) x ch ->
+  directed ch -> supremum x ch ->
   exists i, ch i = x.
 Proof.
   intros Hch Hsup.
@@ -350,6 +411,10 @@ Corollary nu_to_colist_incl_list {A : Type} (l : list A) :
     (incl_mu (C := colist_pointed_container A) (list_to_mu l)) = inj l.
 Proof. rewrite nu_to_colist_incl_mu, mu_to_list_list_to_mu; reflexivity. Qed.
 
+Corollary nu_to_colist_dense_incl_list {A : Type} (l : list A) :
+  nu_to_colist (incl (list_to_mu l)) = inj l.
+Proof. apply nu_to_colist_incl_list. Qed.
+
 Lemma mu_to_list_truncate_nu {A : Type} (n : nat)
   (x : nu (colist_container A)) :
   mu_to_list (truncate_nu (C := colist_pointed_container A) n x) =
@@ -383,6 +448,12 @@ Proof.
   - reflexivity.
   - f_equal; apply IH.
 Qed.
+
+Corollary mu_to_list_dense_ideal_colist {A : Type}
+  (n : nat) (l : colist A) :
+  mu_to_list (ideal (colist_to_nu l) n) =
+  prefix n l.
+Proof. apply mu_to_list_truncate_colist. Qed.
 
 Lemma nu_to_colist_incl_truncate {A : Type} (n : nat)
   (x : nu (colist_container A)) :
