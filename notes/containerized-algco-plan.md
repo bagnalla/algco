@@ -29,7 +29,9 @@ This plan grew out of the investigation in
 [`cofold-extraction-productivity.md`](cofold-extraction-productivity.md). That
 report remains the record of the extraction problem and the observation-indexed
 productivity results. This document concerns the broader architecture suggested
-by that work.
+by that work.  Provisional architectural conclusions that cut across individual
+prototype milestones are collected separately in
+[`algco2-design.md`](algco2-design.md).
 
 ## Milestone 1 checkpoint: fixed-point representation
 
@@ -223,10 +225,89 @@ visible inside the semantic supremum.  This is acceptable for the current
 semantic experiment but should be kept out of a public extracted runtime
 representation unless a specialization removes it.
 
-The remaining part of Milestone 2 is algebraicity: compactness of `μ C`,
-density through truncation, and the resulting `aCPO` instance.  Only that step
-uses the finitary extension.  Afterward `comap` remains the decisive test of
-the user-facing proof interface.
+Compactness is now complete as Milestone 2B below.  The remaining part of
+Milestone 2 is density through truncation and the resulting `aCPO` instance.
+Afterward `comap` remains the decisive test of the user-facing proof
+interface.
+
+## Milestone 2B checkpoint: compactness of the generic basis
+
+Status on July 26, 2026: **the finiteness stress test succeeds**.
+
+[`theories/generic/finitary_container.v`](../theories/generic/finitary_container.v)
+now proves that every element of `μ C` is compact when `C` has a complete
+finite enumeration of each position type.  It registers the resulting
+`Compact (μ C)` instance.  The colist module additionally registers a
+concrete instance for `μ ColistC`; this avoids asking typeclass search to
+reconstruct an entire finitary-container package from the carrier type.
+
+This specialization exposed a structural typeclass issue rather than a mere
+search inconvenience: `μ (pc_container C)` retains the underlying container
+but not enough information to reconstruct which pointed or finitary package
+supplies its order.  Multiple packages may legitimately share that carrier.
+The alternatives and current recommendation are recorded in the
+[AlgCo 2 design sketch](algco2-design.md#typeclass-resolution-and-descriptor-identity).
+
+The proof factors into four reusable pieces:
+
+1. A finite family of indices into a directed sequence has a common upper
+   stage.
+2. Shape-aware child projection on `μ C` is monotone and preserves
+   directedness.
+3. If `inμ s children` is a supremum, each `children p` is the supremum of
+   the corresponding projected sequence.  Leastness is proved by replacing
+   that one child with an arbitrary upper bound and applying leastness of the
+   whole layer.
+4. Structural induction on a finite tree gives one stage for each recursive
+   child.  The position enumeration and directedness merge those finitely
+   many stages.  A separately chosen exposed stage ensures that the merged
+   stage has the required outer shape.
+
+The last point is the precise role of finitary branching.  Neither decidable
+equality nor a duplicate-free enumeration of positions is needed.  The proof
+uses only the completeness statement `p ∈ position_enum s`.  It also does not
+use the `CPO (ν C)` construction: compactness is an intrinsic property of the
+inductive basis order and arbitrary countable directed suprema that happen to
+exist there.
+
+The generic theorem returns AlgCo order equivalence `ch i === x`, exactly as
+the definition of `compact` requires.  The existing native theorem
+`list_compact` returns Coq equality because native list approximation is
+antisymmetric.  The new `colist_mu_compact` and `list_to_mu_compact` lemmas
+make the generic result available at the colist specialization boundary; the
+order correspondence also yields `colist_mu_compact_exact`, with the same
+exact-stage conclusion for the generic colist basis.  The native theorem
+remains the more ergonomic result for code and proofs stated entirely over
+`list`.
+
+### Milestone 2B assumption audit
+
+`Print Assumptions` gives the following boundary:
+
+| Result | Additional assumption |
+|---|---|
+| Finite directed-stage aggregation | none |
+| Child projection, child-supremum transport, and exposed-stage inversion | existing `classic`, constructive indefinite description, and `Eq_rect_eq.eq_rect_eq` |
+| Generic compactness and its `Compact` instance | the same three assumptions |
+| Concrete colist compactness instance and order-equivalence corollaries | no assumptions beyond the generic theorem |
+| Exact-stage generic-colist corollary | additionally, existing functional extensionality via the `μ ColistC ≅ list` round trip |
+
+Strong LPO selects an exposed stage for a nonbottom supremum, while indefinite
+description selects one compactness witness per position before the finite
+enumeration merges them.  These introduce no new axiom to AlgCo.  The second
+selection could likely be replaced by a more cumbersome list-indexed proof,
+but doing so would not remove the classical assumptions already required by
+shape projection and exposed-stage selection.
+
+The next bounded step is density: prove that the included truncations of
+`x : ν C` have supremum `x`, install the generic `Dense` structure, discharge
+the remaining ideal monotonicity and continuity laws, and assemble the
+`aCPO (ν C) (μ C)` instance.  That should be kept separate from the subsequent
+`comap` ergonomics experiment so each failure mode remains easy to diagnose.
+The prototype will continue using countable directed sequences for this step.
+The proposed separation between standard DCPO semantics and the canonical
+sequential presentation is documented in
+[`algco2-design.md`](algco2-design.md#directed-completeness-and-the-computational-presentation).
 
 ## Motivation
 
@@ -618,10 +699,10 @@ equivalence. Do not replace native lists or colists.
 The pointed prefix order, inclusion, depth truncation, and their colist
 correspondence are complete as Milestone 1.5.  Milestone 2A additionally
 provides the generic directed supremum and `CPO (ν C)` under a decidable-bottom
-interface.  Next use finite position enumeration to prove compactness of
-`μ C`, density of truncations, and the remaining `aCPO` laws.  Expose the
-result through native colist-specific lemmas rather than requiring users to
-transport goals manually.
+interface.  Milestone 2B uses finite position enumeration to prove compactness
+of `μ C`.  Next prove density of truncations and the remaining `aCPO` laws.
+Expose the result through native colist-specific lemmas rather than requiring
+users to transport goals manually.
 
 As the proof-ergonomics test, reconstruct `comap` from structural recursion on
 the native list basis and the generically supplied continuous extension.

@@ -12,7 +12,9 @@ From Coq Require Import
 Import ListNotations.
 
 From algco Require Import
+  aCPO
   colist
+  order
 .
 
 From algco.generic Require Import
@@ -81,6 +83,17 @@ Definition colist_finitary_container (A : Type) :
    ; position_enum_complete := @colist_position_enum_complete A
   |}.
 
+(** A concrete registration keeps typeclass search ergonomic: the generic
+    compactness instance is parameterized by the whole finitary-container
+    package, which cannot in general be reconstructed from its carrier type. *)
+#[global]
+Instance Compact_colist_mu (A : Type) :
+  @Compact (mu (colist_container A))
+    (OType_container_mu (colist_pointed_container A)).
+Proof.
+  exact (Compact_finitary_container_mu (colist_finitary_container A)).
+Qed.
+
 (** ** Initial algebra and native lists *)
 
 Fixpoint mu_to_list {A : Type} (x : mu (colist_container A)) : list A :=
@@ -111,6 +124,16 @@ Proof.
   - f_equal; apply functional_extensionality; intro p; destruct p.
   - f_equal; apply functional_extensionality; intros []; apply IH.
 Qed.
+
+Corollary colist_mu_compact {A : Type} (x : mu (colist_container A)) :
+  @compact (mu (colist_container A))
+    (OType_container_mu (colist_pointed_container A)) x.
+Proof. apply compact_spec. Qed.
+
+Corollary list_to_mu_compact {A : Type} (l : list A) :
+  @compact (mu (colist_container A))
+    (OType_container_mu (colist_pointed_container A)) (list_to_mu l).
+Proof. apply compact_spec. Qed.
 
 (** ** Final coalgebra and native colists *)
 
@@ -228,6 +251,27 @@ Corollary mu_le_list_to_mu_iff {A : Type} (l1 l2 : list A) :
   mu_le (colist_pointed_container A) (list_to_mu l1) (list_to_mu l2) <->
   list_le l1 l2.
 Proof. rewrite mu_le_iff_list_le, !mu_to_list_list_to_mu; reflexivity. Qed.
+
+(** For this concrete basis, generic order equivalence can be strengthened to
+    Coq equality, recovering the conclusion of native [list_compact]. *)
+Corollary colist_mu_compact_exact {A : Type}
+  (x : mu (colist_container A))
+  (ch : nat -> mu (colist_container A)) :
+  @directed nat (mu (colist_container A))
+    (OType_container_mu (colist_pointed_container A)) ch ->
+  @supremum nat (mu (colist_container A))
+    (OType_container_mu (colist_pointed_container A)) x ch ->
+  exists i, ch i = x.
+Proof.
+  intros Hch Hsup.
+  destruct (@colist_mu_compact A x ch Hch Hsup) as [i [Hix Hxi]].
+  exists i.
+  rewrite <- (@list_to_mu_mu_to_list A (ch i)).
+  rewrite <- (@list_to_mu_mu_to_list A x).
+  f_equal; apply list_le_antisym.
+  - apply mu_le_to_list_le; exact Hix.
+  - apply mu_le_to_list_le; exact Hxi.
+Qed.
 
 (** The corresponding coinductive relation is exactly native colist
     approximation. *)
