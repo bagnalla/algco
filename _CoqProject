@@ -11,6 +11,7 @@ theories/generic/finitary_container.v
 theories/generic/scott_container.v
 theories/generic/algebraic_container.v
 theories/generic/indexed_container.v
+theories/generic/indexed_fold.v
 theories/generic/colist_instance.v
 theories/generic/indexed_colist_instance.v
 theories/generic/indexed_colist_comap.v

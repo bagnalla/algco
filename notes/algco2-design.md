@@ -16,9 +16,10 @@ The empirical record remains in:
 The rewrite gate remains conservative.  Milestones 2F and 2G recover complete
 native `comap` and branching `cotree_map` slices with competitive proof
 ergonomics.  Milestone 2H audits their duplication and specifies a deliberately
-small derivation frontend.  The remaining question is whether that frontend's
-implementation and the operational layer make a rewrite worthwhile, not
-whether containers can support native constructor reasoning.
+small derivation frontend, while Milestone 2I proves its common generic
+fold/cofold layer theorem.  The remaining question is whether the syntax and
+native-presentation parts of that frontend, together with the operational
+layer, make a rewrite worthwhile.
 
 ## Emerging design thesis
 
@@ -494,6 +495,36 @@ remain a thin handwritten facade; Gallina data should not be supplemented
 with heavy metaprogramming merely to emit theorem names or `Arguments`
 commands.
 
+Milestone 2I confirms the generic fold boundary.  A single
+`value_fold_layer` theorem now contains the shifted-supremum and pointwise
+child-supremum argument used by both colist cons and cotree node.  Separate
+weaker rules handle the designated bottom and nonbottom nullary shapes, so a
+leaf theorem does not acquire global continuity obligations for unrelated
+constructors.  The public `comap` and `cotree_map` proofs retain their native
+statements and continuity-only obligations.
+
+The generic theorem introduces no new axiom.  It inherits dependent equality,
+classical logic, and constructive indefinite description from the current
+indexed algebraic CPO.  Functional extensionality appears only when the
+Boolean-cotree specialization equates the generic fold with native `tfold`'s
+function-valued node result.
+
+There is one important API coupling in that result.  The current
+`value_fold` and its equations require `FinitePositions S` because
+`value_fold` is defined using `co` over a full `aCPO (Value S)`, and the
+current algebraic-CPO construction uses finite branching to establish
+compactness of its basis.  The layer proof itself does not enumerate
+positions or merge finitely many child witnesses: it uses the canonical
+truncation chains and their layer-shift law, pointwise suprema, and weak
+continuity of the algebra.  It does not use compactness or the reconstruction
+field of `aCPO`.  A useful weaker sequential presentation would normally keep
+reconstruction to justify the sequence as a presentation of each value, but
+need not demand compact approximants.  Finiteness should therefore not yet be
+treated as an intrinsic assumption of the fold equation.  A future experiment
+should factor such an interface from `aCPO` and test the same theorem on an
+infinitely branching signature.  The first syntax frontend remains finitary,
+so this generalization need not block it.
+
 ## Provisional decisions
 
 1. Do not replace sequential approximation with arbitrary directed sets.
@@ -526,6 +557,13 @@ commands.
     facts from being derived from syntax alone.
 14. Avoid heavy declaration-generating metaprogramming in the first frontend;
     first measure what remains after generic semantic proofs are factored.
+15. Provide weak bottom and nullary fold rules alongside the general recursive
+    layer theorem so constructor-local proofs do not inherit irrelevant global
+    algebra obligations.
+16. Treat `FinitePositions` on the current value-fold equations as coupling to
+    the full `aCPO`/`co` interface, not as a proved semantic necessity; test a
+    weaker sequential-extension interface separately after the finitary
+    frontend.
 
 These are working decisions for experiments, not yet compatibility promises.
 
@@ -548,29 +586,27 @@ These are working decisions for experiments, not yet compatibility promises.
 - What is the cleanest division of monotonicity, continuity, density, and
   compact-basis laws between `Approx`, `Dense`, and the algebraic structure?
 - Which structure should contain ordered nonrecursive payload fields?
-- Can one shape-indexed fold/cofold layer theorem cover both the colist and
-  function-branching cotree cases without stronger continuity hypotheses or
-  awkward transports?
 - How much wrapper code remains after a generic `NativePresentation` bridge,
   and is that reduction large enough to justify retaining the code frontend?
 - How much of the semantic layer can remain constructive if operational
   productivity is treated separately?
+- What is the weakest sequential-presentation interface sufficient to define
+  `value_fold` and prove its layer equation without importing compactness of
+  the basis, and does it support a useful infinitely branching example?
 
 ## Next experiments
 
-Milestone 2H completes the side-by-side audit and frontend specification.  The
-remaining experiments are:
+Milestone 2I completes the generic fold/cofold experiment.  The remaining
+experiments are:
 
-1. Factor one generic structural fold and continuous-extension layer theorem
-   over the existing descriptor-indexed container backend.
-2. Specialize it to the current colist and Boolean-cotree presentations before
-   adding syntax, confirming that cons, leaf, and function-valued node cases
-   share the theorem.
-3. Implement the minimal pointed polynomial code and compile it transparently
+1. Implement the minimal pointed polynomial code and compile it transparently
    to containers, deriving bottom decisions and finite positions.
-4. Prototype the `NativePresentation` bridge far enough to remove the repeated
+2. Reproduce the current colist and Boolean-cotree descriptors and confirm that
+   the generic fold API specializes without new transports or elaboration
+   failures.
+3. Prototype the `NativePresentation` bridge far enough to remove the repeated
    indexed monotonicity and continuity proofs.
-5. Regenerate the two existing operation slices in parallel modules and
+4. Regenerate the two existing operation slices in parallel modules and
    compare proof terms, assumptions, error messages, and extraction boundaries.
-6. Use the measured reduction in boilerplate, together with the still-pending
+5. Use the measured reduction in boilerplate, together with the still-pending
    operational lifting, to decide whether a larger rewrite is justified.

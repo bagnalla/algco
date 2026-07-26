@@ -25,11 +25,11 @@ A rewrite is justified only if one complete vertical slice is clearer and at
 least as usable as the current type-specific development. Until that decision
 point, all generic work should live alongside the current modules.
 Milestones 2F and 2G now pass that test for both linear colist `comap` and
-branching Boolean-cotree `map`, and Milestone 2H isolates the smallest
-derivation experiment justified by their duplication.  The remaining decision
-is whether that frontend and the operational layer justify a larger rewrite,
-not whether native constructor equations can survive the representation
-boundary.
+branching Boolean-cotree `map`, Milestone 2H isolates the smallest derivation
+experiment justified by their duplication, and Milestone 2I successfully
+factors their fold/cofold layer theorem.  The remaining decision is whether the
+signature frontend and operational layer justify a larger rewrite, not whether
+native constructor equations can survive the representation boundary.
 
 This plan grew out of the investigation in
 [`cofold-extraction-productivity.md`](cofold-extraction-productivity.md). That
@@ -1061,6 +1061,192 @@ This gate measures reduction of real duplication, not merely movement of the
 same proof scripts behind tactics.  Operational lifting remains the following
 milestone once this representation decision is settled.
 
+## Milestone 2I checkpoint: generic fold/cofold layer equation
+
+Status on July 26, 2026: **the generic layer theorem succeeds for both
+completed operation slices**.
+
+[`theories/generic/indexed_fold.v`](../theories/generic/indexed_fold.v) now
+defines:
+
+```text
+indexed_algebra S B =
+  ∀ s, (position s → B) → B
+
+basis_fold : indexed_algebra S B → Basis S → B
+value_fold : indexed_algebra S B → Value S → B
+```
+
+`basis_fold` is ordinary structural recursion over the container initial
+algebra.  `value_fold` is its AlgCo continuous extension through the existing
+descriptor-indexed `aCPO`.  The generic monotonicity theorem exposes the same
+three obligations as the previous native folds:
+
+```text
+the bottom-shape algebra returns z
+z lies below every finite fold result
+every shape algebra is monotone in its children
+```
+
+If every shape algebra is weakly continuous, the principal theorem is:
+
+```text
+value_fold α (in_value s children)
+  === α s (fun p => value_fold α (children p))
+```
+
+Its proof contains the single remaining `shift_supremum''` in the indexed
+fold path.  It forms the pointwise supremum of all child fold chains with
+`supremum_apply`, transports that supremum through `α s`, and identifies the
+shifted parent truncations with one layer over the child truncations.  This
+argument is independent of whether the position type is `unit`, `bool`, or
+another supported family.
+
+### Finiteness/API coupling
+
+The current Gallina type of `value_fold` and all three value-fold equations
+requires `FinitePositions S`.  This is presently an **API dependency**, not a
+premise used by the layer argument itself.  `value_fold` is defined through
+the existing generic `co`, whose source must be a full `aCPO (Value S)`; the
+construction of that `aCPO` uses `FinitePositions S` to prove compactness of
+the proposed basis.  Consequently Coq requests the capability before the
+layer theorem begins.
+
+After `value_fold` has been obtained, however, `value_fold_layer` never
+enumerates positions or combines finitely many child witnesses.  It uses the
+canonical truncation chains and their one-step layer equation, pointwise child
+suprema, and weak continuity of the algebra branch.  It does not invoke basis
+compactness or even the reconstruction/density field of `aCPO`.  The shifted-
+supremum proof is therefore position-family agnostic.  In particular, the
+present statement should not be read as evidence that finite branching is a
+mathematical requirement of the fold equation.
+
+This suggests factoring a weaker sequential-extension interface from the
+full algebraic-CPO interface.  Such an interface would expose the canonical
+approximation chain and layer-shift law needed by `value_fold_layer`, and
+would normally retain reconstruction as the law that makes the sequence a
+genuine presentation of each value, without also requiring every approximant
+to be compact.  An infinite-branching test case should then determine whether
+the generic layer theorem can be restated with that weaker structure.  This
+refactoring is not a prerequisite for the first code frontend: its initial
+`Rᶠ I` fragment is deliberately finitary, so the frontend can proceed while
+keeping this coupling visible as a later generalization boundary.
+
+### Three computation rules, one recursive argument
+
+The generic module exposes three rules rather than forcing every constructor
+through the strongest theorem:
+
+- `value_fold_bottom` proves the designated-bottom equation without any
+  assumptions about other shapes;
+- `value_fold_nullary` proves an eventually constant nonbottom nullary layer
+  from only its local base inequality and monotonicity;
+- `value_fold_layer` contains the one general shifted-supremum proof for
+  recursive layers.
+
+The weakened nullary rule matters for proof ergonomics.  Deriving a leaf from
+the general theorem would unnecessarily demand weak continuity of the node
+algebra and a global lower-bound theorem for every finite tree.  The separate
+rule keeps the native cotree leaf theorem's original single premise
+`z ⊑ leaf a` while still centralizing all eventually-constant reasoning.
+
+### Colist and cotree specializations
+
+The colist specialization defines the algebra:
+
+```text
+hole       ↦ z
+cons a     ↦ fun children => step a (children tt)
+```
+
+and the cotree specialization defines:
+
+```text
+bottom     ↦ z
+leaf a     ↦ leaf a
+node       ↦ node
+```
+
+Both generic basis folds have native computation bridges:
+
+```text
+indexed_fold z step b
+  = fold z step (indexed_basis_to_list b)
+
+indexed_tfold z leaf node b
+  = tfold z leaf node (indexed_basis_to_atree b)
+```
+
+The native-to-indexed conversions now also expose deliberate constructor
+equations.  Because the descriptor cannot be inferred from a projected shape,
+these equations must spell out `in_value`'s descriptor internally; this is the
+same elaboration limitation identified in Milestone 2E and remains hidden from
+client theorems.
+
+`indexed_comap_value` and `indexed_cotree_map_value` are now instances of the
+generic `value_fold`, not independent calls to `co` over native folds.  Their
+public continuity, constructor, finite-input, and regression theorems retain
+the same native statements.  In particular, the operation proofs still
+discharge only constructor continuity:
+
+```text
+indexed_comap f (cocons a l)
+  = cocons (f a) (indexed_comap f l)
+
+indexed_cotree_map f (conode children)
+  = conode (indexed_cotree_map f ∘ children)
+```
+
+The old `comap` and `cotree_map` remain final regression oracles.
+
+### Small surprises
+
+- The explicit premises `z ⊑ step a z` and
+  `z ⊑ node (fun _ => z)` in the old recursive-layer APIs are consequences of
+  the stronger premise that `z` lies below every finite fold.  They are
+  retained for source-level comparison, but the generic proof does not use
+  them.
+- A separate nullary theorem is useful even though nullary shapes are covered
+  mathematically by the general theorem: it prevents irrelevant global
+  obligations from leaking into leaf proofs.
+- The colist native-fold bridge is constructive.  The Boolean-cotree bridge
+  uses functional extensionality to equate its function-valued child results,
+  as expected from the native `anode` representation.
+- `FinitePositions S` occurs in the generic equations because `value_fold`
+  currently enters through the full `aCPO` API.  The recursive layer proof
+  itself performs no finite enumeration; this is an interface-generalization
+  opportunity rather than evidence that the equation needs finite branching.
+- The first factoring step increases total prototype lines because it keeps
+  both native regression helpers and the new generic API.  Its measured payoff
+  is proof uniqueness: the shifted-supremum argument now occurs once.  The
+  frontend and native-presentation experiments must still demonstrate a net
+  reduction in specialization plumbing.
+
+### Milestone 2I assumption audit
+
+| Result | Assumptions |
+|---|---|
+| Raw `basis_fold` and its constructor equation | none |
+| Generic `value_fold_bottom`, `value_fold_nullary`, and `value_fold_layer` | `FinitePositions S` at the current API boundary, plus `Eq_rect_eq.eq_rect_eq`, classical logic, and constructive indefinite description inherited from the indexed `aCPO` and selected supremum; the proofs do not enumerate positions |
+| Specialized colist recursive fold equation | the same generic assumptions; no functional extensionality |
+| Specialized cotree recursive fold equation | the generic assumptions plus functional extensionality for the native `tfold` bridge |
+| Native `comap` and `cotree_map` equalities | the preceding assumptions plus the existing respective native extensionality axiom |
+
+No new axiom is introduced by the generic layer theorem.  A full `make -B`
+and `coqchk` over the new module and both specializations pass.  Searching the
+three operation modules confirms that `shift_supremum''` occurs only in
+`indexed_fold.v`.
+
+### Checkpoint decision
+
+The highest-risk semantic part of the frontend experiment has passed.  The
+next step is now the minimal `K`/`Rᶠ`/sum/product syntax and its transparent
+interpretation into the existing containers.  It should first reproduce the
+current colist and Boolean-cotree descriptors and derive their bottom and
+finite-position capabilities.  The `NativePresentation` packaging experiment
+follows only after that interpretation remains transparent and elaborates
+predictably.
+
 ## Motivation
 
 AlgCo already follows the initial-algebra/final-coalgebra pattern
@@ -1471,7 +1657,8 @@ recovers the native `cotree_map` node equation.  This is the first evidence
 that the abstraction is not colist-specific.  Milestone 2H audits both slices,
 separates generic fold and wrapper theorems from unavoidable native
 presentation obligations, and specifies a minimal pointed-polynomial frontend
-with an explicit container interpretation.
+with an explicit container interpretation.  Milestone 2I proves the common
+generic fold/cofold layer theorem and recovers both operation slices from it.
 
 ### Milestone 3: lifted operational fixed point
 
@@ -1645,20 +1832,20 @@ representation rewrite are separate decisions.
 
 ## Immediate next experiment
 
-Milestone 2H completes the consolidation audit and narrows the frontend.  The
-next informative task is its first implementation gate:
+Milestone 2I passes the generic fold/cofold implementation gate.  The next
+informative task is the syntax frontend:
 
-1. Prove one generic structural fold/continuous-extension layer theorem over
-   the existing indexed container backend.
-2. Check that it specializes to both colist cons and cotree leaf/node without
-   repeating shifted-supremum reasoning.
-3. Only then implement the minimal `K`/finite-recursion/sum/product code and
-   its transparent container interpretation.
+1. Implement the minimal `K`/`Rᶠ`/sum/product code with a transparent
+   interpretation into `container`.
+2. Add the canonical outer bottom and derive `DecidableBottom` and
+   `FinitePositions` structurally from a code.
+3. Re-express the colist and Boolean-cotree descriptors in parallel modules,
+   proving that their indexed basis/value and fold APIs recover the current
+   ones without exposing transports.
 4. Add the native-presentation record and factor the duplicated indexed
    monotonicity and continuity bridge through it.
-5. Re-express the two descriptors in parallel modules and compare the complete
-   native `comap`/`cotree_map` proof boundary; do not delete the current
-   regression oracles.
+5. Compare the complete native `comap`/`cotree_map` proof boundary; do not
+   delete the current regression oracles.
 6. If this gate passes, freeze the semantic representation and return to
    Milestone 3's lifted operational fixed point and observation-indexed
    productivity.

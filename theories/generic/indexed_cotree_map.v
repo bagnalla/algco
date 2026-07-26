@@ -7,7 +7,6 @@ From Coq Require Import
   Basics
   Equivalence
   FunctionalExtensionality
-  Lia
   Morphisms
 .
 
@@ -23,17 +22,43 @@ From algco.generic Require Import
   cotree_instance
   indexed_container
   indexed_cotree_instance
+  indexed_fold
 .
 
 Local Open Scope order_scope.
 Local Open Scope equiv_scope.
 Local Open Scope program_scope.
 
-(** Structural recursion remains native after the one-time basis conversion. *)
+(** The three native constructors determine one shape-indexed algebra. *)
+Definition cotree_fold_algebra {A B : Type}
+  (z : B) (leaf : A -> B) (node : (bool -> B) -> B) :
+  indexed_algebra (cotree_pointed_container A) B :=
+  fun s =>
+    match s as t return (cotree_position t -> B) -> B with
+    | cotree_bottom_shape => fun _ => z
+    | cotree_leaf_shape a => fun _ => leaf a
+    | cotree_node_shape => node
+    end.
+
 Definition indexed_tfold {A B : Type}
   (z : B) (leaf : A -> B) (node : (bool -> B) -> B) :
   indexed_cotree_basis A -> B :=
-  fun b => tfold z leaf node (indexed_basis_to_atree b).
+  basis_fold (cotree_fold_algebra z leaf node).
+
+Lemma indexed_tfold_native {A B : Type}
+  (z : B) (leaf : A -> B) (node : (bool -> B) -> B)
+  (b : indexed_cotree_basis A) :
+  indexed_tfold z leaf node b =
+  tfold z leaf node (indexed_basis_to_atree b).
+Proof.
+  destruct b as [x].
+  unfold indexed_tfold, basis_fold, indexed_basis_to_atree.
+  induction x as [s children IH]; destruct s as [|a|]; simpl.
+  - reflexivity.
+  - reflexivity.
+  - f_equal; apply functional_extensionality; intro b.
+    specialize (IH b); simpl in IH; exact IH.
+Qed.
 
 Lemma monotone_indexed_tfold {A B : Type} `{OType B}
   (z : B) (leaf : A -> B) (node : (bool -> B) -> B) :
@@ -41,16 +66,25 @@ Lemma monotone_indexed_tfold {A B : Type} `{OType B}
   Proper (leq ==> leq) node ->
   Proper (leq ==> leq) (indexed_tfold z leaf node).
 Proof.
-  intros Hz Hnode x y Hxy; unfold indexed_tfold.
-  apply monotone_tfold; auto.
-  apply monotone_indexed_basis_to_atree; exact Hxy.
+  intros Hz Hnode.
+  apply (@monotone_basis_fold (cotree_pointed_container A) B _ z
+    (cotree_fold_algebra z leaf node)).
+  - intros children; reflexivity.
+  - intro b.
+    pose proof (indexed_tfold_native z leaf node b) as Hfold.
+    unfold indexed_tfold in Hfold; rewrite Hfold; apply Hz.
+  - intros [|a|]; simpl.
+    + intros x y Hxy; reflexivity.
+    + intros x y Hxy; reflexivity.
+    + exact Hnode.
 Qed.
 
 Definition indexed_co_tfold {A B : Type} `{OType B}
   (z : B) (leaf : A -> B) (node : (bool -> B) -> B) :
   cotree bool A -> B :=
   fun t =>
-    co (indexed_tfold z leaf node) (cotree_to_indexed_value t).
+    value_fold (cotree_fold_algebra z leaf node)
+      (cotree_to_indexed_value t).
 
 Definition indexed_tcofold {A B : Type} `{PType B}
   (leaf : A -> B) (node : (bool -> B) -> B) :
@@ -76,17 +110,19 @@ Proof.
   - apply chain_directed, chain_ideal.
 Qed.
 
-(** The reusable constructor equations mirror native [co_tfold_bot],
-    [co_tfold_leaf], and [co_tfold_node]. *)
+(** The reusable constructor equations now specialize the common container
+    bottom, nullary-layer, and general-layer theorems. *)
 Lemma indexed_co_tfold_bot {A B : Type} `{CPO B}
   (z : B) (leaf : A -> B) (node : (bool -> B) -> B) :
   indexed_co_tfold z leaf node cobot === z.
 Proof.
-  unfold indexed_co_tfold, co.
-  apply supremum_sup, supremum_const', equ_arrow; intro n.
-  unfold compose, const, indexed_tfold, basis.
-  rewrite indexed_basis_to_atree_ideal_cotree.
-  destruct n; reflexivity.
+  unfold indexed_co_tfold.
+  rewrite cotree_to_indexed_value_bottom.
+  apply (@value_fold_bottom
+    (cotree_pointed_container A) B _ _ _ _ z
+    (cotree_fold_algebra z leaf node)
+    (fun p : Empty_set => match p with end)).
+  intros children; reflexivity.
 Qed.
 
 Lemma indexed_co_tfold_leaf {A B : Type} `{CPO B}
@@ -95,17 +131,16 @@ Lemma indexed_co_tfold_leaf {A B : Type} `{CPO B}
   indexed_co_tfold z leaf node (coleaf a) === leaf a.
 Proof.
   intro Hza.
-  unfold indexed_co_tfold, co.
-  apply supremum_sup.
-  apply supremum_eventually_constant_at.
-  - intro n.
-    unfold compose, indexed_tfold, basis.
-    rewrite !indexed_basis_to_atree_ideal_cotree.
-    destruct n; simpl; auto; reflexivity.
-  - exists (S O); intros n Hn.
-    unfold compose, indexed_tfold, basis.
-    rewrite indexed_basis_to_atree_ideal_cotree.
-    destruct n; try lia; reflexivity.
+  unfold indexed_co_tfold.
+  rewrite cotree_to_indexed_value_leaf.
+  apply (@value_fold_nullary
+    (cotree_pointed_container A) B _ _ _ _ z
+    (cotree_fold_algebra z leaf node) (cotree_leaf_shape a)
+    (fun p : Empty_set => match p with end)
+    (fun p : Empty_set => match p with end)).
+  - intros children; reflexivity.
+  - exact Hza.
+  - intros x y Hxy; reflexivity.
 Qed.
 
 Lemma indexed_co_tfold_node {A B : Type} `{CPO B}
@@ -117,38 +152,21 @@ Lemma indexed_co_tfold_node {A B : Type} `{CPO B}
   indexed_co_tfold z leaf node (conode children) ===
   node (indexed_co_tfold z leaf node ∘ children).
 Proof.
-  intros Hnode Hz Hzn.
-  assert (Hnode' : monotone node).
-  { apply wcontinuous_monotone; exact Hnode. }
-  unfold indexed_co_tfold, co.
-  apply supremum_sup.
-  apply shift_supremum'' with
-    (f := fun i =>
-      node
-        (fun b =>
-          indexed_tfold z leaf node
-            (ideal (cotree_to_indexed_value (children b)) i))).
-  - unfold compose, indexed_tfold, basis.
-    rewrite !indexed_basis_to_atree_ideal_cotree; simpl; exact Hzn.
-  - unfold basis.
-    apply Hnode.
-    + apply monotone_chain.
-      * intros i j Hij b.
-        apply monotone_indexed_tfold; auto.
-        apply chain_leq; auto; apply chain_ideal.
-      * apply chain_id.
-    + apply supremum_apply; intro b.
-      apply sup_spec.
-      apply directed_indexed_tfold_ideal; assumption.
-  - apply equ_arrow; intro i.
-    unfold shift, compose, indexed_tfold, basis.
-    rewrite indexed_basis_to_atree_ideal_cotree; simpl.
-    eapply (@Proper_monotone_equ _ _ _ _ node Hnode').
-    apply equ_arrow; intro b.
-    unfold indexed_tfold, value_ideal, indexed_basis_to_atree,
-      cotree_to_indexed_value.
-    simpl.
-    rewrite mu_to_atree_truncate_cotree; reflexivity.
+  intros Hnode Hz Hzn; clear Hzn.
+  unfold indexed_co_tfold.
+  rewrite cotree_to_indexed_value_node.
+  apply (@value_fold_layer
+    (cotree_pointed_container A) B _ _ _ _ z
+    (cotree_fold_algebra z leaf node) cotree_node_shape
+    (fun b : bool => cotree_to_indexed_value (children b))).
+  - intros bottom_children; reflexivity.
+  - intro b.
+    pose proof (indexed_tfold_native z leaf node b) as Hfold.
+    unfold indexed_tfold in Hfold; rewrite Hfold; apply Hz.
+  - intros [|a|]; simpl.
+    + apply continuous_wcontinuous, continuous_const.
+    + apply continuous_wcontinuous, continuous_const.
+    + exact Hnode.
 Qed.
 
 Lemma indexed_co_tfold_bot' {A B : Type}
@@ -224,7 +242,9 @@ Qed.
 
 Definition indexed_cotree_map_value {A B : Type} (f : A -> B) :
   indexed_cotree_value A -> cotree bool B :=
-  co (indexed_atree_cotree_map f).
+  value_fold
+    (cotree_fold_algebra (bot : cotree bool B)
+      (@coleaf bool B ∘ f) (@conode bool B)).
 
 Definition indexed_cotree_map {A B : Type} (f : A -> B) :
   cotree bool A -> cotree bool B :=
@@ -232,7 +252,13 @@ Definition indexed_cotree_map {A B : Type} (f : A -> B) :
 
 Lemma continuous_indexed_cotree_map_value {A B : Type} (f : A -> B) :
   continuous (indexed_cotree_map_value f).
-Proof. apply continuous_co, monotone_indexed_atree_cotree_map. Qed.
+Proof.
+  unfold indexed_cotree_map_value, value_fold.
+  apply continuous_co.
+  apply monotone_indexed_tfold.
+  - intro t; apply bot_le.
+  - apply continuous_monotone, continuous_conode.
+Qed.
 
 Lemma continuous_indexed_cotree_map {A B : Type} (f : A -> B) :
   continuous (indexed_cotree_map f).
@@ -285,8 +311,15 @@ Lemma indexed_cotree_map_value_incl {A B : Type}
   (f : A -> B) (b : indexed_cotree_basis A) :
   indexed_cotree_map_value f (incl b) = indexed_atree_cotree_map f b.
 Proof.
-  unfold indexed_cotree_map_value.
-  apply co_incl'_ext, monotone_indexed_atree_cotree_map.
+  unfold indexed_cotree_map_value, value_fold.
+  transitivity
+    (indexed_tfold (bot : cotree bool B)
+      (@coleaf bool B ∘ f) (@conode bool B) b).
+  - apply co_incl'_ext.
+    apply monotone_indexed_tfold.
+    + intro t; apply bot_le.
+    + apply continuous_monotone, continuous_conode.
+  - rewrite indexed_tfold_native; reflexivity.
 Qed.
 
 Lemma atree_cotree_map_tinj_map {A B : Type}

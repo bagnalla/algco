@@ -5,6 +5,7 @@ Set Contextual Implicit.
 
 From Coq Require Import
   Basics
+  FunctionalExtensionality
   List
 .
 
@@ -68,6 +69,38 @@ Definition cotree_to_indexed_value {A : Type} (t : cotree bool A) :
 Definition indexed_value_to_cotree {A : Type}
   (x : indexed_cotree_value A) : cotree bool A :=
   nu_to_cotree (value_carrier x).
+
+(** Constructor equations for the native-to-indexed value conversion. *)
+Lemma cotree_to_indexed_value_bottom {A : Type} :
+  cotree_to_indexed_value (@cobot bool A) =
+  @in_value (cotree_pointed_container A) cotree_bottom_shape
+    (fun p : Empty_set => match p with end).
+Proof.
+  unfold cotree_to_indexed_value, in_value.
+  f_equal; rewrite cotree_to_nu_bottom.
+  f_equal; apply functional_extensionality; intro p; destruct p.
+Qed.
+
+Lemma cotree_to_indexed_value_leaf {A : Type} (a : A) :
+  cotree_to_indexed_value (@coleaf bool A a) =
+  @in_value (cotree_pointed_container A) (cotree_leaf_shape a)
+    (fun p : Empty_set => match p with end).
+Proof.
+  unfold cotree_to_indexed_value, in_value.
+  f_equal; rewrite cotree_to_nu_leaf.
+  f_equal; apply functional_extensionality; intro p; destruct p.
+Qed.
+
+Lemma cotree_to_indexed_value_node {A : Type}
+  (children : bool -> cotree bool A) :
+  cotree_to_indexed_value (conode children) =
+  @in_value (cotree_pointed_container A) cotree_node_shape
+    (fun b : bool => cotree_to_indexed_value (children b)).
+Proof.
+  unfold cotree_to_indexed_value, in_value.
+  f_equal; rewrite cotree_to_nu_node.
+  f_equal; apply functional_extensionality; intro b; reflexivity.
+Qed.
 
 (** Native cotrees and the indexed value carrier have the same approximation
     order.  The bridge uses coinductive equivalence rather than [cotree_ext],

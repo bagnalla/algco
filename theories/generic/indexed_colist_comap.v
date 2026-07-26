@@ -22,10 +22,58 @@ From algco.generic Require Import
   colist_instance
   indexed_container
   indexed_colist_instance
+  indexed_fold
 .
 
 Local Open Scope order_scope.
 Local Open Scope equiv_scope.
+
+(** The native constructors determine a shape-indexed algebra.  Its fold is
+    the common container fold, not a colist-specific copy of the recursion
+    and shifted-supremum machinery. *)
+Definition colist_fold_algebra {A B : Type}
+  (z : B) (step : A -> B -> B) :
+  indexed_algebra (colist_pointed_container A) B :=
+  fun s =>
+    match s as t return (colist_position t -> B) -> B with
+    | colist_hole_shape => fun _ => z
+    | colist_cons_shape a => fun children => step a (children tt)
+    end.
+
+Definition indexed_fold {A B : Type} (z : B) (step : A -> B -> B) :
+  indexed_colist_basis A -> B :=
+  basis_fold (colist_fold_algebra z step).
+
+(** The generic structural fold computes exactly as the familiar native list
+    fold after crossing the one-time presentation boundary. *)
+Lemma indexed_fold_native {A B : Type} (z : B) (step : A -> B -> B)
+  (b : indexed_colist_basis A) :
+  indexed_fold z step b = fold z step (indexed_basis_to_list b).
+Proof.
+  destruct b as [x].
+  unfold indexed_fold, basis_fold, indexed_basis_to_list.
+  induction x as [s children IH]; destruct s as [|a]; simpl.
+  - reflexivity.
+  - specialize (IH tt); simpl in IH; rewrite IH; reflexivity.
+Qed.
+
+Lemma monotone_indexed_fold {A B : Type} `{OType B}
+  (z : B) (step : A -> B -> B) :
+  (forall l, z ⊑ fold z step l) ->
+  (forall a, Proper (leq ==> leq) (step a)) ->
+  Proper (leq ==> leq) (indexed_fold z step).
+Proof.
+  intros Hz Hstep.
+  apply (@monotone_basis_fold (colist_pointed_container A) B _ z
+    (colist_fold_algebra z step)).
+  - intros children; reflexivity.
+  - intro b.
+    pose proof (indexed_fold_native z step b) as Hfold.
+    unfold indexed_fold in Hfold; rewrite Hfold; apply Hz.
+  - intros [|a]; simpl.
+    + intros x y Hxy; reflexivity.
+    + intros x y Hxy; apply Hstep, Hxy.
+Qed.
 
 (** The basis computation remains the ordinary structurally recursive list
     map.  Only the one-time specialization conversion mentions the wrapper. *)
@@ -41,33 +89,18 @@ Proof.
   apply monotone_indexed_basis_to_list; exact Hxy.
 Qed.
 
-(** This is the reusable specialization of native structural recursion to the
-    indexed basis.  It is the wrapper analogue of [fold] and [co (fold ...)]
-    in the existing colist API. *)
-Definition indexed_fold {A B : Type} (z : B) (step : A -> B -> B) :
-  indexed_colist_basis A -> B :=
-  fun b => fold z step (indexed_basis_to_list b).
-
-Lemma monotone_indexed_fold {A B : Type} `{OType B}
-  (z : B) (step : A -> B -> B) :
-  (forall l, z ⊑ fold z step l) ->
-  (forall a, Proper (leq ==> leq) (step a)) ->
-  Proper (leq ==> leq) (indexed_fold z step).
-Proof.
-  intros Hz Hstep x y Hxy; unfold indexed_fold.
-  apply monotone_fold; auto.
-  apply monotone_indexed_basis_to_list; exact Hxy.
-Qed.
-
 Definition indexed_co_fold {A B : Type} `{OType B}
   (z : B) (step : A -> B -> B) : colist A -> B :=
-  fun l => co (indexed_fold z step) (colist_to_indexed_value l).
+  fun l =>
+    value_fold (colist_fold_algebra z step)
+      (colist_to_indexed_value l).
 
 (** Continuous extension is taken using the generic [aCPO] instance for the
     indexed input carrier.  The result stays native. *)
 Definition indexed_comap_value {A B : Type} (f : A -> B) :
   indexed_colist_value A -> colist B :=
-  co (indexed_amap f).
+  value_fold
+    (colist_fold_algebra (bot : colist B) (map_f f)).
 
 Definition indexed_comap {A B : Type} (f : A -> B) :
   colist A -> colist B :=
@@ -75,7 +108,13 @@ Definition indexed_comap {A B : Type} (f : A -> B) :
 
 Lemma continuous_indexed_comap_value {A B : Type} (f : A -> B) :
   continuous (indexed_comap_value f).
-Proof. apply continuous_co, monotone_indexed_amap. Qed.
+Proof.
+  unfold indexed_comap_value, value_fold.
+  apply continuous_co.
+  apply monotone_indexed_fold.
+  - intro l; apply bot_le.
+  - intro a; apply continuous_monotone, continuous_cocons.
+Qed.
 
 Lemma continuous_indexed_comap {A B : Type} (f : A -> B) :
   continuous (indexed_comap f).
@@ -116,17 +155,19 @@ Proof.
   - apply chain_directed, chain_ideal.
 Qed.
 
-(** Generic native constructor equations.  This is the one-time shifted-
-    supremum proof that operation definitions should not have to repeat. *)
+(** Native constructor equations now specialize the single generic container
+    layer theorem. *)
 Lemma indexed_co_fold_nil {A B : Type} `{CPO B}
   (z : B) (step : A -> B -> B) :
   indexed_co_fold z step conil === z.
 Proof.
-  unfold indexed_co_fold, co.
-  apply supremum_sup, supremum_const', equ_arrow; intro n.
-  unfold compose, const, indexed_fold, basis.
-  rewrite indexed_basis_to_list_ideal_colist.
-  destruct n; reflexivity.
+  unfold indexed_co_fold.
+  rewrite colist_to_indexed_value_nil.
+  apply (@value_fold_bottom
+    (colist_pointed_container A) B _ _ _ _ z
+    (colist_fold_algebra z step)
+    (fun p : Empty_set => match p with end)).
+  intros children; reflexivity.
 Qed.
 
 Lemma indexed_co_fold_cons {A B : Type} `{CPO B}
@@ -137,26 +178,23 @@ Lemma indexed_co_fold_cons {A B : Type} `{CPO B}
   indexed_co_fold z step (cocons a l) ===
   step a (indexed_co_fold z step l).
 Proof.
-  intros Hz Hstep Hza.
-  unfold indexed_co_fold, co.
-  apply supremum_sup.
-  apply shift_supremum'' with
-    (f := fun i =>
-      step a
-        (indexed_fold z step
-          (ideal (colist_to_indexed_value l) i))).
-  - unfold compose, indexed_fold, basis.
-    rewrite !indexed_basis_to_list_ideal_colist; simpl; exact Hza.
-  - unfold basis.
-    apply Hstep.
-    + apply directed_indexed_fold_ideal; auto.
-      intro x; apply continuous_monotone, Hstep.
-    + apply sup_spec.
-      apply directed_indexed_fold_ideal; auto.
-      intro x; apply continuous_monotone, Hstep.
-  - apply equ_arrow; intro i.
-    unfold shift, compose, indexed_fold, basis.
-    rewrite !indexed_basis_to_list_ideal_colist; reflexivity.
+  intros Hz Hstep Hza; clear Hza.
+  unfold indexed_co_fold.
+  rewrite colist_to_indexed_value_cons.
+  apply (@value_fold_layer
+    (colist_pointed_container A) B _ _ _ _ z
+    (colist_fold_algebra z step) (colist_cons_shape a)
+    (fun _ : unit => colist_to_indexed_value l)).
+  - intros children; reflexivity.
+  - intro b.
+    pose proof (indexed_fold_native z step b) as Hfold.
+    unfold indexed_fold in Hfold; rewrite Hfold; apply Hz.
+  - intros [|x]; simpl.
+    + apply continuous_wcontinuous, continuous_const.
+    + intros ch Hch limit Hsup.
+      apply (Hstep x).
+      * apply chain_directed; intro i; apply Hch.
+      * apply apply_supremum; exact Hsup.
 Qed.
 
 Lemma indexed_co_fold_nil' {A B : Type}
@@ -224,8 +262,14 @@ Lemma indexed_comap_value_incl {A B : Type} (f : A -> B)
   (b : indexed_colist_basis A) :
   indexed_comap_value f (incl b) = indexed_amap f b.
 Proof.
-  unfold indexed_comap_value.
-  apply co_incl'_ext, monotone_indexed_amap.
+  unfold indexed_comap_value, value_fold.
+  transitivity
+    (indexed_fold (bot : colist B) (map_f f) b).
+  - apply co_incl'_ext.
+    apply monotone_indexed_fold.
+    + intro l; apply bot_le.
+    + intro a; apply continuous_monotone, continuous_cocons.
+  - rewrite indexed_fold_native; reflexivity.
 Qed.
 
 Lemma amap_inj_map {A B : Type} (f : A -> B) (l : list A) :

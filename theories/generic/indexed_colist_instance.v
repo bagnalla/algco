@@ -5,6 +5,7 @@ Set Contextual Implicit.
 
 From Coq Require Import
   Basics
+  FunctionalExtensionality
   List
 .
 
@@ -68,6 +69,28 @@ Definition colist_to_indexed_value {A : Type} (l : colist A) :
 Definition indexed_value_to_colist {A : Type} (x : indexed_colist_value A) :
   colist A :=
   nu_to_colist (value_carrier x).
+
+(** Constructor equations for the native-to-indexed value conversion are
+    part of the supported specialization interface. *)
+Lemma colist_to_indexed_value_nil {A : Type} :
+  colist_to_indexed_value (@conil A) =
+  @in_value (colist_pointed_container A) colist_hole_shape
+    (fun p : Empty_set => match p with end).
+Proof.
+  unfold colist_to_indexed_value, in_value.
+  f_equal; rewrite colist_to_nu_nil.
+  f_equal; apply functional_extensionality; intro p; destruct p.
+Qed.
+
+Lemma colist_to_indexed_value_cons {A : Type} (a : A) (l : colist A) :
+  colist_to_indexed_value (cocons a l) =
+  @in_value (colist_pointed_container A) (colist_cons_shape a)
+    (fun _ : unit => colist_to_indexed_value l).
+Proof.
+  unfold colist_to_indexed_value, in_value.
+  f_equal; rewrite colist_to_nu_cons.
+  f_equal; apply functional_extensionality; intros []; reflexivity.
+Qed.
 
 (** The native-to-indexed conversion is an order embedding and preserves the
     sequential suprema used by [co].  These lemmas are part of the one-time
