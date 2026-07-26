@@ -376,11 +376,104 @@ No new axiom is introduced.  In particular, the density proof itself does not
 use strong LPO or classical shape comparison; those enter finite-observation
 continuity through exposed-stage selection and generic child projection.
 
-The sequential algebraic vertical slice is now complete.  Before the native
-`comap` ergonomics test, the design plan calls for two contained experiments:
-generalize compactness to arbitrary nonempty directed families, and test a
-descriptor-indexed carrier that makes generic instance resolution
+The sequential algebraic vertical slice is now complete.  Milestone 2D below
+performs the first of the two contained follow-up experiments by generalizing
+compactness to arbitrary nonempty directed families.  The remaining experiment
+is a descriptor-indexed carrier that makes generic instance resolution
 deterministic.
+
+## Milestone 2D checkpoint: Scott compactness of the included basis
+
+Status on July 26, 2026: **the arbitrary-directed compactness argument
+succeeds**.
+
+The new
+[`theories/generic/scott_container.v`](../theories/generic/scott_container.v)
+keeps this experiment separate from the current sequential hierarchy.  It
+defines standard compactness relative to any nonempty directed family whose
+supremum is supplied relationally:
+
+```text
+scott_compact k :=
+  ∀ (I : Type) (d : I → A),
+    inhabited I → directed d →
+    ∀ x, supremum x d → k ⊑ x →
+    ∃ i, k ⊑ d i
+```
+
+This does not assume or construct a `DCPO A`.  It states what happens whenever
+the particular directed family has a supremum.  The bridge theorem
+`scott_compact_compact` shows that this implies AlgCo's existing
+sequence-based `compact` predicate.
+
+For every finitary pointed container, the main result is:
+
+```text
+incl_mu_scott_compact :
+  ∀ b : μ C, scott_compact (incl_mu b : ν C)
+```
+
+This is the standard basis theorem: it is the image of a finite basis element
+in the semantic domain that is compact.  It is stronger and more relevant to
+algebraicity than the earlier statement that `μ C` is internally compact for
+its own sequence-based order.
+
+The proof follows the finite-tree structure of `b`:
+
+1. The bottom basis element lies below any member; explicit inhabitance of
+   the index type supplies that member.
+2. If `incl_mu b ⊑ limit` and `b` exposes a constructor, then `limit` exposes
+   the same constructor.
+3. A nonbottom supremum has some family member exposing that constructor.  If
+   no member exposed anything, semantic bottom would be an upper bound,
+   contradicting leastness of the nonbottom supremum.
+4. Projecting a child from every family member preserves directedness and
+   transports the supplied supremum pointwise.  Structural induction therefore
+   gives one witness index for each child of `b`.
+5. The complete finite position enumeration and directedness merge those
+   child indices into one member.  One final directedness step merges it with
+   the constructor-exposing member.
+
+This confirms the earlier hypothesis split:
+
+| Construction or theorem | Required structure |
+|---|---|
+| Definition of `scott_compact` | an ordered carrier |
+| Finite common upper member | an explicitly inhabited directed family |
+| Child-family and exposed-member lemmas | decidable pointed container |
+| Scott compactness of every included `μ C` element | finitary pointed container |
+
+Finite branching is still used at exactly one semantic point: synchronizing
+the finitely many child witnesses.  Countability of the directed family is not
+used.  Coq accepts the index type in a universe independent of the carrier's
+universe, so the definition is not accidentally restricted to small or
+same-universe families.
+
+The exposed-member proof is slightly cleaner than the construction of the
+existing sequential supremum.  Because a supremum is already supplied and
+only an existence result is needed, it applies excluded middle directly to
+`∃ i, nu_exposes (d i)`; it does not invoke strong LPO or search a sequence.
+This does **not** yet provide arbitrary directed suprema for `ν C`.  A full
+universe-polymorphic `DCPO (ν C)` construction remains a separate experiment.
+
+The concrete colist boundary exposes the results as
+`colist_incl_scott_compact` and `incl_list_scott_compact`.  Thus an included
+generic list is standardly compact in the generic colist semantic carrier,
+while existing native list and colist APIs remain unchanged.
+
+### Milestone 2D assumption audit
+
+| Result | Additional assumption |
+|---|---|
+| `scott_compact`, its bridge to sequential compactness, and finite directed-family aggregation | none |
+| Child-family supremum transport and exposed-member existence | existing `classic`, constructive indefinite description, and `Eq_rect_eq.eq_rect_eq` |
+| `incl_mu_scott_compact` | the same three assumptions |
+| Concrete colist corollaries | no assumptions beyond the generic theorem |
+
+No axiom is new to AlgCo.  Constructive indefinite description selects one
+witness index for each recursive position before finite aggregation; the
+classical and dependent-equality assumptions are inherited from generic child
+projection and shape transport.
 
 ## Motivation
 
@@ -776,6 +869,9 @@ interface.  Milestone 2B uses finite position enumeration to prove compactness
 of `μ C`.  Milestone 2C proves density and finite-truncation continuity and
 assembles the generic `aCPO`; its concrete colist stack exposes the ideal as
 native `prefix` without requiring clients to reconstruct container packages.
+Milestone 2D separately proves standard Scott compactness of every included
+`μ C` basis element against arbitrary nonempty directed families, without yet
+constructing arbitrary directed suprema of `ν C`.
 
 As the proof-ergonomics test, reconstruct `comap` from structural recursion on
 the native list basis and the generically supplied continuous extension.

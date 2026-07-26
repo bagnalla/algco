@@ -461,6 +461,18 @@ Proof.
   - exists children2; split; [reflexivity | exact H].
 Qed.
 
+Lemma nu_le_exposed_not_bottom (C : decidable_pointed_container)
+  (s : shape (pc_container (dpc_pointed C)))
+  (children : position (pc_container (dpc_pointed C)) s ->
+    nu (pc_container (dpc_pointed C))) :
+  s <> bottom_shape (dpc_pointed C) ->
+  ~ nu_le (dpc_pointed C) (in_nu s children)
+      (nu_bottom (dpc_pointed C)).
+Proof.
+  intros Hs Hle; unfold nu_bottom in Hle.
+  dependent destruction Hle; apply Hs; reflexivity.
+Qed.
+
 Lemma nu_le_layer_inv (C : decidable_pointed_container)
   (x : nu (pc_container (dpc_pointed C)))
   (s : shape (pc_container (dpc_pointed C)))

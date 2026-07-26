@@ -23,6 +23,7 @@ From algco.generic Require Import
   pointed_container
   finitary_container
   algebraic_container
+  scott_container
 .
 
 (** The hole shape is AlgCo's semantic bottom [conil].  A cons shape stores
@@ -198,6 +199,19 @@ Proof. apply compact_spec. Qed.
 Corollary list_to_mu_compact {A : Type} (l : list A) :
   compact (list_to_mu l).
 Proof. apply compact_spec. Qed.
+
+(** Standard compactness is a property of the included basis element in the
+    semantic carrier, not merely of the finite basis order in isolation. *)
+Corollary colist_incl_scott_compact {A : Type}
+  (x : mu (colist_container A)) :
+  scott_compact (incl x).
+Proof.
+  exact (@incl_mu_scott_compact (colist_finitary_container A) x).
+Qed.
+
+Corollary incl_list_scott_compact {A : Type} (l : list A) :
+  scott_compact (incl (list_to_mu l)).
+Proof. apply colist_incl_scott_compact. Qed.
 
 (** ** Final coalgebra and native colists *)
 

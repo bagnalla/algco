@@ -160,23 +160,39 @@ The compactness prototype suggests the following factorization:
 - finite branching is used only to merge one witness per child;
 - the canonical depth truncations provide sequential density.
 
-Milestone 2C now verifies the last point generically.  Density needs only a
-pointed signature, and finite-truncation continuity needs the current
+Milestone 2C verifies the last point generically.  Density needs only a pointed
+signature, and finite-truncation continuity needs the current
 decidable-pointed interface but not finite branching.  Continuity proves
 leastness independently at each child, so it does not need to synchronize a
-single stage across all positions.  This confirms that position finiteness is
-specific to compactness in the present sequential construction.
+single stage across all positions.
 
-The proof that `μ C` is compact should plausibly generalize from countable
-directed sequences to arbitrary nonempty directed families.  Finite branching
-is substantive here.  If a constructor has infinitely many positions, one
-`μ C` node may contain infinitely many children, and a directed family can
-reveal successively more children without any member containing the whole
-node.
+Milestone 2D verifies the standard compactness claim as well:
 
-The full `DCPO (ν C)` construction and Scott-continuity laws should be tested
+```text
+∀ b : μ C, ScottCompact (incl b : ν C)
+```
+
+Here a family is an arbitrary `d : I → ν C`, with `inhabited I` carried as an
+explicit premise.  Its supremum is supplied relationally.  Child projection
+transports that supremum, induction chooses one witness member for each finite
+child, and the position enumeration plus directedness synchronizes them.  Coq
+accepts the index universe independently of the carrier universe.  Thus
+countability was incidental to the earlier theorem, while finite branching is
+substantive: with infinitely many positions, a family can reveal successively
+more children without any member containing the whole finite-basis node.
+
+The assumption cost is unchanged from the generic sequential proof:
+excluded middle, constructive indefinite description, and `Eq_rect_eq`.
+Because the supremum is supplied and only an existential witness is required,
+the exposed-member lemma applies excluded middle directly to the indexed
+family and does not invoke the strong-LPO sequence search used to construct
+the existing semantic supremum.
+
+This result does not construct arbitrary directed suprema.  The full
+`DCPO (ν C)` construction and Scott-continuity laws should be tested
 separately.  They may introduce universe and choice complications even if the
-mathematics is straightforward.
+mathematics is straightforward.  In particular, the existing `CPO (ν C)`
+instance remains sequence-based.
 
 ## Semantic values and operational computations
 
@@ -376,7 +392,8 @@ The `comap` reconstruction remains the first decisive test of this boundary.
 1. Do not replace sequential approximation with arbitrary directed sets.
    Provide standard directed semantics and retain the canonical sequence as
    additional computational presentation.
-2. Require arbitrary directed families to be nonempty explicitly.
+2. Use universe-polymorphic indexed families as the working representation,
+   and require their index type to be inhabited explicitly.
 3. Do not claim that a classically selected semantic supremum is executable.
 4. Keep semantic and operational approximation orders distinct.
 5. Do not expect Coq to infer a pointed/finitary descriptor from its projected
@@ -390,12 +407,14 @@ These are working decisions for experiments, not yet compatibility promises.
 
 ## Open questions
 
-- Should arbitrary directed families be represented by inhabited indexed
-  families or nonempty predicates `A → Prop`?
+- Should a future `DCPO` interface bundle the inhabited index type, family,
+  and directedness proof, or retain the premise-oriented API that worked for
+  the compactness theorem?
 - Should semantic orders remain preorders with explicit equivalence, or should
   the new kernel use partial orders or setoid quotients?
-- Can full `DCPO (ν C)` and Scott-compactness of `μ C` be proved without
-  making universe-polymorphic APIs unpleasant?
+- Can full `DCPO (ν C)` be constructed without making the
+  universe-polymorphic API unpleasant or suggesting that its selected
+  suprema are executable?
 - Should the descriptor-indexing problem be solved by enriched containers,
   functor codes, wrappers, or bundled domains?
 - What is the cleanest division of monotonicity, continuity, density, and
@@ -408,16 +427,15 @@ These are working decisions for experiments, not yet compatibility promises.
 
 ## Next experiments
 
-Sequential density and the generic `aCPO` were completed in Milestone 2C
-without refactoring the fixed-point representation.  The remaining experiments
-are:
+Sequential density and the generic `aCPO` were completed in Milestone 2C,
+and Milestone 2D proves Scott compactness of every included basis element for
+arbitrary nonempty directed families.  Neither required refactoring the
+fixed-point representation.  The remaining experiments are:
 
-1. Re-run the compactness argument for an arbitrary nonempty directed family
-   and record the proof, universe, and assumption costs.
-2. Build a minimal descriptor-indexed wrapper or fixed point and confirm that
+1. Build a minimal descriptor-indexed wrapper or fixed point and confirm that
    `OType`, `Compact`, and `CPO` resolution becomes deterministic and that a
    generic algebraicity proof can be reused without concrete reassembly.
-3. Reconstruct native colist `comap` and compare its statements and proof
+2. Reconstruct native colist `comap` and compare its statements and proof
    scripts directly with the existing implementation.
-4. Use those results, rather than the elegance of the generic kernel alone,
+3. Use those results, rather than the elegance of the generic kernel alone,
    to decide whether a larger rewrite is justified.
