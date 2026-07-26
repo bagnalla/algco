@@ -29,14 +29,23 @@ correctness result must separately establish semantic soundness, operational
 adequacy, and productivity of the extracted computation.
 
 The first operational regression model is now formalized in
-[`theories/cofold_operational.v`](../theories/cofold_operational.v). It uses
-`option bool` to distinguish a pending computation from a returned `false`,
-models the lazy demand behavior of `colist_existsb`, and proves that every
-returned finite result agrees with the AlgCo denotation. It also proves the
-central counterexample: `bad_bool` denotes `false`, while no finite operational
-evaluation returns any Boolean. This initial model treats colist constructors
-and predicate applications as atomic and terminating; a generic lifted
-`cofold` and an adequacy connection to target-language evaluation remain open.
+[`theories/cofold_operational.v`](../theories/cofold_operational.v). Its generic
+flat layer uses `option B` to distinguish a pending computation from an
+atomically returned result. A demand-aware lifted step may return without
+inspecting its recursive approximation. A logical-relation theorem proves
+that every finite operational result agrees with the AlgCo denotation, and
+monotonicity of the lifted step makes the fuel approximations an increasing
+flat chain.
+
+The `colist_existsb` instance distinguishes a pending computation from a
+returned `false` and models the lazy demand behavior of Boolean disjunction.
+Its inductive big-step semantics is equivalent to returning at some finite
+fuel. The development proves the central counterexample: `bad_bool` denotes
+`false`, while neither the fuelled evaluator nor the big-step semantics returns
+any Boolean. This initial model still treats colist constructors and predicate
+applications as atomic and terminating. Observation-indexed coinductive
+results and an adequacy connection to an independently formalized target
+language remain open.
 
 ## The present development
 
