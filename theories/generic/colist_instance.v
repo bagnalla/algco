@@ -18,6 +18,7 @@ From algco Require Import
 From algco.generic Require Import
   container
   pointed_container
+  finitary_container
 .
 
 (** The hole shape is AlgCo's semantic bottom [conil].  A cons shape stores
@@ -41,6 +42,43 @@ Definition colist_pointed_container (A : Type) : pointed_container :=
   {| pc_container := colist_container A
    ; bottom_shape := colist_hole_shape
    ; bottom_position_absurd := fun p => match p with end
+  |}.
+
+Definition colist_bottom_shape_dec {A : Type} (s : colist_shape A) :
+  {s = colist_hole_shape} + {s <> colist_hole_shape}.
+Proof.
+  destruct s as [|a].
+  - left; reflexivity.
+  - right; discriminate.
+Defined.
+
+Definition colist_position_enum {A : Type} (s : colist_shape A) :
+  list (colist_position s) :=
+  match s with
+  | colist_hole_shape => []
+  | colist_cons_shape _ => [tt]
+  end.
+
+Lemma colist_position_enum_complete {A : Type}
+  (s : colist_shape A) (p : colist_position s) :
+  In p (colist_position_enum s).
+Proof.
+  destruct s as [|a].
+  - destruct p.
+  - destruct p; simpl; auto.
+Qed.
+
+Definition colist_decidable_container (A : Type) :
+  decidable_pointed_container :=
+  {| dpc_pointed := colist_pointed_container A
+   ; bottom_shape_dec := @colist_bottom_shape_dec A
+  |}.
+
+Definition colist_finitary_container (A : Type) :
+  finitary_pointed_container :=
+  {| fpc_decidable := colist_decidable_container A
+   ; position_enum := @colist_position_enum A
+   ; position_enum_complete := @colist_position_enum_complete A
   |}.
 
 (** ** Initial algebra and native lists *)

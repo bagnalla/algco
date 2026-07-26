@@ -165,6 +165,69 @@ gate: its definition, continuity proof, constructor equations, and ordinary
 program proofs should expose no container machinery and should be comparable
 in size and clarity to the current AlgCo proofs.
 
+## Milestone 2A checkpoint: directed completeness
+
+Status on July 26, 2026: **the generic CPO construction works**.
+
+[`theories/generic/finitary_container.v`](../theories/generic/finitary_container.v)
+records two distinct interfaces that the initial plan had conflated:
+
+```text
+decidable pointed container
+  = pointed container + a test for the bottom shape
+
+finitary pointed container
+  = decidable pointed container
+  + a complete finite enumeration of every position type
+```
+
+The separation is mathematically useful.  Directed completeness of `ν C`
+does not require finite branching.  The bottom-shape test is enough to find an
+exposed stage of a directed chain.  Finite position enumeration first becomes
+necessary when combining finitely many witnesses in the compactness proof.
+
+The checkpoint adds:
+
+- order reflection of `incl : μ C → ν C`, completing its order-embedding law;
+- the basis truncation chain and its included value chain;
+- a total child projection for arbitrary container layers;
+- directedness and upper-bound lemmas for projected child chains;
+- a generic coinductive supremum `nu_sup`;
+- proofs that `nu_sup` is an upper bound and the least upper bound;
+- a `CPO (ν C)` instance for every decidable pointed container.
+
+The colist instance supplies both interfaces without requiring decidable
+equality on the element type.  Pattern matching distinguishes `hole` from
+`cons a`, and the position enumerations are `[]` and `[tt]`.
+
+The generic supremum follows the existing colist and cotree construction.  It
+uses `LPO_option` to choose an exposed stage.  To project a requested child
+from an arbitrary layer, it additionally uses AlgCo's strong classical
+equality to compare shapes; a mismatch maps to semantic bottom.  Directedness
+proves that this convention cannot discard information in a relevant chain.
+
+### Milestone 2A assumption audit
+
+| Result | Additional assumption |
+|---|---|
+| Colist decidable/finitary interface data | none |
+| Inclusion order reflection and generic chain statements | `Eq_rect_eq.eq_rect_eq` |
+| Child projection itself and `nu_sup` definition | existing `classic` and constructive indefinite description |
+| Child projection computation at an equal shape | the same classical assumptions plus `Eq_rect_eq.eq_rect_eq` |
+| Directed child chains and the `CPO` correctness theorem | the same classical assumptions plus `Eq_rect_eq.eq_rect_eq` |
+
+No assumption is new to AlgCo: the concrete CPO constructions already use the
+classical package, and the dependent generic order already used `eq_rect_eq`.
+The generic construction does make classical shape comparison computationally
+visible inside the semantic supremum.  This is acceptable for the current
+semantic experiment but should be kept out of a public extracted runtime
+representation unless a specialization removes it.
+
+The remaining part of Milestone 2 is algebraicity: compactness of `μ C`,
+density through truncation, and the resulting `aCPO` instance.  Only that step
+uses the finitary extension.  Afterward `comap` remains the decisive test of
+the user-facing proof interface.
+
 ## Motivation
 
 AlgCo already follows the initial-algebra/final-coalgebra pattern
@@ -298,12 +361,20 @@ belongs in a later enriched-container extension.
 
 ### Finiteness
 
-The compact-basis theorem requires finite observations. For containers, the
-first sufficient condition should be:
+Directed completeness and algebraicity require different structures.  The
+generic CPO construction needs a decision procedure distinguishing the bottom
+shape from exposed shapes, but permits arbitrary branching.  The compact-basis
+theorem additionally requires finite observations.  The current sufficient
+condition is a complete enumeration:
 
 ```text
-∀ s : Shape C, Pos C s is finite
+positions  : ∀ s : Shape C, list (Pos C s)
+complete   : ∀ s (p : Pos C s), p ∈ positions s
 ```
+
+The enumeration need not be duplicate-free for the intended proof: it is used
+only to combine finitely many recursive compactness witnesses into one chain
+index.
 
 This matches the current cotree development, where the dense basis is defined
 for general branching but the demonstrated `aCPO` instance uses finite Boolean
@@ -545,9 +616,12 @@ equivalence. Do not replace native lists or colists.
 ### Milestone 2: generic algebraic structure
 
 The pointed prefix order, inclusion, depth truncation, and their colist
-correspondence are complete as Milestone 1.5.  Next prove the remaining `aCPO`
-laws under finite branching, then expose them through native colist-specific
-lemmas rather than requiring users to transport goals manually.
+correspondence are complete as Milestone 1.5.  Milestone 2A additionally
+provides the generic directed supremum and `CPO (ν C)` under a decidable-bottom
+interface.  Next use finite position enumeration to prove compactness of
+`μ C`, density of truncations, and the remaining `aCPO` laws.  Expose the
+result through native colist-specific lemmas rather than requiring users to
+transport goals manually.
 
 As the proof-ergonomics test, reconstruct `comap` from structural recursion on
 the native list basis and the generically supplied continuous extension.
@@ -731,18 +805,16 @@ representation rewrite are separate decisions.
 
 ## Immediate next experiment
 
-Milestones 1 and 1.5 establish the representation and proof-specialization
-boundary.  The next informative task is one complete algebraic-operation
-slice:
+Milestones 1, 1.5, and 2A establish the representation, specialization
+boundary, and generic CPO.  The next informative task completes the
+algebraic-operation slice:
 
-1. State the minimal finite-position interface needed by the generic
-   compactness and density arguments.
-2. Complete the pointed-container `aCPO` construction, reusing generic
-   inclusion and truncation.
-3. Package the result so the native colist instance can use it without visible
-   transports.
-4. Define native-list basis map structurally and obtain `comap` by continuous
-   extension.
+1. Use the finite position enumeration to prove compactness of `μ C`.
+2. Prove that the included truncation chain has supremum `x` and package the
+   generic `Dense` and `aCPO` instances.
+3. Expose the result to native colists without visible transports.
+4. Define the native-list basis map structurally and obtain `comap` by
+   continuous extension.
 5. Recover continuity and the two native constructor equations.
 6. Compare the resulting user proof with the existing `comap` development,
    including required axioms, simplification behavior, error messages, and

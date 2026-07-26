@@ -179,6 +179,22 @@ Proof.
   - simpl; constructor; exact IH.
 Qed.
 
+Lemma incl_mu_reflects {C : pointed_container}
+  (x y : mu (pc_container C)) :
+  nu_le C (incl_mu x) (incl_mu y) -> mu_le C x y.
+Proof.
+  revert y.
+  induction x as [sx childrenx IH]; intros [sy childreny] Hxy; simpl in Hxy.
+  dependent destruction Hxy.
+  - constructor.
+  - constructor; intro p; apply IH, H.
+Qed.
+
+Theorem incl_mu_order_iff {C : pointed_container}
+  (x y : mu (pc_container C)) :
+  mu_le C x y <-> nu_le C (incl_mu x) (incl_mu y).
+Proof. split; [apply incl_mu_monotone | apply incl_mu_reflects]. Qed.
+
 Lemma truncate_nu_monotone {C : pointed_container} (n : nat)
   (x y : nu (pc_container C)) :
   nu_le C x y -> mu_le C (truncate_nu n x) (truncate_nu n y).
@@ -206,4 +222,21 @@ Proof.
   revert x; induction n as [|n IH]; intros x; simpl.
   - constructor.
   - destruct x as [s children]; constructor; intro p; apply IH.
+Qed.
+
+Lemma chain_truncate_nu {C : pointed_container}
+  (x : nu (pc_container C)) :
+  chain (fun n => truncate_nu n x).
+Proof. intro n; apply truncate_nu_step. Qed.
+
+Lemma chain_incl_truncate_nu {C : pointed_container}
+  (x : nu (pc_container C)) :
+  chain (fun n => incl_mu (truncate_nu n x)).
+Proof. intro n; apply incl_mu_monotone, truncate_nu_step. Qed.
+
+Lemma truncate_incl_mu_le {C : pointed_container} (n : nat)
+  (x : mu (pc_container C)) :
+  mu_le C (truncate_nu n (incl_mu x)) x.
+Proof.
+  apply incl_mu_reflects, incl_truncate_nu_le.
 Qed.
