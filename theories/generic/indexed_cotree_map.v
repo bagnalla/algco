@@ -23,6 +23,7 @@ From algco.generic Require Import
   indexed_container
   indexed_cotree_instance
   indexed_fold
+  native_cotree_presentation
 .
 
 Local Open Scope order_scope.
@@ -237,7 +238,7 @@ Instance monotone_indexed_atree_cotree_map {A B : Type} (f : A -> B) :
   Proper (leq ==> leq) (indexed_atree_cotree_map f).
 Proof.
   intros x y Hxy; apply monotone_atree_cotree_map.
-  apply monotone_indexed_basis_to_atree; exact Hxy.
+  apply presented_monotone_indexed_basis_to_atree; exact Hxy.
 Qed.
 
 Definition indexed_cotree_map_value {A B : Type} (f : A -> B) :
@@ -267,7 +268,7 @@ Proof.
     (continuous
       (compose (indexed_cotree_map_value f) (@cotree_to_indexed_value A))).
   apply continuous_compose.
-  - apply continuous_cotree_to_indexed_value.
+  - apply presented_continuous_cotree_to_indexed_value.
   - apply continuous_indexed_cotree_map_value.
 Qed.
 

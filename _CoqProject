@@ -14,12 +14,15 @@ theories/generic/algebraic_container.v
 theories/generic/indexed_container.v
 theories/generic/indexed_container_combinators.v
 theories/generic/indexed_fold.v
+theories/generic/native_presentation.v
 theories/generic/container_combinator_examples.v
 theories/generic/colist_instance.v
 theories/generic/indexed_colist_instance.v
+theories/generic/native_colist_presentation.v
 theories/generic/indexed_colist_comap.v
 theories/generic/cotree_instance.v
 theories/generic/indexed_cotree_instance.v
+theories/generic/native_cotree_presentation.v
 theories/generic/indexed_cotree_map.v
 theories/productivity.v
 theories/cofold_operational.v

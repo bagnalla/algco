@@ -2,10 +2,12 @@
 
 ## Status and decision boundary
 
-This is an exploratory plan for a possible successor architecture to AlgCo.
-It is not yet a decision to rewrite the current development. The existing
-modules remain the reference implementation and the artifact corresponding to
-the [AlgCo paper](https://arxiv.org/abs/2301.09802).
+This is an exploratory clean-slate plan for AlgCo 2.  AlgCo 2 should retain
+AlgCo's mathematical purpose and proof-engineering benefits, but it is not a
+source-compatible revision or migration of the current development.  The
+existing modules remain the artifact corresponding to the
+[AlgCo paper](https://arxiv.org/abs/2301.09802) and an empirical comparison
+point only.
 
 The hypothesis to test is:
 
@@ -15,23 +17,29 @@ The hypothesis to test is:
 > description.
 
 Proof ergonomics is a primary acceptance criterion, not a later polishing
-step.  For the common instances, users should define operations over familiar
-native types and reduce their main obligations to ordinary structural
-induction over familiar basis elements.  Shapes, positions, dependent
-transports, and representation conversions may occur in the generic kernel or
-the one-time instance proof, but should not occur in routine program proofs.
+step.  For common instances, users should define operations through concise
+descriptor-specific constructors and reduce their main obligations to ordinary
+structural induction over compact basis elements.  Shapes, raw positions, and
+dependent transports may occur in the generic kernel or one-time
+specialization, but should not occur in routine program proofs.  Representation
+conversions should not exist unless an independently justified runtime
+optimization requires an internal one.
 
-A rewrite is justified only if one complete vertical slice is clearer and at
-least as usable as the current type-specific development. Until that decision
-point, all generic work should live alongside the current modules.
+A design is justified only if one complete vertical slice is clear and
+low-friction on its own terms while preserving AlgCo's main benefits.  During
+the experiment, generic work lives alongside the current modules so results can
+be measured safely; this repository arrangement is not a proposed compatibility
+architecture.
 Milestones 2F and 2G now pass that test for both linear colist `comap` and
 branching Boolean-cotree `map`, Milestone 2H isolates the smallest derivation
 experiment justified by their duplication, and Milestone 2I successfully
 factors their fold/cofold layer theorem.  Milestone 2J then shows that semantic
 container combinators derive the required descriptor capabilities without a
-reified code language.  The remaining decision is whether native-presentation
-factoring and the operational layer justify a larger rewrite, not whether
-native constructor equations can survive the representation boundary.
+reified code language.  Milestone 2K validates a generic native-presentation
+boundary without worsening assumptions, but also exposes that boundary as
+machinery required only because two representations coexist.  The next design
+gate is a generic-first vertical slice with no native/generic conversion layer,
+followed by the operational lifting.
 
 This plan grew out of the investigation in
 [`cofold-extraction-productivity.md`](cofold-extraction-productivity.md). That
@@ -40,6 +48,23 @@ productivity results. This document concerns the broader architecture suggested
 by that work.  Provisional architectural conclusions that cut across individual
 prototype milestones are collected separately in
 [`algco2-design.md`](algco2-design.md).
+
+## Clean-slate constraint
+
+Backward compatibility is explicitly out of scope.  AlgCo 2 should not retain
+historical carrier types, names, module boundaries, theorem statements,
+runtime representations, wrappers, conversions, or parallel APIs merely to
+ease transition from AlgCo.  The old development supplies examples and
+acceptance criteria, not an API contract.
+
+The default architecture has one canonical representation for each AlgCo 2
+type.  Common types may receive transparent aliases, named constructors,
+eliminators, folds, and automation, but these must operate on the same
+`Basis S` and `Value S` carriers rather than an independently declared datatype.
+A second internal runtime representation is admissible only if intrinsic
+extraction evidence justifies it; it must not create a second public proof API.
+Discarded experiments belong in Git history and these notes, not as dormant
+compatibility infrastructure in AlgCo 2.
 
 ## Milestone 1 checkpoint: fixed-point representation
 
@@ -112,17 +137,18 @@ well-typed Coq.
 It is less attractive as a public Haskell API: exposed constructors would let
 handwritten code violate the erased shape/position invariant, all container
 instances share an opaque representation, and malformed external values could
-reach branches that were impossible in Coq.  The prototype should therefore
-keep both extraction routes open.  Native datatypes with proved
-specializations are likely to provide the clearer public boundary, while
-direct generic extraction remains a valid option for closed programs.
+reach branches that were impossible in Coq.  The clean response is to test an
+abstract or descriptor-specialized extraction boundary, not to add a parallel
+Coq datatype and compatibility isomorphism.
 
-### Checkpoint decision
+### Historical checkpoint decision
 
-Milestone 1 provides enough evidence to continue to the generic order and
-truncation experiment. It does **not** justify a source or runtime rewrite yet.
-The next milestone should preserve native colists as the extraction boundary
-and compare every generically derived relation with the existing native one.
+Milestone 1 provided enough evidence to continue to the generic order and
+truncation experiment.  The prototype then preserved native colists temporarily
+to compare every derived relation with AlgCo.  Milestone 2K completes that
+comparison and supersedes the preservation decision: AlgCo 2 should now test a
+single generic-first carrier and treat extraction as an independent runtime
+design problem.
 
 ## Milestone 1.5 checkpoint: proof-level colist specialization
 
@@ -850,18 +876,18 @@ presentation plumbing and fold/cofold infrastructure.
 |---|---|---|
 | Shape and position definitions | Derivable from a small strictly-positive code | Frontend interpretation into `container` |
 | Distinguished nullary bottom, its decision procedure, and finite position enumeration | Derivable when pointedness and finite recursive families are represented by the code | Frontend capabilities |
-| `μ`/native-basis conversions and their inverse proofs | Inherently tied to the chosen native datatype unless that datatype is generated too | Native presentation obligation |
-| `ν`/native-value conversions and bisimulation round trips | Inherently tied to the native coinductive constructors and equality | Native presentation obligation |
-| Generic/native order correspondence | Structurally regular, but its proof analyzes the native order constructors | Native presentation obligation, packaged once |
-| Inclusion and truncation as `inj`/`prefix` or `tinj`/`tprefix` | Type-specific commuting laws with a common statement schema | Native presentation obligation |
+| `μ`/native-basis conversions and their inverse proofs | Cost created by retaining an independently declared basis datatype | Eliminate by making `Basis S` canonical |
+| `ν`/native-value conversions and bisimulation round trips | Cost created by retaining an independently declared coinductive datatype | Eliminate by making `Value S` canonical |
+| Generic/native order correspondence | Needed only to relate parallel carriers | Eliminate with the parallel carrier |
+| Inclusion and truncation as native commuting laws | Needed only to cross the representation boundary | Define once on canonical carriers; expose named equations directly |
 | Indexed aliases and `DecidableBottom`/`FinitePositions` registrations | Entirely derivable | Frontend |
-| Wrapper conversions and basis-conversion monotonicity | Derivable from a packaged order isomorphism | Generic native-presentation layer |
-| Native-to-indexed monotonicity and continuity | The two proofs are the same order-isomorphism argument | Generic native-presentation layer |
-| Indexed inclusion, ideal, and Scott-compactness corollaries | Derivable from the presentation laws and existing container theorems | Generic native-presentation layer |
+| Wrapper conversions and basis-conversion monotonicity | Derivable, but unnecessary without a second carrier | Omit |
+| Native-to-indexed monotonicity and continuity | Order-isomorphism bookkeeping for a second carrier | Omit |
+| Inclusion, ideal, and Scott-compactness corollaries | Container-generic over `Basis S` and `Value S` | Generic container backend |
 | Structural basis fold and continuous extension | Container-generic; code generation would duplicate a theorem | Generic container backend |
 | Shifted-supremum constructor proof | Container-generic once each algebra branch is weakly continuous | Generic container backend |
-| Named native constructor equations and useful `Arguments` declarations | A thin, type-specific public facade; Gallina data cannot emit commands or theorem names | Native specialization module |
-| `amap`, `atree_cotree_map`, algebra continuity, finite-input results, and regression against old operations | Operation-specific | Client/program module |
+| Named constructor equations, eliminators, and useful `Arguments` declarations | Thin descriptor-specific façade over the canonical carriers | Specialization module |
+| Basis maps, value maps, algebra continuity, and finite-input results | Operation-specific | Client/program module |
 
 The most important correction to the earlier plan is that a frontend should
 not generate a colist fold theorem and a cotree fold theorem independently.
@@ -872,11 +898,10 @@ the continuity obligation for the algebra at a shape; `supremum_apply` already
 handles its pointwise child family.
 
 The other important boundary is negative.  A signature code cannot derive an
-isomorphism to an independently declared native `list`, `colist`, `atree`, or
-`cotree` merely by computation.  Claiming otherwise would either hide the
-same proofs in automation or require the frontend to generate the native
-datatypes themselves.  The first prototype should package and reuse these
-proofs, not pretend to eliminate them.
+isomorphism to an independently declared `list`, `colist`, `atree`, or `cotree`
+merely by computation.  Milestone 2K confirms that packaging those proofs is
+possible but expensive.  A clean-slate AlgCo 2 should not create this problem:
+its descriptor-indexed fixed points should be the canonical datatypes.
 
 ### Minimal code language
 
@@ -934,11 +959,10 @@ The code must have an explicit interpretation.  It is a frontend for defining
 one canonical pointed container and its computational capabilities, not an
 alternative axiomatization of `μ`, `ν`, approximation, or algebraicity.
 
-### Native presentation package
+### Discarded alternative: native presentation package
 
-The frontend alone stops at generic fixed points.  A separate presentation
-record should connect them to the public native types.  In schematic form it
-contains:
+The original experiment proposed connecting generic fixed points to parallel
+native types with a record of the following shape:
 
 ```text
 NativePresentation D:
@@ -957,17 +981,18 @@ NativePresentation D:
   truncation commuting law
 ```
 
-This package should state order and coinductive laws using equivalence where
-possible.  Conversion to Coq equality remains a specialization corollary and
-may use the existing native extensionality axiom.  Generic lemmas can then
-derive the indexed conversion wrappers, monotonicity, continuity, ideal
-equation, inclusion equation, and compactness result.  The duplicated
-continuity proofs in `indexed_colist_instance.v` and
-`indexed_cotree_instance.v` should disappear.
+Milestone 2K implements a refined version split into basis, value, and exact
+approximation records.  The split successfully preserves assumption locality,
+and generic lemmas derive the expected order-theoretic bridges.  It also
+confirms that every conversion, round trip, order correspondence, and exact
+commuting law exists only because the two carriers coexist.
 
-The package is a proof boundary, not a new global instance stack.  Its
-descriptor remains explicit, and the generic kernel should not ask typeclass
-search to reconstruct a proof-rich presentation from a projected carrier.
+AlgCo 2 therefore should not contain this package.  The implementation is a
+completed cost experiment, not a compatibility feature or proposed public
+boundary.  Its only lasting design lesson is that, if an intrinsic runtime
+requirement ever forces an internal second representation, equivalence-based
+order facts and exact rewrite facts must remain assumption-local.  Historical
+familiarity alone cannot supply that requirement.
 
 ### Generic fold/cofold target
 
@@ -1010,58 +1035,42 @@ It should produce, by transparent definitions and ordinary lemmas:
 
 - the interpreted `container` and `pointed_container`;
 - canonical `DecidableBottom` and `FinitePositions` capabilities;
-- descriptor-indexed `Basis` and `Value` aliases;
+- canonical descriptor-indexed `Basis` and `Value` carriers;
+- concise descriptor-specific aliases and named constructors, destructors,
+  induction principles, and truncation rules over those same carriers;
 - the generic fold/cofold interface and its shape-indexed computation theorem;
-- generic consequences of a supplied `NativePresentation`;
-- predictable simplification lemmas for wrapper projections.
+- predictable simplification lemmas that hide raw shapes, position injections,
+  and projections.
 
 It should not attempt to produce:
 
-- native inductive or coinductive declarations;
-- native conversion functions or their round-trip proofs;
-- native order-correspondence proofs;
-- native extensionality principles;
+- parallel inductive or coinductive declarations for the same AlgCo 2 type;
+- compatibility conversions, round trips, or order-correspondence proofs;
+- a second public API over a preferred extraction representation;
 - operation algebras or their continuity proofs;
 - theorem names, hint registrations, or `Arguments` commands through heavy
   metaprogramming.
 
-The last group should remain a short handwritten facade in the first version.
+The last group should remain a short handwritten façade in the first version.
 If those declarations are still numerous after the semantic duplication is
 removed, lightweight generation can be evaluated separately.  MetaCoq, Elpi,
 or a custom plugin is not justified by the present evidence.
 
-### Implementation experiment and acceptance gate
+### Historical dual-representation experiment
 
-The next slice should proceed in this order:
+Milestones 2I through 2K executed the earlier native-boundary plan: factor the
+generic fold theorem, derive structural capabilities, package native
+presentations, and route the two operation slices through them.  The semantic
+theorems and assumption audit succeeded.  The presentation portion did not
+produce a net simplification because its conversions and proof laws are
+additional obligations rather than consequences of the descriptor.
 
-1. Add a generic structural fold and prove its continuous-extension layer
-   equation over the existing indexed container backend.
-2. Add the minimal constant/finite-recursion/sum/product grammar and transparent
-   compilation to containers, deriving pointedness and finite-position
-   capabilities.
-3. Add the native-presentation package and derive its wrapper-level order and
-   continuity consequences.
-4. Define parallel coded colist and cotree descriptors without deleting the
-   current modules.
-5. Recover the existing native `comap` and `cotree_map` constructor proofs
-   through the common fold theorem.
-6. Compare declarations, proof terms, build assumptions, error messages, and
-   extraction boundaries against Milestones 2F and 2G.
-
-The experiment succeeds only if:
-
-- the shifted-supremum proof occurs once;
-- descriptor capability registrations are no longer handwritten per type;
-- the native-to-indexed continuity bridge occurs once;
-- public operation equations retain their current native statements and short
-  continuity-only proofs;
-- no new axiom appears in the assumption audit; and
-- the remaining handwritten presentation laws are visibly about the native
-  datatype rather than wrapper bookkeeping.
-
-This gate measures reduction of real duplication, not merely movement of the
-same proof scripts behind tactics.  Operational lifting remains the following
-milestone once this representation decision is settled.
+The revised acceptance gate is therefore stricter: a generic-first colist and
+cotree slice must recover short structural proofs without any representation
+boundary.  Exact equality with historical AlgCo statements is not a criterion.
+The criteria are the clarity of the new theorem statements, the visibility of
+ordinary basis induction, the absence of container plumbing from routine
+proofs, and the total amount of architecture required on its own terms.
 
 ## Milestone 2I checkpoint: generic fold/cofold layer equation
 
@@ -1222,8 +1231,9 @@ The old `comap` and `cotree_map` remain final regression oracles.
 - The first factoring step increases total prototype lines because it keeps
   both native regression helpers and the new generic API.  Its measured payoff
   is proof uniqueness: the shifted-supremum argument now occurs once.  The
-  frontend and native-presentation experiments must still demonstrate a net
-  reduction in specialization plumbing.
+  later native-presentation experiment measures the cost of dual carriers;
+  the generic-first experiment must determine whether that plumbing can be
+  eliminated altogether.
 
 ### Milestone 2I assumption audit
 
@@ -1355,12 +1365,139 @@ axiom appears.
 
 ### Checkpoint decision
 
-Do not implement the pointed-polynomial code AST now.  Retain the direct
-semantic combinators and proceed to the `NativePresentation` experiment,
-which tests the larger remaining source of specialization plumbing.  When the
-operational lifting begins, first attempt it over pointed containers and their
-capabilities.  Introduce reified codes only if that construction genuinely
-requires structural recursion over signature syntax.
+At this checkpoint the next task was the `NativePresentation` experiment over
+the direct semantic combinators.  Milestone 2K records its result and rejects
+the dual representation for the clean-slate design.  Reified codes remain
+unjustified unless a later construction genuinely requires structural
+recursion over signature syntax.
+
+## Milestone 2K checkpoint: native presentation cost experiment
+
+Status on July 26, 2026: **the boundary works technically, but the clean-slate
+design rejects the dual representation that makes it necessary**.
+
+The experiment adds three modules:
+
+- [`theories/generic/native_presentation.v`](../theories/generic/native_presentation.v)
+  defines the generic boundary and its order-theoretic consequences;
+- [`theories/generic/native_colist_presentation.v`](../theories/generic/native_colist_presentation.v)
+  supplies the existing list/colist presentation; and
+- [`theories/generic/native_cotree_presentation.v`](../theories/generic/native_cotree_presentation.v)
+  supplies the existing `atree bool`/`cotree bool` presentation.
+
+The raw conversions, inverse theorems, and order-correspondence theorems were
+kept during the experiment so the result could be measured.  Their presence in
+this prototype is not a recommendation to preserve them in AlgCo 2.
+
+### Interface discovered by the experiment
+
+A single monolithic record is the wrong proof boundary.  The implementation
+separates:
+
+```text
+NativeBasisPresentation S NativeBasis
+NativeValuePresentation S NativeValue
+NativeApproximation S NativeBasis NativeValue BP VP
+```
+
+Each of the first two records contains conversions in both directions, a
+native round trip stated using preorder equivalence `===`, and an equivalence
+between generic and native order.  An umbrella `NativePresentation` merely
+packages the two records as data.  Generic theorems deliberately take the
+basis or value component separately.
+
+This split is semantically meaningful.  The Boolean-tree basis round trip
+crosses a function-valued child field and inherits functional extensionality.
+The value-order bridge and its continuity theorem do not.  Passing a combined
+record to every theorem would make a basis-only assumption appear in the
+assumptions of value continuity even though its proof never uses that field.
+
+`NativeApproximation` is a second, exact-equation extension.  It supplies the
+native inclusion and truncation operations and states that they commute with
+generic `basis_incl` and `value_ideal`.  Exact equations are valuable rewrite
+rules at a specialization boundary, but the branching instance can again need
+functional extensionality.  Keeping them outside the order-equivalence core
+isolates that cost.
+
+From the order records alone, the generic module now proves:
+
+- monotonicity of all four conversion directions;
+- the previously unstated generic-side round trips up to `===`;
+- mixed below laws such as
+  `native_value_to v ⊑ x ↔ v ⊑ native_value_from x`;
+- preservation of every supplied supremum, over an arbitrary index type, by
+  the native-to-generic value conversion;
+- the existing sequence-oriented `continuous` result as a corollary; and
+- transport of arbitrary-directed Scott compactness back to the native value
+  type.
+
+With `NativeApproximation`, the generic module additionally derives the native
+truncation chain and Scott compactness of native inclusions.  No reified
+signature syntax is used anywhere in this construction.
+
+### Complete experimental boundary check
+
+The list/colist and Boolean-tree instances isolate the obligations created by
+the native/generic boundary: conversions, native round trips, order
+correspondence, and the two exact approximation equations.  Their exported
+corollaries have the same types as the old wrapper theorems, which made the
+comparison controlled.
+
+The existing `indexed_colist_comap.v` and `indexed_cotree_map.v` modules now
+consume the presentation-derived basis monotonicity and value continuity
+corollaries.  Their public operation definitions, constructor equations, and
+continuity proof shapes did not change.  This demonstrates that the new
+boundary composes with both the linear and function-branching vertical slices;
+it is not merely an unused packaging record.  Extraction is unaffected because
+the new material is proof and conversion-boundary structure, not a new runtime
+representation.
+
+One small Coq API detail surfaced: importing a presentation module does not
+re-export the indexed aliases that it imports.  The operation modules retain
+their indexed-instance import for carrier names and add the presentation import
+for proof laws.  This is minor in isolation, but it is another dependency that
+does not exist in a one-representation design.
+
+### Assumption audit
+
+| Result | Assumptions |
+|---|---|
+| Old and presentation-derived colist value-conversion continuity | `Eq_rect_eq.eq_rect_eq` |
+| Old and presentation-derived cotree value-conversion continuity | `Eq_rect_eq.eq_rect_eq` |
+| Presentation-derived colist prefix chain | `Eq_rect_eq.eq_rect_eq` |
+| Presentation-derived cotree prefix chain | functional extensionality and `Eq_rect_eq.eq_rect_eq` |
+| Presentation-derived colist inclusion compactness | `Eq_rect_eq.eq_rect_eq`, classical logic, and constructive indefinite description |
+| Presentation-derived cotree inclusion compactness | the preceding assumptions plus functional extensionality |
+
+In particular, neither native coinductive extensionality axiom appears in the
+new value-continuity results, and cotree basis extensionality does not leak into
+cotree value continuity.  The assumptions on the exact branching
+approximation results are inherited from their existing conversion equations
+and the generic compactness construction rather than introduced by the order
+bridge.  A full `make -B` and `coqchk` over the new and consuming operation
+modules pass.
+
+### Cost and decision
+
+The generic module is 320 lines, while the colist and cotree presentation
+modules are 135 and 131 lines.  Those instance modules are smaller than the
+existing 184- and 201-line indexed instance modules, but the comparison is not
+a deletion count: they reuse the old modules' conversion definitions and raw
+laws.  With only two instances, this milestone adds more code than it removes.
+
+The positive result is diagnostic: order-isomorphism bookkeeping can be
+factored and assumption locality can be preserved.  The more important result
+is that conversions, bisimulation round trips, order correspondence, and exact
+constructor-facing equations remain genuine work whenever native datatypes are
+independently declared.  A frontend cannot erase that work.
+
+AlgCo 2 has no compatibility reason to declare those parallel datatypes.
+Accordingly, `NativeBasisPresentation`, `NativeValuePresentation`, and
+`NativeApproximation` are not proposed infrastructure.  Keep their result in
+this milestone record, but remove the implementation rather than carrying it as
+a dormant adapter once the generic-first slice confirms acceptable ergonomics.
+The next discriminating experiment is that generic-first colist/cotree slice;
+operational lifting follows over the same canonical carriers.
 
 ## Motivation
 
@@ -1415,7 +1552,8 @@ all of the following.
 7. An operational approximation order and realization relation.
 8. Observation-indexed totality and coverage for the lifted type.
 9. Demand-aware operational models of extracted folds.
-10. An ergonomic connection to native Coq datatypes and extraction.
+10. Ergonomic descriptor-specific APIs over the canonical carriers and clean
+    extraction.
 
 The initial target is one complete colist slice, followed by enough of cotrees
 to show that the construction is genuinely generic rather than a disguised
@@ -1677,7 +1815,8 @@ evaluated.
 
 ## Proposed Coq organization
 
-The prototype now uses the following parallel namespace:
+The experiment currently uses the following separate namespace so it does not
+mutate the paper artifact while hypotheses are being tested:
 
 ```text
 theories/generic/container.v
@@ -1687,8 +1826,9 @@ theories/generic/algebraic_container.v
 theories/generic/colist_instance.v
 ```
 
-An eventual operational layer remains provisional.  Avoid changing imports of
-existing non-generic modules during the prototype.
+An eventual operational layer remains provisional.  This filesystem separation
+is experimental isolation, not a compatibility or layering requirement for
+AlgCo 2.
 
 The layers should have one-way dependencies:
 
@@ -1701,7 +1841,7 @@ pointed order, truncation, and aCPO
     ↓
 operational lifting and realization
     ↓
-native-type instances and program examples
+descriptor-specific façades and program examples
 ```
 
 Keep extraction-specific definitions out of the semantic container module.
@@ -1737,43 +1877,48 @@ Pos hole       = Empty
 Pos (cons a)   = unit
 ```
 
-Construct conversions:
+The original comparison spike constructed conversions:
 
 ```text
 μ ColistC A  ↔ list A
 ν ColistC A  ↔ colist A
 ```
 
-Initially prove round trips using the appropriate inductive or coinductive
-equivalence. Do not replace native lists or colists.
+Those conversions were useful for validating the generic semantics against
+AlgCo, but they are not part of the AlgCo 2 design.  The clean-slate slice must
+instead define its public types directly:
+
+```text
+ColistBasis A := Basis (ColistC A)
+Colist A      := Value (ColistC A)
+```
+
+Named constructors and structural principles should operate on these carriers;
+there should be no second list/colist representation or round-trip obligation.
 
 ### Milestone 2: generic algebraic structure
 
-The pointed prefix order, inclusion, depth truncation, and their colist
-correspondence are complete as Milestone 1.5.  Milestone 2A additionally
-provides the generic directed supremum and `CPO (ν C)` under a decidable-bottom
-interface.  Milestone 2B uses finite position enumeration to prove compactness
-of `μ C`.  Milestone 2C proves density and finite-truncation continuity and
-assembles the generic `aCPO`; its concrete colist stack exposes the ideal as
-native `prefix` without requiring clients to reconstruct container packages.
-Milestone 2D separately proves standard Scott compactness of every included
-`μ C` basis element against arbitrary nonempty directed families, without yet
-constructing arbitrary directed suprema of `ν C`.  Milestone 2E wraps both
-fixed points in descriptor-indexed carriers and recovers the complete generic
-instance stack from two keyed capabilities; the colist specialization no
-longer reassembles that stack concretely.  Milestone 2F reconstructs `comap`
-from structural recursion on the native list basis and the generically supplied
-continuous extension.  It recovers continuity and native `conil`/`cocons`
-equations, and factors the shifted-supremum reasoning into reusable indexed
-`cofold` rules so routine proofs do not mention containers or conversions.
-Milestone 2G repeats the boundary for Boolean cotrees, reuses the same generic
-instance stack, derives branching `tfold`/`tcofold` computation rules, and
-recovers the native `cotree_map` node equation.  This is the first evidence
-that the abstraction is not colist-specific.  Milestone 2H audits both slices,
-separates generic fold and wrapper theorems from unavoidable native
-presentation obligations, and specifies a minimal pointed-polynomial frontend
-with an explicit container interpretation.  Milestone 2I proves the common
-generic fold/cofold layer theorem and recovers both operation slices from it.
+Milestones 2A through 2E construct the generic directed supremum, compactness,
+canonical truncation presentation, algebraic-CPO structure, and
+descriptor-indexed instance stack.  Milestones 2F and 2G validate the desired
+operation proof shape for linear colists and branching Boolean cotrees.
+Milestone 2H audits both slices, Milestone 2I proves their common fold/cofold
+layer theorem, and Milestone 2J derives capabilities through semantic container
+combinators.  Milestone 2K confirms that native presentation obligations are
+costs of dual carriers rather than necessary parts of the generic semantics.
+
+### Milestone 2L: generic-first specialization
+
+Define colist and Boolean-cotree APIs directly over their descriptor-indexed
+`Basis` and `Value` carriers.  Provide named constructors, destructors,
+induction principles, folds, truncations, and simplification rules, then define
+`comap` and branching `cotree_map` without any conversion boundary.
+
+This milestone succeeds when routine operation proofs retain AlgCo's central
+ergonomic benefit—ordinary structural induction over compact basis
+elements—without exposing raw shapes, position injections, transports, or
+descriptor plumbing.  Matching historical carrier types or theorem statements
+is not a criterion.
 
 ### Milestone 3: lifted operational fixed point
 
@@ -1826,31 +1971,32 @@ constructor.
 
 ### Milestone 5: extraction and ergonomics experiment
 
-Generic dependent container terms may extract poorly. Compare two routes:
+Generic dependent container terms may extract poorly.  Evaluate in this order:
 
 1. Extract the generic fixed-point representation directly.
-2. Retain native datatypes at runtime and use container isomorphisms only for
-   proofs and derived instances.
+2. If measurements show a material problem, design a descriptor-driven
+   extraction optimization or erasure that does not add a second Coq-level
+   public carrier or proof API.
 
 Inspect generated Haskell for constructor clarity, laziness, dictionary noise,
-and obvious performance problems. A generic proof architecture does not
-require a generic runtime representation.
+and obvious performance problems.  Runtime specialization must be justified by
+these properties, never by compatibility with AlgCo's extracted representation.
 
 ### Milestone 6: go/no-go review
 
-Evaluate the success criteria below before porting any additional application.
-If the result is mixed, retain the generic operational lifting as a separate
-library without rewriting AlgCo's semantic core.
+Evaluate the success criteria below before implementing additional
+applications.  If the result is mixed, redesign or abandon the affected AlgCo 2
+layer rather than preserving it as a compatibility extension of AlgCo.
 
 ## Success criteria
 
-Proceed toward a successor rewrite only if the prototype satisfies all of the
-following core criteria.
+Proceed with AlgCo 2 only if the prototype satisfies all of the following core
+criteria on its own terms.
 
 ### Mathematical coverage
 
-- The generic colist instance recovers the existing approximation order,
-  truncation chain, supremum, compactness, and `aCPO` results.
+- The generic colist instance provides the required approximation order,
+  truncation chain, supremum, compactness, and algebraic-CPO results.
 - A second genuinely branching instance reuses the same proofs.
 - The operational lifting distinguishes pending computation from returned
   semantic bottom without ad hoc constructors for each datatype.
@@ -1859,18 +2005,18 @@ following core criteria.
 
 ### Proof engineering
 
-- User-facing theorem statements remain recognizable.
+- User-facing theorem statements are concise and domain-appropriate.
 - Routine proofs are shorter or more reusable, rather than merely moving all
   complexity into transports and dependent equality.
 - Compilation time and proof-search behavior remain practical.
-- The generic development requires no stronger axioms than a clearly isolated
-  analogue of principles already used by the native types.
+- Every axiom required by the generic development has a clear, isolated, and
+  intrinsic mathematical justification.
 - Error messages and simplification are tolerable for ordinary program proofs.
 
 ### Extraction
 
-- There is a path to clean lazy target code, either directly or through native
-  representation wrappers.
+- There is a path to clean lazy target code without a duplicate public
+  representation or compatibility wrapper.
 - The generic semantics does not force eager evaluation of recursive fields.
 - `colist_existsb`, `comap`, and `cofilter` retain their intended demand
   behavior.
@@ -1886,41 +2032,43 @@ following core criteria.
 
 ## Stop or redesign conditions
 
-Do not proceed to a rewrite if any of these persists after a focused attempt:
+Redesign or stop AlgCo 2 if any of these persists after a focused attempt:
 
 - Coq's positivity or guardedness rules prevent usable generic `μ`/`ν` types.
 - Coinductive equality transports dominate every proof.
 - The finite-branching compactness theorem cannot be expressed without nearly
   all of the current type-specific arguments.
-- Extracted terms expose dependent container encodings with no clean native
-  boundary.
+- Clean extraction would require maintaining parallel public semantic
+  representations and their conversion proofs.
 - Ordered payloads require an abstraction so complicated that the simple
   colist and cotree cases become harder to use.
 - Operational strictness still has to be restated entirely for every program,
   leaving little benefit beyond semantic code deduplication.
 
-Failure of the full rewrite criterion would not invalidate the operational
-insights. The lifted-container or realization components may still be useful
-as independent additions.
+Failure of the full design criterion would not invalidate the operational
+insights, but it also would not justify retaining transition architecture.
 
-## Compatibility and migration strategy
+## Clean-slate implementation policy
 
-If the review favors a rewrite:
+If the review favors AlgCo 2:
 
-1. Treat it as a successor implementation rather than editing the paper
-   artifact destructively.
-2. Preserve the current modules and examples as regression oracles.
-3. Provide conversions or compatibility lemmas for native datatypes.
-4. Port in increasing order of difficulty: conat, colist, cotree, then cotrie.
+1. Implement it as its own coherent development, not as wrappers around the
+   paper artifact.
+2. Use the old modules and examples only as external scientific comparisons;
+   AlgCo 2 must not depend on them.
+3. Do not provide conversions, aliases, deprecated names, or compatibility
+   lemmas solely for AlgCo users—there are no migration users to serve.
+4. Add example domains in order of how much they test the architecture, not in
+   historical module order.  Colists and Boolean cotrees remain the first two
+   because they test linear and branching recursion.
 5. Keep nonrecursive semantic domains such as `bool`, `Prop`, and `eR` outside
-   the container hierarchy unless there is an independent reason to move them.
-6. Port sieve only after operational `cofilter` coverage has a satisfactory
-   statement.
-7. Re-run extraction examples at every migration milestone.
-
-It may be preferable to publish the generic core as a new library or namespace
-and let AlgCo instances depend on it. A source-level rewrite and a runtime
-representation rewrite are separate decisions.
+   the container hierarchy unless there is an independent semantic reason to
+   include them.
+6. Add sieve only after operational `cofilter` coverage has a satisfactory
+   statement, as a new AlgCo 2 example rather than a source port.
+7. Evaluate extraction throughout, but allow runtime specialization only when
+   measured target-code properties justify it and no duplicate public proof API
+   results.
 
 ## Open questions
 
@@ -1940,27 +2088,29 @@ representation rewrite are separate decisions.
    function fields?
 8. Can target adequacy be modularized over a generic lifted step, or does it
    require a target-language semantics before further abstraction is useful?
-9. Should generic types be extracted directly, or erased in favor of native
-   representations certified by isomorphisms?
-10. How much of the existing `aCPO` API should remain the public interface even
-    if its instances become generically derived?
+9. Can descriptor-indexed generic types be extracted directly, or is a
+   descriptor-driven internal erasure required for clean target code?
+10. What is the smallest algebraic-CPO interface that preserves AlgCo's proof
+    benefits without inheriting historical API structure?
 
 ## Immediate next experiment
 
-Milestone 2J removes capability derivation as a reason to add reified syntax.
-The next informative task is the native-presentation boundary:
+Milestone 2K completes the native-presentation cost experiment.  The next task
+is Milestone 2L's generic-first specialization:
 
-1. Define the smallest `NativePresentation` record containing native basis and
-   value conversions, round trips, order correspondence, and the inclusion and
-   truncation commuting laws.
-2. Derive the repeated wrapper monotonicity, continuity, ideal, and compactness
-   bridge lemmas once from that record.
-3. Instantiate the record for the existing colist and Boolean-cotree
-   presentations without deleting their current regression oracles.
-4. Recover the native `comap` and `cotree_map` proof boundaries and compare
-   declarations, proof terms, error messages, and assumptions.
-5. If that gate passes, freeze the semantic representation and attempt
-   Milestone 3's operational lifting directly over pointed containers and
-   their capabilities.
-6. Add a reified signature code only if operational lifting requires induction
-   over the construction of constants, products, sums, and recursive fields.
+1. Define canonical colist basis/value aliases directly from a semantic
+   descriptor and give them named constructors, observations, truncations, and
+   structural induction/fold principles.
+2. Define `comap` entirely over those carriers and prove its equations without
+   native conversions or order-isomorphism transport.
+3. Repeat the test for Boolean cotrees, paying particular attention to whether
+   branching basis induction exposes function extensionality or container
+   plumbing to routine proofs.
+4. Judge the result by proof clarity and architectural size, not by agreement
+   with historical AlgCo types or APIs.  If it succeeds, remove the
+   native-presentation modules from the proposed architecture.
+5. Then define `Lift C` over the same canonical representation, with a fresh
+   `pending` shape distinct from returned semantic bottom, and proceed to
+   realization, finite observations, and coverage.
+6. Introduce reified syntax or extraction-specific erasure only if an intrinsic
+   requirement demonstrates the need; neither may become a compatibility API.
