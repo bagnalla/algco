@@ -19,14 +19,22 @@ The design gate remains conservative about complexity, not about compatibility.
 Milestones 2F and 2G recover complete `comap` and branching `cotree_map` proof
 shapes with competitive ergonomics.  Milestone 2H audits their duplication,
 while Milestone 2I proves the common generic fold/cofold layer theorem.
-Milestone 2J shows that direct semantic container combinators derive bottom and
+Milestone 2J shows that direct container combinators derive bottom and
 finiteness capabilities without reified syntax.  Milestone 2K proves that a
 native/generic presentation boundary can be made sound and
 assumption-disciplined, but also measures the considerable machinery required
 solely because two representations coexist.  Milestone 2L obtains the same
 proof ergonomics with generic fixed points as the only representation and
-removes that experimental boundary.  Operational lifting is now the next
-architectural test.
+removes that experimental boundary.
+
+The next architectural test has now been sharpened.  The point used by those
+experiments need not belong to the signature of fully formed semantic values.
+Instead, an unpointed, hole-free semantic final coalgebra `ν C` can be embedded
+into the algebraic partial completion `ν (Lift C)`, whose finite basis is
+`μ (Lift C)`.  Milestone 2L validates the generic fixed-point façade for a
+pointed descriptor; it does not decide that the point belongs in `C` rather
+than in `Lift C`.  The `zar` interaction-tree use case is the first required
+branching acceptance test for this separation.
 
 ## Clean-slate constraint
 
@@ -48,27 +56,37 @@ and even then should remain an implementation mechanism rather than create a
 second public reasoning API.  Git history and the experimental notes preserve
 discarded designs; AlgCo 2 itself need not retain them.
 
+`Semantic C` and `Partial C` are not parallel representations of one carrier.
+They have different inhabitants and roles: only the latter contains incomplete
+observations and carries the algebraic approximation order.  Each role should
+still have one canonical generic representation, connected by a structural
+embedding rather than a compatibility isomorphism.
+
 ## Emerging design thesis
 
 AlgCo currently uses one order-theoretic interface for several related but
-distinct purposes.  AlgCo 2 should separate at least three layers:
+distinct purposes.  AlgCo 2 should separate at least four roles:
 
-1. **Denotational order theory:** ordinary directed completeness,
-   Scott-continuity, compactness, and algebraicity.
-2. **Sequential presentation:** a canonical natural-number-indexed sequence
-   of finite approximants used to define extensions and support structural
-   proofs.
-3. **Operational computation:** pending computations, finite observations,
-   realization, and coverage/productivity.
+1. **Semantic values:** fully formed values and any intrinsic semantic order
+   they carry.  A recursive value type may simply be the final coalgebra
+   `ν C`; it need not contain an approximation hole or even be used as a CPO.
+2. **Partial completion:** a domain `ν (Lift C)` that adds a fresh hole at each
+   recursive layer and carries the directed-complete approximation order.
+3. **Sequential presentation:** the compact basis `μ (Lift C)` and a canonical
+   natural-number-indexed sequence of finite approximants used to define
+   extensions and support structural proofs.
+4. **Operational computation:** evaluators producing partial approximants,
+   finite observations, realization, and coverage/productivity.
 
 The layers should be connected by theorems rather than identified by
 definition.  In particular, an order on `Prop`, `bool`, or another already
-computed value type need not be an operational approximation order.  The
-possibility of divergence belongs to the operational lifting, not implicitly
-to every semantic `OType`.
+computed value type need not be an operational approximation order.  A genuine
+least semantic value, when one exists, is also distinct from the fresh hole
+introduced by `Lift`.  The possibility of incomplete observation belongs to
+the partial completion, not implicitly to every semantic `OType`.
 
 Containers or a related strictly-positive code language remain promising as
-the description from which the recursive parts of all three layers can be
+the description from which the recursive parts of all four roles can be
 derived.  Whether containers are the final public abstraction is still open.
 
 ## Directed completeness and the computational presentation
@@ -78,8 +96,8 @@ derived.  Whether containers are the final public abstraction is still open.
 AlgCo 2 should not choose between arbitrary directed completeness and
 countable approximations.  They answer different questions.
 
-The semantic structure should use standard domain-theoretic definitions.  A
-directed family must be explicitly nonempty:
+The order-theoretic structure should use standard domain-theoretic definitions.
+A directed family must be explicitly nonempty:
 
 ```text
 DirectedFamily A =
@@ -125,18 +143,28 @@ Algebraic A B p =
 another plausible name.  `Dense` should be reserved for a structure carrying
 the convergence laws that justify the term.
 
-For a pointed finitary signature `C`, the intended instance remains:
+For a finitary semantic signature `C`, the intended computational presentation
+is now:
 
 ```text
-B = μ C
-A = ν C
-approx x n = truncate n x
+Semantic C      = ν C
+FinitePartial C = μ (Lift C)
+Partial C       = ν (Lift C)
+approx x n      = truncate n x
 ```
 
-This sequential presentation is the source of AlgCo's low-friction proof
-principle: define a function by structural recursion on `μ C`, then extend it
-continuously to `ν C`.  Natural numbers also align approximation depth with
-finite operational observations.
+The `Approx`/`Dense`/`Algebraic` structure relates `FinitePartial C` to
+`Partial C`.  This sequential presentation is the source of AlgCo's
+low-friction proof principle: define a function by structural recursion on
+`μ (Lift C)`, then extend it continuously to `ν (Lift C)`.  Natural numbers
+also align approximation depth with finite operational observations.  The
+unlifted initial algebra `μ C` may still describe finite completed semantic
+values, but it is generally not a compact basis for `ν C`.
+
+The completed prototype used an already-pointed descriptor `S` and wrote these
+types as `Basis S = μ S` and `Value S = ν S`.  Its results can be reused by
+taking `S = Lift C`; the experiment should not be read as evidence that every
+semantic signature must itself be pointed.
 
 The presentation should not automatically be called “ω-algebraic.”  In
 standard terminology that can imply a globally countable basis, while
@@ -184,7 +212,8 @@ unrestricted sense.
 
 ### Expected relationship for container fixed points
 
-The compactness prototype suggests the following factorization:
+The compactness prototype suggests the following factorization for the lifted
+partial descriptor `Lift C`:
 
 - the distinguished bottom controls whether a layer exposes information;
 - child projection transports existing suprema pointwise;
@@ -192,7 +221,8 @@ The compactness prototype suggests the following factorization:
 - the canonical depth truncations provide sequential density.
 
 Milestone 2C verifies the last point generically.  Density needs only a pointed
-signature, and finite-truncation continuity needs the current
+signature—now understood as the partial descriptor—and finite-truncation
+continuity needs the current
 decidable-pointed interface but not finite branching.  Continuity proves
 leastness independently at each child, so it does not need to synchronize a
 single stage across all positions.
@@ -200,11 +230,11 @@ single stage across all positions.
 Milestone 2D verifies the standard compactness claim as well:
 
 ```text
-∀ b : μ C, ScottCompact (incl b : ν C)
+∀ b : μ (Lift C), ScottCompact (incl b : ν (Lift C))
 ```
 
-Here a family is an arbitrary `d : I → ν C`, with `inhabited I` carried as an
-explicit premise.  Its supremum is supplied relationally.  Child projection
+Here a family is an arbitrary `d : I → ν (Lift C)`, with `inhabited I` carried
+as an explicit premise.  Its supremum is supplied relationally.  Child projection
 transports that supremum, induction chooses one witness member for each finite
 child, and the position enumeration plus directedness synchronizes them.  Coq
 accepts the index universe independently of the carrier universe.  Thus
@@ -220,10 +250,10 @@ family and does not invoke the strong-LPO sequence search used to construct
 the existing semantic supremum.
 
 This result does not construct arbitrary directed suprema.  The full
-`DCPO (ν C)` construction and Scott-continuity laws should be tested
+`DCPO (ν (Lift C))` construction and Scott-continuity laws should be tested
 separately.  They may introduce universe and choice complications even if the
 mathematics is straightforward.  In particular, the existing `CPO (ν C)`
-instance remains sequence-based.
+instance for a generic pointed descriptor remains sequence-based.
 
 ## Semantic values and operational computations
 
@@ -232,32 +262,130 @@ partial computation.  AlgCo legitimately uses implication on `Prop` and the
 truth order on `bool`; those are semantic information orders on values that
 may already have been computed.
 
-Operational partiality should be introduced explicitly, in a Moggi-like
-value/computation split:
+Nor does an algebraic CPO intrinsically have to be pointed: directed
+completeness concerns inhabited directed families and does not imply a least
+element.  The problem is more specific.  For a recursive type such as streams,
+finite observations need open recursive boundaries.  If those holes are
+removed from both the values and the basis, finite completed values cannot
+approximate an infinite value.  Giving the pure final coalgebra the discrete
+order would make whole infinite values compact, which is mathematically valid
+but destroys AlgCo's computational proof principle.
+
+The clean split is therefore:
 
 ```text
-T A = pending + returned A
+Semantic C      = ν C
+Lift C          = pending + returned C
+FinitePartial C = μ (Lift C)
+Partial C       = ν (Lift C)
 ```
 
-For recursive signatures, the placement of `T` must be derived structurally
-rather than added only at the outside.  The current container proposal uses a
-lifted signature with a fresh pending shape at each recursive layer.  This
-distinguishes:
+`Lift C` adds a fresh nullary shape, ordered below every returned layer.  It is
+both an algebraic partial completion of the recursive values and the natural
+result domain for an evaluator.  This is Moggi-like in separating values from
+computations, but it is not merely an outer `T (ν C)`: the lift occurs again at
+every recursive boundary.  The embedding
 
 ```text
-pending computation
-returned semantic bottom
-returned exposed constructor
+embed : Semantic C → Partial C
 ```
 
-The operational order and realization relation then explain which finite
-claims a computation has made about a semantic value.  Productivity is stated
-through observation coverage, not semantic maximality.
+returns every semantic layer and recursively embeds its children.  Its image
+is intended to be exactly the total elements of `Partial C`, up to the chosen
+coinductive equivalence.
+
+For the ordinary colist signature `C X = 1 + A × X`, the nullary semantic
+shape means exact `nil`.  Lifting gives three operational layers:
+
+```text
+pending
+returned_nil
+returned_cons a tail
+```
+
+`returned_nil` is not an approximation hole and cannot refine to a cons.  If a
+different semantic type genuinely has a least value, `pending` is still
+distinct from `returned` applied to that value.  This avoids conflating
+semantic orders—such as implication on `Prop`—with operational divergence.
+
+The partial order and realization relation explain which finite claims a
+partial value has made about a semantic value.  Realization is contravariantly
+closed under loss of information:
+
+```text
+d₁ ⊑ d₂ → d₂ realizes v → d₁ realizes v
+```
+
+The converse is false: `pending` realizes every value but may refine to a
+returned constructor inconsistent with a particular value.  An evaluation
+chain must separately prove that every stage realizes its intended denotation.
+Productivity is then stated through observation coverage, not semantic
+maximality.
+
+Totality means that no finite request encounters `pending`; it does not mean
+maximality.  In particular, exact finite `nil` is total, and an infinite chain
+of returned `Tau` constructors is also a fully formed interaction tree even
+though the represented program does not terminate.  Construction
+productivity, semantic program termination, and weak `Tau` equivalence must
+remain separate notions.
+
+AlgCo's continuous extensions should primarily operate on partial domains:
+
+```text
+f̂ : Partial C → D
+```
+
+Here `D` may be any suitable result domain, such as ordered propositions for a
+WP.  Their proofs still reduce to structural induction over
+`FinitePartial C`.  For a recursive result, take `D = Partial C₂`; a function
+on fully formed values is recovered when `f̂ (embed v)` is total for every
+semantic `v`.  It can then be factored through the total-image theorem to
+obtain `Semantic C → Semantic C₂`.  If totality fails, the partial result is
+meaningful evidence of a nonproductive or incomplete computation rather than
+an ill-formed semantic value.  This totality-preservation theorem is the bridge
+that lets the value/computation split retain AlgCo's original proof benefit.
 
 This remains compatible with a monadic account of computations.  What a plain
 `T A` does not determine is where computations occur inside a recursive type,
 or which payload fields are strict.  The signature or type code must retain
 that information.
+
+## Interaction trees as an acceptance case
+
+The vendored AlgCo development in `~/source/zar/` supplies a concrete reason
+for the split.  Its cotree has `cobot`, `coleaf`, `cotau`, and `conode`, and its
+finite basis has the corresponding `abot` hole.  However, `icotree` maps
+interaction-tree `Ret`, `Tau`, and `Vis` constructors to leaf, tau, and node;
+it never produces `cobot`.  This is strong evidence that `cobot` is a
+partial-completion hole rather than a constructor of the fully formed
+interaction-tree semantics.
+
+For an event signature `E : Type → Type` and result type `R`, the relevant
+semantic container is schematically:
+
+```text
+Shape = Ret (r : R) | Tau | Vis (X : Type) (e : E X)
+
+Pos (Ret r)   = Empty
+Pos Tau       = unit
+Pos (Vis X e) = X
+```
+
+The partial domain is obtained by adding `pending` with `Lift`; `Tau` remains
+an ordinary returned semantic layer.  The first vertical slice should use
+`zar`'s Boolean event signature, where every visible response type is finite.
+The current compactness argument does not make a full visible node compact
+when its response type is infinite, so arbitrary event signatures require
+either an explicit finitary restriction or a different finite-observation
+basis.
+
+`zar` also records the desired proof pattern: `cotwp` is obtained by continuous
+extension from a structurally recursive finite-tree transformer, `itwp` is its
+composition with `icotree`, and representative laws reduce to induction over
+the finite tree basis.  AlgCo 2 should reproduce that shape over the canonical
+generic carriers and show that the resulting operations respect the intended
+`Tau`/`eutt` reasoning.  This is an acceptance test, not a requirement to port
+the whole project.
 
 ## Typeclass resolution and descriptor identity
 
@@ -348,9 +476,9 @@ ambient instance stack.
 
 ### Design alternatives
 
-#### 1. Keep the full descriptor in the fixed-point type
+#### 1. Keep the full partial descriptor in the fixed-point type
 
-Define fixed points directly over a pointed or AlgCo signature:
+Define the algebraic fixed points directly over a pointed partial signature:
 
 ```text
 Basis S = μ indexed by S
@@ -362,6 +490,7 @@ The type head must retain `S`; a transparent abbreviation for
 inductives/coinductives or small wrapper records would make the descriptor
 available to unification.
 
+The unlifted `Semantic C = ν C` remains indexed by `C`; normally `S = Lift C`.
 This gives the most reliable generic instance search, at the cost of wrappers
 or duplication between fixed points over differently enriched descriptors.
 Milestone 2E confirms the instance-search claim for one-field wrappers.  It
@@ -396,10 +525,12 @@ repetitive instance plumbing and does not solve generic inference by itself.
 
 ### Provisional direction
 
-The most promising design is a hybrid:
+The most promising implementation design is a hybrid:
 
-- keep the semantic descriptor syntactically visible in generic `Basis S` and
-  `Value S` types;
+- keep the pointed partial descriptor syntactically visible in generic
+  `Basis S` and `Value S` types, with `S = Lift C` in the normal construction;
+- retain the unlifted semantic descriptor `C` in `Semantic C`, and expose an
+  explicit structural embedding into `Value (Lift C)`;
 - keep generic kernel theorems explicit about `S` rather than relying on
   typeclass search to reconstruct it;
 - separate computational signature data from optional proof evidence where
@@ -419,10 +550,12 @@ hide a semantically ambiguous choice.
 ## Proof ergonomics boundary
 
 Users of common instances should normally see concise descriptor-specific
-names and familiar reasoning principles over the canonical generic carriers:
+names and familiar reasoning principles over the canonical generic carriers.
+The names must distinguish semantic values from partial values without exposing
+raw descriptor plumbing; the exact vocabulary remains open.  For example:
 
 ```text
-ColistBasis A, Colist A, colist_le, incl, prefix
+Colist A, PartialColist A, ColistBasis A, colist_le, incl, prefix
 ```
 
 These names should be transparent aliases or a single canonical specialization,
@@ -500,14 +633,20 @@ backend.
 
 Milestone 2H proposed a pointed polynomial grammar generated by
 constants, finite indexed families of recursive occurrences, sums, and
-products.  A pointed code adds a canonical outer `1`, interpreted as semantic
-bottom.  The code is compiled transparently to the existing container
-representation:
+products.  A pointed code adds a canonical outer `1`.  The prototype
+interpreted it as semantic bottom; under the refined design it is more cleanly
+understood as the hole introduced by `Lift`.  The code is compiled
+transparently to the existing container representation:
 
 ```text
 ColistCode A = P (K A × R)
 CotreeCode A = P (K A + Rᶠ bool)
 ```
+
+With the refined reading, the first code is the partial completion of total
+streams.  A partial colist with exact termination instead applies `P` to
+`K unit + (K A × R)`.  The cotree code already contains its returned leaf
+alternative, so its outer `P` is directly the fresh partial hole.
 
 The finite-recursion primitive is intentionally narrower than an arbitrary
 `Πᶠ i. D i`.  It compiles to one shape with positions `I`; a general product
@@ -515,7 +654,7 @@ of coded fields would instead introduce function-valued shapes and an
 unnecessary extensional-equality problem even for the Boolean node.
 
 Milestone 2J subsequently tests a smaller alternative: apply those
-constructors directly in the semantic container algebra while carrying
+constructors directly in the container algebra while carrying
 finite-position evidence compositionally.  The displayed grammar remains a
 useful notation and comparison point, but no longer motivates an AST by
 itself.
@@ -558,10 +697,11 @@ finitary, so this generalization need not block it.
 
 Milestone 2J confirms that explicit syntax is unnecessary for the structural
 capabilities considered so far.  A `finitary_container` bundles an ordinary
-container with complete position enumerations; semantic constant, recursive,
+container with complete position enumerations; direct constant, recursive,
 sum, and product combinators preserve that bundle.  `finitary_point` adds the
-canonical nullary bottom, and a generic indexed bridge supplies
-`DecidableBottom` and `FinitePositions`.  Because the evidence-bearing bundle
+canonical nullary point—now understood as `Lift`'s hole—and a generic indexed
+bridge supplies `DecidableBottom` and `FinitePositions`.  Because the
+evidence-bearing bundle
 remains in the descriptor head, both instances resolve for composed colist
 and Boolean-cotree folds without per-datatype registrations.
 
@@ -575,10 +715,10 @@ function.
 An explicit code's remaining distinctive feature is reification: later code
 can induct over how the signature was assembled.  AlgCo 2 should demand a
 concrete use for that feature before adding another representation.  The
-operational-lifting experiment should first consume containers, pointedness,
-and finite-position evidence directly; only a demonstrated need to distinguish
-constant, sum, product, and recursive syntax would justify restoring the code
-frontend.
+partial-completion experiment should first construct `Lift C` directly from
+containers and finite-position evidence; only a demonstrated need to
+distinguish constant, sum, product, and recursive syntax would justify
+restoring the code frontend.
 
 Milestone 2K confirms that the proposed native-presentation boundary is
 technically coherent, with one important internal refinement: basis and value
@@ -621,6 +761,13 @@ experience.  The presentation modules have therefore been removed rather than
 carried as dormant adapters; their implementation remains available in Git
 commit `038393d` as experimental evidence.
 
+That conclusion concerns the canonical representation of a given fixed point,
+not the placement of the approximation hole.  Milestone 2L's descriptor `S`
+is already pointed.  Under the refined design its `Basis S` and `Value S`
+prototype `FinitePartial C` and `Partial C` for `S = Lift C`.  The unlifted
+`Semantic C = ν C` has a different intrinsic role; it is not a native wrapper,
+conversion target, or compatibility representation of the partial domain.
+
 Milestone 2L also identifies one genuine container-specific cost.  A layer's
 children are represented by a function `position s → μ C`; in intensional Coq,
 arbitrary functions out of empty or singleton position types are not equal by
@@ -636,7 +783,7 @@ boundary, but it is now a concrete comparison criterion for functor codes.  A
 direct sum/product interpretation would be preferable if it removes the ghost
 function equality while retaining accepted positivity, instance resolution,
 and client proof ergonomics.  Reification still lacks an independent use, so
-the operational lifting should first be attempted over semantic containers.
+the semantic/partial split should first be attempted directly over containers.
 
 ## Provisional decisions
 
@@ -646,46 +793,59 @@ the operational lifting should first be attempted over semantic containers.
 2. Use universe-polymorphic indexed families as the working representation,
    and require their index type to be inhabited explicitly.
 3. Do not claim that a classically selected semantic supremum is executable.
-4. Keep semantic and operational approximation orders distinct.
-5. Do not expect Coq to infer a pointed/finitary descriptor from its projected
+4. Do not require a semantic recursive signature `C` to contain an
+   approximation bottom.  `Semantic C = ν C` may be only a final coalgebra (or
+   setoid), rather than the algebraic CPO on which AlgCo extensions operate.
+5. Derive the partial descriptor `Lift C` by adding a fresh nullary hole, and
+   put the canonical algebraic structure on `Partial C = ν (Lift C)` with
+   compact basis `FinitePartial C = μ (Lift C)`.
+6. Keep intrinsic semantic orders and the partial approximation order
+   distinct.  If a semantic type genuinely has a least value, its returned
+   image remains distinct from `pending`.
+7. Treat `Semantic C` and `Partial C` as two intrinsically different roles,
+   not as generic/native duplicate representations or a compatibility layer.
+8. Do not expect Coq to infer a pointed/finitary descriptor from its projected
    carrier type.
-6. Use the descriptor-indexed generic fixed points as the canonical carriers;
-   common signatures may expose transparent aliases and named proof principles,
-   but not parallel native datatypes.
-7. Reserve `Dense` for a law-bearing notion; use `Approx` as the working short
+9. Use descriptor-indexed generic fixed points as the canonical carriers for
+   each role; common signatures may expose transparent aliases and named proof
+   principles, but not independently declared native copies.
+10. Reserve `Dense` for a law-bearing notion; use `Approx` as the working short
    name for raw inclusion and approximation data.
-8. Retain a stable semantic descriptor in the generic `Basis S` and `Value S`
-   type heads, while keying optional decidability and finiteness capabilities
-   by `S` rather than putting them in the carrier index.
-9. Prove the fold/cofold layer equation once over the container backend, then
+11. Retain a stable pointed descriptor in generic `Basis S` and `Value S` type
+    heads, normally with `S = Lift C`, while keying optional decidability and
+    finiteness capabilities by `S` rather than putting them in the carrier
+    index.
+12. Prove the fold/cofold layer equation once over the container backend, then
    expose thin descriptor-specific corollaries over the same carriers.
-10. Retain containers as the working semantic backend for linear and finite
-    branching signatures; judge functor codes by how much specialization
-    boilerplate they derive, not by a need to repair client proof ergonomics.
-11. Treat simplification lemmas and explicit argument declarations as part of
+13. Retain containers as the working backend for linear and finite branching
+    signatures; judge functor codes by how much specialization boilerplate they
+    derive, not by a need to repair client proof ergonomics.
+14. Treat simplification lemmas and explicit argument declarations as part of
     a descriptor specialization's supported interface.
-12. Prefer evidence-preserving semantic container combinators to a reified
+15. Prefer evidence-preserving container combinators to a reified
     pointed-polynomial code; introduce syntax only if a later transformation
     demonstrably requires induction over signature construction.
-13. Do not independently declare generic and native carriers for the same
+16. Do not independently declare generic and native carriers for the same
     AlgCo 2 type.  The Milestone 2K presentation obligations are costs to avoid,
     not an API to standardize.
-14. Avoid heavy declaration-generating metaprogramming in the first frontend;
-    first measure what remains after generic semantic proofs are factored.
-15. Provide weak bottom and nullary fold rules alongside the general recursive
-    layer theorem so constructor-local proofs do not inherit irrelevant global
-    algebra obligations.
-16. Treat `FinitePositions` on the current value-fold equations as coupling to
+17. Avoid heavy declaration-generating metaprogramming in the first frontend;
+    first measure what remains after generic fixed-point proofs are factored.
+18. Provide separate hole and returned-nullary fold rules alongside the
+    general recursive layer theorem, so constructor-local proofs do not inherit
+    irrelevant global algebra obligations or conflate `pending` with `nil`.
+19. Treat `FinitePositions` on the current value-fold equations as coupling to
     the full `aCPO`/`co` interface, not as a proved semantic necessity; test a
     weaker sequential-extension interface separately after the current
     finitary experiments.
-17. Treat the native-presentation implementation as a completed cost
+20. Use the Boolean-event interaction trees from `zar` as a required vertical
+    slice for cotree-style reasoning, including `Tau`/`eutt` laws.
+21. Treat the native-presentation implementation as a completed cost
     experiment, preserved in notes and Git history but removed from the active
     design.  Do not restore it unless a new intrinsic requirement independently
     forces a second representation.
-18. Do not preserve historical names, wrappers, theorem statements, module
+22. Do not preserve historical names, wrappers, theorem statements, module
     structure, or runtime representations for compatibility.
-19. Judge AlgCo 2 against AlgCo's purpose and benefits—especially low-friction
+23. Judge AlgCo 2 against AlgCo's purpose and benefits—especially low-friction
     structural proofs over compact bases—not against source-level migration or
     API equivalence.
 
@@ -699,12 +859,20 @@ excluded from them.
   the compactness theorem?
 - Should semantic orders remain preorders with explicit equivalence, or should
   the new kernel use partial orders or setoid quotients?
-- Can full `DCPO (ν C)` be constructed without making the
-  universe-polymorphic API unpleasant or suggesting that its selected
-  suprema are executable?
-- Does operational lifting genuinely need a reified pointed-polynomial
-  descriptor, or can the proposed code remain notation for the validated
-  semantic container combinators?
+- Does `Semantic C` need any generic order structure, or should only
+  `Partial C` carry the approximation CPO unless a semantic order is supplied
+  independently?
+- Should `Semantic C` be represented directly as `ν C`, or as the total
+  subtype of `Partial C` when that gives better Coq and extraction ergonomics?
+  In either case the two must be proved equivalent, not silently identified.
+- Can full `DCPO (Partial C)` be constructed without making the
+  universe-polymorphic API unpleasant or suggesting that its selected suprema
+  are executable?
+- Can totality be shown to characterize exactly the image of
+  `embed : Semantic C → Partial C` without an awkward choice or quotient
+  principle?
+- Does constructing `Lift C` genuinely need a reified polynomial descriptor,
+  or do the validated container combinators suffice?
 - Should computational capabilities such as bottom-shape decisions and
   position enumerations be canonical fields, uniquely registered classes, or
   explicit construction parameters?
@@ -719,23 +887,33 @@ excluded from them.
 - What is the weakest sequential-presentation interface sufficient to define
   `value_fold` and prove its layer equation without importing compactness of
   the basis, and does it support a useful infinitely branching example?
+- For interaction trees with infinite response types, should AlgCo 2 restrict
+  the algebraic interface to finitary events or replace full visible nodes by
+  finitely supported observations?
+- Should `eutt` remain a relation respected by operations over the raw final
+  coalgebra, or should some semantic layer quotient weak `Tau` behavior?
 
 ## Next experiments
 
 Milestone 2L completes the generic-first façade test and removes the
 native-presentation implementation.  The remaining experiments are:
 
-1. Define operational `Lift C` over the same descriptor family, with a fresh
-   `pending` constructor distinct from returned semantic bottom.
-2. Derive finite operational approximants, the operational carrier,
-   realization, observations, and coverage/productivity first for colists.
-3. Repeat the finite-observation account for Boolean cotrees, where a frontier
-   is a finite prefix-closed set of paths rather than a scalar depth.
-4. Use that construction to decide whether lifting needs structural recursion
-   over a reified signature or only the capabilities already carried by
-   semantic containers.
-5. Reconsider a direct sum/product fixed-point backend if its treatment of
-   nullary and singleton recursive fields materially improves the localized
-   functional-extensionality cost.
-6. Reconsider extraction-specific representation only if an intrinsic runtime
-   requirement demands it; it must not create a compatibility API.
+1. Define an unpointed semantic descriptor `C` and structural `Lift C`; reuse
+   the current point combinator and pointed fixed-point theorems as the backend
+   for `FinitePartial C` and `Partial C`.
+2. Build the colist slice with exact `nil`, `cons`, and a distinct partial
+   `pending`; define `embed`, realization, and totality, and show that an exact
+   finite `nil` is total.  Compare a direct `ν C` semantic carrier with the
+   total subtype of `Partial C` before fixing the public representation.
+3. Correct the generic realization laws to downward closure and prove stage
+   soundness separately for evaluation chains.
+4. Repeat the observation account for Boolean cotrees, where a request is a
+   finite prefix-closed frontier rather than merely a scalar depth.
+5. Instantiate the event container for `zar`'s Boolean interaction trees and
+   reproduce one continuous-WP proof by structural induction over the partial
+   basis, including the relevant `Tau`/`eutt` compatibility.
+6. Use the interaction-tree slice to expose the precise finitary-event
+   boundary and to decide whether lifting needs reified signature syntax.
+7. Reconsider a direct sum/product backend or extraction-specific
+   representation only after these semantic tests reveal an intrinsic need;
+   neither may create a compatibility API.

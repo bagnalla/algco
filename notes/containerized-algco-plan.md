@@ -12,9 +12,9 @@ point only.
 The hypothesis to test is:
 
 > Retaining an open-recursive, container-like presentation of a coinductive
-> type should let us derive its semantic algebraic CPO, compact basis,
-> operational lifting, finite observations, and realization relation from one
-> description.
+> type should let us derive both its fully formed semantic values and a lifted
+> algebraic partial completion, together with a compact basis, finite
+> observations, and realization relation, from one description.
 
 Proof ergonomics is a primary acceptance criterion, not a later polishing
 step.  For common instances, users should define operations through concise
@@ -30,17 +30,23 @@ low-friction on its own terms while preserving AlgCo's main benefits.  During
 the experiment, generic work lives alongside the current modules so results can
 be measured safely; this repository arrangement is not a proposed compatibility
 architecture.
+
 Milestones 2F and 2G now pass that test for both linear colist `comap` and
 branching Boolean-cotree `map`, Milestone 2H isolates the smallest derivation
 experiment justified by their duplication, and Milestone 2I successfully
-factors their fold/cofold layer theorem.  Milestone 2J then shows that semantic
+factors their fold/cofold layer theorem.  Milestone 2J then shows that direct
 container combinators derive the required descriptor capabilities without a
 reified code language.  Milestone 2K validates a generic native-presentation
 boundary without worsening assumptions, but also exposes that boundary as
 machinery required only because two representations coexist.  Milestone 2L
 then passes the generic-first design gate for both colists and Boolean cotrees
-and removes the rejected presentation adapter.  The next design gate is the
-operational lifting over those canonical carriers.
+and removes the rejected presentation adapter.  The next design gate is now
+more precise: reuse the existing pointed machinery as the partial completion
+of an unpointed semantic signature.  The unlifted final coalgebra supplies fully
+formed values; `μ (Lift C)` and `ν (Lift C)` supply the compact basis and
+partial domain.  A Boolean-event interaction-tree slice modeled on `zar` is a
+required test of whether this separation supports AlgCo's intended proof
+style.
 
 This plan grew out of the investigation in
 [`cofold-extraction-productivity.md`](cofold-extraction-productivity.md). That
@@ -66,6 +72,13 @@ A second internal runtime representation is admissible only if intrinsic
 extraction evidence justifies it; it must not create a second public proof API.
 Discarded experiments belong in Git history and these notes, not as dormant
 compatibility infrastructure in AlgCo 2.
+
+This constraint does not identify `Semantic C` with `Partial C`.  They have
+different inhabitants and different roles: the former contains fully formed
+values, while the latter additionally contains incomplete observations and is
+the carrier of the algebraic approximation order.  Each role should still have
+one canonical generic representation, connected by the structural embedding
+rather than by a compatibility isomorphism.
 
 ## Milestone 1 checkpoint: fixed-point representation
 
@@ -239,7 +252,8 @@ equality on the element type.  Pattern matching distinguishes `hole` from
 The generic supremum follows the existing colist and cotree construction.  It
 uses `LPO_option` to choose an exposed stage.  To project a requested child
 from an arbitrary layer, it additionally uses AlgCo's strong classical
-equality to compare shapes; a mismatch maps to semantic bottom.  Directedness
+equality to compare shapes; a mismatch maps to the pointed descriptor's
+designated hole.  Directedness
 proves that this convention cannot discard information in a relevant chain.
 
 ### Milestone 2A assumption audit
@@ -458,7 +472,7 @@ The proof follows the finite-tree structure of `b`:
 2. If `incl_mu b ⊑ limit` and `b` exposes a constructor, then `limit` exposes
    the same constructor.
 3. A nonbottom supremum has some family member exposing that constructor.  If
-   no member exposed anything, semantic bottom would be an upper bound,
+   no member exposed anything, the designated hole would be an upper bound,
    contradicting leastness of the nonbottom supremum.
 4. Projecting a child from every family member preserves directedness and
    transports the supplied supremum pointwise.  Structural induction therefore
@@ -524,8 +538,8 @@ Value S = wrapper around ν (pc_container S)
 
 They are records, not transparent aliases, so the pointed descriptor `S`
 remains visible at the type head.  The pointed descriptor determines the
-container, semantic bottom, and approximation order.  Capabilities needed only
-by later constructions are separate classes keyed by `S`:
+container, designated hole, and approximation order.  Capabilities needed
+only by later constructions are separate classes keyed by `S`:
 
 ```text
 DecidableBottom S
@@ -928,13 +942,14 @@ Its ordinary functor interpretation is:
 ```
 
 The frontend compiles this interpretation to the already-tested `container`
-representation; it does not introduce a second fixed-point semantics.  The
-left `1` of `P D` is the distinguished semantic bottom.  Its position type is
-empty, and the outer sum gives a canonical bottom-shape decision.  Position
-enumeration is derived structurally.  `Rᶠ I` therefore carries an explicit
-finite enumeration of `I`; arbitrary constant payloads need no finiteness
-assumption because they contribute no recursive positions.  Write `R` for
-`Rᶠ unit`.
+representation; it does not introduce a second fixed-point semantics.  This
+checkpoint called the left `1` of `P D` the distinguished semantic bottom.
+Under the refined design, `P` is exactly the structural `Lift`: its left shape
+is the partial hole.  Its position type is empty, and the outer sum gives a
+canonical hole-shape decision.  Position enumeration is derived structurally.
+`Rᶠ I` therefore carries an explicit finite enumeration of `I`; arbitrary
+constant payloads need no finiteness assumption because they contribute no
+recursive positions.  Write `R` for `Rᶠ unit`.
 
 The two existing signatures become:
 
@@ -942,6 +957,12 @@ The two existing signatures become:
 ColistCode A = P (K A × R)
 CotreeCode A = P (K A + Rᶠ bool)
 ```
+
+The first is more accurately the partial completion of total streams.  A pure
+colist code would include an exact nullary constructor,
+`K unit + (K A × R)`, before applying `P`.  The cotree code already has a
+returned leaf alternative, so its outer `P` can be read directly as the
+partial-completion hole.
 
 `K unit` can serve as a nonbottom nullary constructor, so no additional
 constructor is needed for the present experiment.
@@ -1258,7 +1279,7 @@ this checkpoint the proposed next step was a minimal `K`/`Rᶠ`/sum/product
 syntax.  Milestone 2J tests the strictly smaller alternative first: semantic
 container combinators carrying their finiteness evidence directly.
 
-## Milestone 2J checkpoint: semantic container combinators
+## Milestone 2J checkpoint: direct container combinators
 
 Status on July 26, 2026: **direct combinators derive the required structural
 facts; a reified code frontend is not presently justified**.
@@ -1266,7 +1287,8 @@ facts; a reified code frontend is not presently justified**.
 The experiment is split into three modules:
 
 - [`theories/generic/container_combinators.v`](../theories/generic/container_combinators.v)
-  defines the pure semantic constructors and carries finite-position evidence;
+  defines the direct container constructors and carries finite-position
+  evidence;
 - [`theories/generic/indexed_container_combinators.v`](../theories/generic/indexed_container_combinators.v)
   bridges that evidence to `DecidableBottom` and `FinitePositions`; and
 - [`theories/generic/container_combinator_examples.v`](../theories/generic/container_combinator_examples.v)
@@ -1292,11 +1314,12 @@ arbitrary shape types because they contribute no recursive positions.
 Products enumerate the coproduct of their components' position types, while
 sums select the positions of the chosen shape.
 
-`finitary_point C` adds the outer nullary bottom shape.  Its bottom test is
-derived by case analysis on the outer sum, and its position enumeration is
-empty at bottom and inherited from `C` otherwise.  The pure module can package
-the result as the existing `finitary_pointed_container`; the separate indexed
-bridge registers:
+`finitary_point C` adds the outer nullary point.  The prototype packages it as
+a bottom shape; in the refined architecture this combinator implements
+`Lift C`.  Its hole test is derived by case analysis on the outer sum, and its
+position enumeration is empty at the point and inherited from `C` otherwise.
+The module can package the result as the existing
+`finitary_pointed_container`; the separate indexed bridge registers:
 
 ```text
 DecidableBottom (finitary_point C)
@@ -1316,6 +1339,10 @@ The examples use the semantic equations formerly proposed as codes:
 ComposedColist A = point (constant A × recursive unit)
 ComposedCotree A = point (constant A + recursive bool)
 ```
+
+The first composed descriptor tests partial streams rather than the new
+three-shape partial colist; the latter must add exact `nil` before applying
+`point`.  The second is already the lift of a hole-free leaf/node cotree.
 
 For both descriptors, declarations of `value_fold` elaborate without naming
 either capability instance.  Complete basis-fold equations and value-fold
@@ -1347,9 +1374,10 @@ The distinctive extra feature of a code is induction over the way a signature
 was assembled.  That is useful only if a later generic transformation must
 distinguish constants, choices, products, and recursive fields rather than
 operate on the resulting shapes, positions, pointedness, and enumeration.
-Operational lifting is the remaining plausible test.  Until it demonstrates
-that need, adding an AST and interpretation layer would create a second
-description without eliminating any established obligation.
+Structural lifting and the semantic/partial split are the remaining plausible
+tests.  Until they demonstrate that need, adding an AST and interpretation
+layer would create a second description without eliminating any established
+obligation.
 
 ### Milestone 2J assumption audit
 
@@ -1505,6 +1533,13 @@ lifting follows over the same canonical carriers.
 Status on July 26, 2026: **the proof-ergonomics gate passes, with one localized
 extensionality caveat**.
 
+This checkpoint validates a canonical generic representation and its
+specialization façade.  It does not establish that the descriptor's
+distinguished point belongs in the type of fully formed semantic values.  The
+current `Basis S` and `Value S` are now best read as the basis and carrier of a
+partial completion, with `S = Lift C`; the next slice will add and relate the
+unpointed `Semantic C = ν C`.
+
 The active generic-first specializations are:
 
 - [`theories/generic/canonical_colist.v`](../theories/generic/canonical_colist.v),
@@ -1592,8 +1627,8 @@ modules are deleted from `_CoqProject` and the working tree.  Git history and
 Milestone 2K retain the evidence.  The generic-first gate does not justify a
 frontend generator yet—the two specialization modules deliberately implement
 enough of a real public API to measure proof use, so their declaration count is
-not itself evidence for reified syntax.  Operational lifting is now the next
-test of whether semantic container combinators remain sufficient.
+not itself evidence for reified syntax.  Factoring the point through `Lift C`
+is now the next test of whether direct container combinators remain sufficient.
 
 ## Motivation
 
@@ -1622,34 +1657,55 @@ outer `option A` can add divergence to an atomic result, but an `aCPO A B`
 instance alone does not say where computations must be inserted inside a
 recursive value.
 
-The distinction is visible in the two kinds of bottom discovered in the
-`cofold` investigation:
+The `cofold` investigation first exposed two operationally different states:
 
 ```text
 pending                 the target computation has not returned
 returned semantic ⊥     the target returned AlgCo's least semantic value
 ```
 
-For a colist result these should be different constructors. A computation may
-be pending before exposing its outer layer, or it may return `conil`, which is
-an ordinary target constructor denoting the semantic bottom.
+The cleaner container design reveals a stronger distinction.  In a pure
+colist signature
+
+```text
+C X = nil + cons A X
+```
+
+`nil` is an exact returned constructor, not an approximation hole.  The
+partial signature is instead
+
+```text
+Lift C X = pending + returned (nil + cons A X)
+```
+
+so a computation can be pending, can return exact `nil`, or can return a cons
+whose tail is again partial.  AlgCo's current `conil` plays both the first and
+second roles because its order treats the empty constructor as least.  AlgCo 2
+should not preserve that conflation merely because the underlying functor
+`1 + A × X` is familiar.  A type that independently has a genuine semantic
+least value may retain it, but returning that value is still distinct from
+`pending`.
 
 ## Goals
 
-The prototype should determine whether a single finitary signature can support
-all of the following.
+The prototype should determine whether one finitary semantic signature and its
+structurally derived lift can support all of the following.
 
-1. Generic least and greatest fixed-point types.
-2. A generic finite-approximation order.
-3. Inclusion of the least fixed point into the greatest.
+1. A greatest fixed point `ν C` of fully formed semantic values.
+2. A lifted partial carrier `ν (Lift C)` and finite basis `μ (Lift C)`.
+3. A generic finite-approximation order and inclusion of that basis into the
+   partial carrier.
 4. Canonical depth truncations and their supremum theorem.
-5. Compactness and an `aCPO` instance for finite branching.
-6. A computation lifting that adds a distinct operational `pending` layer.
-7. An operational approximation order and realization relation.
+5. Compactness and an `aCPO` instance for the partial carrier under finite
+   branching.
+6. A structural embedding from semantic values into total partial values.
+7. A partial approximation order and realization relation.
 8. Observation-indexed totality and coverage for the lifted type.
 9. Demand-aware operational models of extracted folds.
 10. Ergonomic descriptor-specific APIs over the canonical carriers and clean
     extraction.
+11. A cotree/interaction-tree instance that recovers the finite-basis proof
+    style used by `zar`.
 
 The initial target is one complete colist slice, followed by enough of cotrees
 to show that the construction is genuinely generic rather than a disguised
@@ -1665,6 +1721,8 @@ The first prototype should not attempt to:
 - verify Coq's complete extraction pipeline or Haskell runtime;
 - eliminate all existing extensionality or classical axioms;
 - port sieve, tries, real-number domains, or probabilistic semantics;
+- port the whole `zar` development rather than one discriminating
+  interaction-tree proof;
 - decide strictness and payload evaluation uniformly for every target language.
 
 The prototype should remain small enough that abandoning it is inexpensive.
@@ -1694,46 +1752,62 @@ positions so that recursive occurrences remain visibly strictly positive:
 The first version may use a pair of parameters `Shape` and `Pos` instead of a
 record if that improves Coq's positivity checking or generated eliminators.
 
-### Pointed signatures
+### Pure signatures and partial completion
 
-AlgCo's coinductive domains contain an explicit approximation hole. For
-example, the relevant stream-like signature is not the total stream functor
-
-```text
-StreamF X = A × X
-```
-
-whose initial algebra is empty. It is the pointed signature
+A semantic container need not be pointed.  Its final coalgebra contains fully
+formed values:
 
 ```text
-ColistF X = 1 + A × X
+Semantic C = ν C
 ```
 
-where the `1` is `conil`, interpreted as the least semantic approximation.
-Consequently:
+Examples include the total stream signature `A × X` and the colist signature
+`1 + A × X`, where the nullary shape is exact `nil`.  The initial algebra
+`μ C` may describe finite completed values, although it is empty for total
+streams and is generally not a compact basis for infinite semantic values.
+
+Add partiality structurally with a fresh nullary shape:
 
 ```text
-list A    ≅ μ ColistF
-colist A  ≅ ν ColistF
+Shape (Lift C) = pending + returned (Shape C)
+
+Pos (Lift C) pending      = Empty
+Pos (Lift C) (returned s) = Pos C s
 ```
 
-The generic semantic order needs at least:
+The lifted descriptor has the approximation order needed by AlgCo:
 
-- a distinguished hole shape with no recursive positions;
-- the hole below every layer;
-- compatible non-hole layers ordered recursively;
-- equality, or a separately supplied relation, for nonrecursive data.
+- `pending` is below every layer;
+- two returned layers compare only when their semantic shapes are compatible;
+- their recursive children compare pointwise; and
+- nonrecursive data use equality or an explicitly supplied semantic relation.
 
-Begin with discrete non-hole shapes. Ordered node data, as used by cotries,
-belongs in a later enriched-container extension.
+Begin with discrete returned shapes.  Ordered node data, as used by cotries,
+belongs in a later enriched-container extension.  If `C` independently has a
+genuine least semantic value, `returned` of that value is still distinct from
+`pending`.
+
+An algebraic CPO need not have a least element in general.  Nevertheless, a
+useful finite basis for an infinite recursive value needs open boundaries
+somewhere.  Removing holes from both the semantic carrier and its proposed
+basis leaves finite completed colists unable to approximate an infinite one.
+A discrete order on `ν C` is formally a possible CPO, but makes whole infinite
+values compact and loses the computational content AlgCo is intended to
+provide.  The useful algebraicity therefore belongs to the lifted partial
+completion, not automatically to `Semantic C`.
+
+This is consistent with the existing abstraction:
+[`aCPO`](../theories/aCPO.v#L52) does not require a `PType` or a least element.
+Pointedness enters the current recursive instances because it supplies their
+finite approximation holes, not because algebraicity itself entails bottom.
 
 ### Finiteness
 
 Directed completeness and algebraicity require different structures.  The
-generic CPO construction needs a decision procedure distinguishing the bottom
-shape from exposed shapes, but permits arbitrary branching.  The compact-basis
+generic CPO construction for `ν (Lift C)` gets bottom decidability from the
+fresh `pending` shape and permits arbitrary branching.  The compact-basis
 theorem additionally requires finite observations.  The current sufficient
-condition is a complete enumeration:
+condition on every semantic shape is a complete enumeration:
 
 ```text
 positions  : ∀ s : Shape C, list (Pos C s)
@@ -1749,20 +1823,25 @@ for general branching but the demonstrated `aCPO` instance uses finite Boolean
 branching. The prototype must make this side condition explicit rather than
 hiding it in a type-specific proof.
 
-### Semantic fixed points and the algebraic CPO
+### Semantic and partial fixed points
 
-For a pointed, finitely branching container `C`, derive:
+For a finitely branching semantic container `C`, derive:
 
 ```text
-Basis C = μ C
-Value C = ν C
+Semantic C       = ν C
+FiniteSemantic C = μ C                  optional role
+FinitePartial C  = μ (Lift C)
+Partial C        = ν (Lift C)
 ```
 
-and define:
+The current generic prototype already proves most of the partial-domain
+theorems for an arbitrary pointed descriptor `S`; instantiate it with
+`S = Lift C`.  Define:
 
 ```text
-incl     : μ C → ν C
-truncate : nat → ν C → μ C
+incl     : FinitePartial C → Partial C
+truncate : nat → Partial C → FinitePartial C
+embed    : Semantic C → Partial C
 ```
 
 The theorem inventory should include:
@@ -1776,67 +1855,68 @@ x = sup (λ n, incl (truncate n x))
 
 compact b
 
-aCPO (ν C) (μ C)
+aCPO (Partial C) (FinitePartial C)
 ```
 
 Equality in the supremum theorem may initially be AlgCo equivalence rather
 than Coq equality. The prototype should record exactly where a coinductive
-extensionality principle is required.
+extensionality principle is required.  It should also prove that `embed`
+returns every semantic layer recursively, realizes its source, and lands in
+the total elements.  Ideally totality characterizes its image up to the same
+coinductive equivalence.
 
-### Operational lifting
-
-Let the computation lifting add a new nullary shape:
-
-```text
-T X = pending + returned X
-```
-
-For a semantic container `C`, define `Lift C` by:
+Continuous extensions should be constructed on partial carriers, where the
+compact basis lives:
 
 ```text
-Shape (Lift C) = pending-shape + Shape C
-
-Pos (Lift C) pending          = Empty
-Pos (Lift C) (returned s)     = Pos C s
+f̂ : Partial C → D
 ```
 
-Then define:
+Here `D` may be any suitable result domain, including ordered propositions for
+a WP.  The standard proof remains structural induction over
+`FinitePartial C`.  For recursive output, take `D = Partial C₂`.  If
+`f̂ (embed v)` is total for every semantic `v`, the total-image theorem should
+factor it into a function `Semantic C → Semantic C₂`.  Failure of this theorem
+records nonproductivity or incomplete output rather than forcing a partial
+object into the semantic carrier.  This is how the split must preserve
+AlgCo's central proof-engineering benefit.
 
-```text
-OpBasis C = μ (Lift C)
-OpValue C = ν (Lift C)
-```
+### Partial completion as operational lifting
 
-For colists, the one-layer operational signature becomes:
+The construction is Moggi-like in separating semantic values from potentially
+incomplete computations, but `Partial C` is not just an outer
+`pending + Semantic C`.  The fresh point occurs at every recursive boundary,
+which is what permits finite prefixes and partial branches.
+
+For colists, the one-layer partial signature is:
 
 ```text
 pending
-+ returned_conil
-+ returned_cocons A X
++ returned_nil
++ returned_cons A X
 ```
 
-Thus the semantic hole and operational pending state are distinct by
-construction.
-
-The operational order should satisfy:
+The approximation order should satisfy:
 
 ```text
-pending ⊑ᵒ d
+pending ⊑ᵖ d
 
-returned_conil ⊑ᵒ returned_conil
+returned_nil ⊑ᵖ returned_nil
 
-d₁ ⊑ᵒ d₂
+d₁ ⊑ᵖ d₂
 ────────────────────────────────────────────────────────
-returned_cocons a d₁ ⊑ᵒ returned_cocons a d₂
+returned_cons a d₁ ⊑ᵖ returned_cons a d₂
 ```
 
-In particular, a returned semantic bottom should not operationally refine into
-a different returned constructor merely because the semantic order places it
-below that constructor.
+Incompatible returned shapes are incomparable.  In particular,
+`returned_nil` does not refine into `returned_cons`; exact termination is not
+an approximation hole.  For a type with a genuine semantic bottom, any order
+between returned semantic values must be stated independently of the fresh
+partial point.
 
 ### Realization
 
-Define a relation between operational and semantic fixed points by the greatest
+Define a relation between partial and semantic fixed points by the greatest
 fixed point of the container's relational action:
 
 ```text
@@ -1847,34 +1927,48 @@ childrenᵒ and childrenˢ are pointwise R-related
 returned s childrenᵒ R inν s childrenˢ
 ```
 
-For finite operational approximants, define the analogous relation by
-induction. Establish at least:
+For finite partial approximants, define the analogous relation by induction.
+The generic order law is downward closure under loss of information:
 
 ```text
-d₁ ⊑ᵒ d₂ → d₁ R v → d₂ R v
+d₁ ⊑ᵖ d₂ → d₂ R v → d₁ R v
 
-finite operational evaluation returns an observation
-→ that observation is sound for the semantic value
+embed v R v
+
+evaluation stage q n returns a finite observation
+→ q n R v
 ```
 
 Pending relates to every semantic value because it makes no observational
 claim. This is the recursive analogue of `flat_realizes None v := True` in
-[`cofold_operational.v`](../theories/cofold_operational.v).
+[`cofold_operational.v`](../theories/cofold_operational.v).  The reverse
+monotonicity implication is false: `pending` realizes every `v`, but it can
+refine to a returned shape inconsistent with that particular `v`.  Soundness
+of every member of an evaluator chain is therefore a separate invariant, not
+a consequence of the chain being increasing.
 
 ### Observations and totality
 
 Do not identify totality with semantic maximality in the generic definitions.
 Define finite requests and observations from the lifted shape structure.
 
-For the first colist instance, retain the simple depth requests:
+For the first colist instance, scalar depths suffice, but observing exact
+termination must discharge the remaining request:
 
 ```text
-Observes 0 d                             always
+Observes 0 d                                      always
+
+Observes (k + 1) (returned_nil)                    always
 
 Observes k tail
-────────────────────────────────────────
-Observes (k + 1) (returned_cocons a tail)
+──────────────────────────────────────────────────
+Observes (k + 1) (returned_cons a tail)
 ```
+
+There is no positive rule for `pending`.  Consequently exact finite `nil` is
+total.  A different predicate such as `Produces k d` should be used when the
+claim really is that at least `k` cons cells occur; that predicate should not
+be called totality.
 
 Then:
 
@@ -1884,20 +1978,79 @@ Total d  := ∀ k, Observes k d
 Covers q := ∀ k, ∃ n, Observes k (q n)
 ```
 
+For a fixed finite request, its satisfaction set should be upward closed and
+inaccessible by directed suprema; in standard terminology it is Scott-open
+when those two facts are proved for arbitrary directed families.  Coverage
+says that an evaluation chain eventually enters every such requested open.
+
 The generic development should connect this definition to the existing
 observation-indexed results in
 [`productivity.v`](../theories/productivity.v), not introduce a competing
 meaning of coverage.
 
-For branching containers, requests will eventually need finite shapes or
-paths. This is intentionally outside the first colist milestone.
+For branching containers, a request is a finite prefix-closed observation tree
+or frontier of paths.  After observing a returned node, the successor request
+contains finitely many child requests; after observing a returned leaf, that
+branch is discharged.  This is the branching analogue of the `k + 1` colist
+rule and is intentionally outside the first colist milestone.
+
+### Interaction-tree acceptance case
+
+The vendored AlgCo copy in `~/source/zar/` provides a concrete branching use
+case.  Its `cotree` constructors are `cobot`, `coleaf`, `cotau`, and `conode`,
+with `abot` in the finite basis.  Its `icotree` translation maps `Ret`, `Tau`,
+and `Vis` to leaf, tau, and node and never emits `cobot`.  This supports reading
+`cobot`/`abot` as the partial-completion hole rather than a constructor of a
+fully formed interaction tree.
+
+The concrete comparison points are:
+
+- `~/source/zar/theories/cotree.v` for `cotree`, `atree`, `cobot`, and `abot`;
+- `~/source/zar/theories/itree.v` for `icotree` and `itwp`;
+- `~/source/zar/theories/cocwp.v` for `btwp` and its continuous extension
+  `cotwp`; and
+- `~/source/zar/theories/cocwp_facts.v` for representative proofs that combine
+  a `Proper_co` argument with induction over the finite tree basis.
+
+For events `E : Type → Type` and results `R`, use the semantic container:
+
+```text
+Shape = Ret (r : R) | Tau | Vis (X : Type) (e : E X)
+
+Pos (Ret r)   = Empty
+Pos Tau       = unit
+Pos (Vis X e) = X
+```
+
+`Lift` adds `pending`; it does not identify pending with `Tau`.  Thus an
+infinite returned-`Tau` tree is total as a constructed semantic value even
+though it represents a nonterminating computation.  Weak `Tau` equivalence
+(`eutt`), program termination, and productivity of the producer remain
+separate properties.
+
+The first instance should use `zar`'s Boolean event signature, whose visible
+response type is finite.  Reproduce the characteristic architecture:
+
+- embed raw interaction trees into total partial cotrees as `icotree` does;
+- define a WP transformer by structural recursion on the finite partial basis
+  and continuous extension, corresponding to `btwp`/`cotwp`;
+- compose it with the interaction-tree embedding, corresponding to `itwp`;
+  and
+- prove one representative law by ordinary basis induction, including its
+  required `Tau`/`eutt` compatibility.
+
+The present compactness theorem requires every position type to be finite.  A
+general `Vis` response type `X` may be infinite, so the prototype must expose
+this boundary rather than silently claiming support for arbitrary event
+signatures.  Possible later choices are a finitary event class or a basis of
+finitely supported visible observations.
 
 ### Placement of computation at payloads
 
 The equation
 
 ```text
-OpValue C = ν (Lift C)
+Partial C = ν (Lift C)
 ```
 
 adds computation at each recursive layer but treats nonrecursive fields as
@@ -1911,8 +2064,10 @@ evaluated.
 
 ## Proposed Coq organization
 
-The experiment currently uses the following separate namespace so it does not
-mutate the paper artifact while hypotheses are being tested:
+The experiment currently uses a separate namespace so it does not mutate the
+paper artifact while hypotheses are being tested.  The existing pointed files
+implement the backend that should be reused for `Lift C`; the next layer should
+make the semantic/partial roles explicit rather than copy their theorems:
 
 ```text
 theories/generic/container.v
@@ -1922,20 +2077,19 @@ theories/generic/algebraic_container.v
 theories/generic/colist_instance.v
 ```
 
-An eventual operational layer remains provisional.  This filesystem separation
-is experimental isolation, not a compatibility or layering requirement for
-AlgCo 2.
+This filesystem separation is experimental isolation, not a compatibility or
+layering requirement for AlgCo 2.
 
 The layers should have one-way dependencies:
 
 ```text
-container
+semantic container and μ/ν fixed points
     ↓
-μ/ν fixed points and relational action
+structural Lift and partial μ/ν fixed points
     ↓
-pointed order, truncation, and aCPO
+partial order, truncation, compactness, and aCPO
     ↓
-operational lifting and realization
+semantic embedding, realization, observations, and evaluators
     ↓
 descriptor-specific façades and program examples
 ```
@@ -1964,14 +2118,21 @@ essential functionality.
 
 ### Milestone 1: container fixed points
 
-Implement `μ C` and `ν C` for a small container representation. Instantiate:
+Implement `μ C` and `ν C` for a small container representation.  The
+historical comparison instantiated the pointed descriptor:
 
 ```text
-ColistShape A = hole | cons A
+PointedSpineShape A = hole | cons A
 
 Pos hole       = Empty
 Pos (cons a)   = unit
 ```
+
+Under the refined design this descriptor is `Lift (A × X)`: it is the partial
+completion of total streams.  Calling `hole` an exact `nil` reproduces AlgCo's
+conflation, but it does not provide the three-layer partial colist required by
+`Lift (1 + A × X)`.  The spike therefore validates generic fixed points and
+their proofs, not yet the semantic/partial colist split.
 
 The original comparison spike constructed conversions:
 
@@ -1980,17 +2141,21 @@ The original comparison spike constructed conversions:
 ν ColistC A  ↔ colist A
 ```
 
-Those conversions were useful for validating the generic semantics against
+Those conversions were useful for validating the generic machinery against
 AlgCo, but they are not part of the AlgCo 2 design.  The clean-slate slice must
-instead define its public types directly:
+instead define each intrinsic carrier directly.  The current experimental
+aliases are:
 
 ```text
 ColistBasis A := Basis (ColistC A)
 Colist A      := Value (ColistC A)
 ```
 
-Named constructors and structural principles should operate on these carriers;
-there should be no second list/colist representation or round-trip obligation.
+Named constructors and structural principles should operate on canonical
+generic carriers; there should be no independently declared native copy or
+round-trip obligation.  The semantic carrier `ν C` and partial carrier
+`ν (Lift C)` are not copies of one type: the latter contains incomplete values
+that the former deliberately excludes.
 
 ### Milestone 2: generic algebraic structure
 
@@ -1999,7 +2164,7 @@ canonical truncation presentation, algebraic-CPO structure, and
 descriptor-indexed instance stack.  Milestones 2F and 2G validate the desired
 operation proof shape for linear colists and branching Boolean cotrees.
 Milestone 2H audits both slices, Milestone 2I proves their common fold/cofold
-layer theorem, and Milestone 2J derives capabilities through semantic container
+layer theorem, and Milestone 2J derives capabilities through direct container
 combinators.  Milestone 2K confirms that native presentation obligations are
 costs of dual carriers rather than necessary parts of the generic semantics.
 
@@ -2018,22 +2183,29 @@ extensionality is localized in the named induction facade because container
 children are functions, as recorded in the checkpoint above.  Matching
 historical carrier types or theorem statements was not a criterion.
 
-### Milestone 3: lifted operational fixed point
+### Milestone 2M: semantic/partial factorization
 
-Implement `Lift C`, its operational order, and its realization relation.
-For the colist container, demonstrate the three distinct forms:
+Define `Semantic C = ν C`, structural `Lift C`,
+`FinitePartial C = μ (Lift C)`, and `Partial C = ν (Lift C)`.  Reuse the
+existing pointed order, truncation, compactness, and fixed-point façade by
+instantiating its descriptor with `Lift C`; do not copy those proofs.
+
+For colists, demonstrate the three distinct partial forms:
 
 ```text
 pending
-returned_conil
-returned_cocons
+returned_nil
+returned_cons
 ```
 
-Recover the flat atomic lifting as the nonrecursive special case if doing so is
-natural. It is not necessary to force both APIs into one encoding if that harms
-proof ergonomics.
+Define the semantic embedding, realization, finite requests, and totality.
+Prove at least that embedded values are total and realized, that exact finite
+`returned_nil` is total, and that realization is downward closed under the
+partial order.  Recover the flat atomic lifting as the nonrecursive special
+case if doing so is natural; it is not necessary to force both APIs into one
+encoding if that harms proof ergonomics.
 
-### Milestone 4: program instances
+### Milestone 3: operational program instances
 
 Use `comap` as the guarded baseline:
 
@@ -2065,7 +2237,17 @@ cofilter (const false) infinite_input
 ```
 
 has semantic denotation `conil` but never operationally returns an outer
-constructor.
+constructor.  In the refined colist model the denotation is exact `nil`, and
+the missing operational event is specifically `returned_nil`.
+
+### Milestone 4: interaction-tree acceptance slice
+
+Instantiate the semantic event container and its lift for `zar`'s Boolean
+events.  Embed `Ret`/`Tau`/`Vis` trees without using `pending`, reproduce one
+`btwp`/`cotwp`/`itwp`-shaped continuous transformer, and prove a representative
+law by induction over `FinitePartial`.  Check that pending, returned `Tau`,
+semantic nontermination, and `eutt` are not conflated.  Record exactly where
+finite event responses are used.
 
 ### Milestone 5: extraction and ergonomics experiment
 
@@ -2096,10 +2278,15 @@ criteria on its own terms.
 - The generic colist instance provides the required approximation order,
   truncation chain, supremum, compactness, and algebraic-CPO results.
 - A second genuinely branching instance reuses the same proofs.
-- The operational lifting distinguishes pending computation from returned
-  semantic bottom without ad hoc constructors for each datatype.
+- A hole-free semantic final coalgebra embeds into the total part of its
+  lifted partial completion.
+- The lift distinguishes pending computation from every returned constructor,
+  including exact `nil` and any genuine semantic bottom, without ad hoc
+  per-datatype machinery.
 - Realization and finite-observation soundness are stated once and instantiated
   cleanly.
+- The Boolean interaction-tree slice exposes no hidden identification of
+  pending with `Tau` and recovers the `zar` finite-basis proof shape.
 
 ### Proof engineering
 
@@ -2121,8 +2308,8 @@ criteria on its own terms.
 
 ### Architectural payoff
 
-- The same signature really drives semantic values, compact bases,
-  operational values, and finite observations.
+- The same semantic signature and its structural lift drive semantic values,
+  compact bases, partial values, and finite observations.
 - The distinction between semantic and operational orders becomes clearer than
   in the current organization.
 - Adding another finitary coinductive type requires mostly container data and
@@ -2158,7 +2345,9 @@ If the review favors AlgCo 2:
    lemmas solely for AlgCo users—there are no migration users to serve.
 4. Add example domains in order of how much they test the architecture, not in
    historical module order.  Colists and Boolean cotrees remain the first two
-   because they test linear and branching recursion.
+   because they test linear and branching recursion; Boolean interaction trees
+   are the next acceptance case because they test the semantic/partial split in
+   an existing application.
 5. Keep nonrecursive semantic domains such as `bool`, `Prop`, and `eR` outside
    the container hierarchy unless there is an independent semantic reason to
    include them.
@@ -2176,37 +2365,57 @@ If the review favors AlgCo 2:
    retaining usable computation?
 3. Can a single generic coinductive extensionality principle replace the
    current type-specific axioms?
-4. Should the full operational domain `ν (Lift C)` be built immediately, or
-   should the first evaluator use only finite elements `μ (Lift C)`?
-5. Can finite requests be derived generically from the container, or should
+4. Should `Semantic C` carry any generic order at all, or should order
+   structure be supplied only when it is intrinsic to the semantic type?
+5. Should semantic values be represented directly by `ν C` or as the total
+   subtype of `Partial C`, and which gives better proof and extraction
+   ergonomics?
+6. Can totality characterize exactly the image of
+   `embed : Semantic C → Partial C` without awkward choice or quotient
+   machinery?
+7. Should the full partial domain `ν (Lift C)` be built immediately, or should
+   the first evaluator use only finite elements `μ (Lift C)`?
+8. Can finite requests be derived generically from the container, or should
    observations remain an explicit parameter?
-6. How should ordered nonrecursive data, especially cotrie labels, participate
+9. How should ordered nonrecursive data, especially cotrie labels, participate
    in the semantic and operational relations?
-7. Where should computation be inserted for lazy payloads, products, sums, and
-   function fields?
-8. Can target adequacy be modularized over a generic lifted step, or does it
-   require a target-language semantics before further abstraction is useful?
-9. Can descriptor-indexed generic types be extracted directly, or is a
-   descriptor-driven internal erasure required for clean target code?
-10. What is the smallest algebraic-CPO interface that preserves AlgCo's proof
+10. Where should computation be inserted for lazy payloads, products, sums, and
+    function fields?
+11. Can target adequacy be modularized over a generic lifted step, or does it
+    require a target-language semantics before further abstraction is useful?
+12. For interaction trees with infinite response types, should the algebraic
+    interface require a finitary event signature or use finitely supported
+    visible observations instead of full nodes as compact elements?
+13. Should `eutt` remain a respected relation over raw semantic trees, or
+    should some layer quotient weak `Tau` behavior?
+14. Can descriptor-indexed generic types be extracted directly, or is a
+    descriptor-driven internal erasure required for clean target code?
+15. What is the smallest algebraic-CPO interface that preserves AlgCo's proof
     benefits without inheriting historical API structure?
 
 ## Immediate next experiment
 
 Milestone 2L completes the canonical generic-first specialization and removes
 the rejected native-presentation adapter.  The next task is Milestone 2M's
-operational lifting:
+semantic/partial factorization:
 
-1. Define `Lift C` from a semantic descriptor with a fresh `pending` shape
-   distinct from a returned semantic-bottom shape.
-2. Define finite operational approximants and the operational carrier without
-   introducing a second semantic colist or cotree representation.
-3. Define realization from operational results to `Value C`, then finite
-   observations and coverage/productivity for the lifted colist descriptor.
+1. Define an unpointed semantic colist descriptor
+   `C X = nil + cons A X`, its `Semantic C = ν C`, and structural `Lift C`.
+2. Reuse the current pointed generic infrastructure to obtain
+   `FinitePartial C` and `Partial C`, with the three named layers `pending`,
+   `returned_nil`, and `returned_cons`.
+3. Define `embed`, realization, requests, totality, and coverage.  Prove
+   embedded values total and realized, exact `nil` total, and realization
+   downward closed; prove evaluator-stage soundness separately.  Compare
+   direct `ν C` semantic values with the total subtype before fixing the public
+   representation.
 4. Repeat the observation test for Boolean cotrees so the request frontier is
    genuinely branching rather than a disguised depth counter.
-5. Determine whether this construction needs induction over signature syntax.
-   Introduce a reified code only if direct semantic containers cannot express
-   a concrete lifting operation or proof.
-6. Keep extraction-specific erasure separate until an intrinsic runtime issue
+5. Instantiate `zar`'s Boolean interaction-tree event container and reproduce
+   one continuous-WP/basis-induction proof, including `Tau`/`eutt`
+   compatibility and a precise audit of event finiteness.
+6. Determine from these concrete constructions whether `Lift` needs induction
+   over signature syntax.  Introduce a reified code only if direct containers
+   cannot express the operation or its proofs.
+7. Keep extraction-specific erasure separate until an intrinsic runtime issue
    is measured; it must not become a compatibility API.
