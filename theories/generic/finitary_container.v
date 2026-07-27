@@ -71,7 +71,7 @@ Qed.
 (** ** Finite fixed-point observations *)
 
 (** An inductive value exposes information exactly when its outer shape is
-    not the distinguished semantic bottom. *)
+    not the descriptor's distinguished approximation hole. *)
 Definition mu_exposes (C : decidable_pointed_container)
   (x : mu (pc_container (dpc_pointed C))) : Prop :=
   match x with
@@ -408,7 +408,7 @@ Instance Compact_finitary_container_mu (C : finitary_pointed_container) :
 Proof. constructor; apply mu_compact. Qed.
 
 (** A coinductive value exposes information exactly when its outer shape is
-    not the distinguished semantic bottom. *)
+    not the descriptor's distinguished approximation hole. *)
 Definition nu_exposes (C : decidable_pointed_container)
   (x : nu (pc_container (dpc_pointed C))) : Prop :=
   match x with
@@ -427,9 +427,10 @@ Proof.
 Defined.
 
 (** Project a recursive position from a layer of the requested shape.  On a
-    different shape, return semantic bottom.  Strong excluded middle supplies
-    the equality test without requiring decidable equality for payloads stored
-    in shapes.  Directedness will ensure that the mismatching case is used only
+    different shape, return the approximation hole.  Strong excluded middle
+    supplies the equality test without requiring decidable equality for
+    payloads stored in shapes.  Directedness will ensure that the mismatching
+    case is used only
     for bottom stages in the chains relevant to [nu_sup]. *)
 Definition nu_child (C : decidable_pointed_container)
   (s : shape (pc_container (dpc_pointed C)))

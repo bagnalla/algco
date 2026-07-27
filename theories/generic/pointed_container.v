@@ -17,9 +17,10 @@ From algco.generic Require Import
   container
 .
 
-(** A pointed container designates a nullary shape as its least semantic
-    approximation.  Nullarity is supplied as data so that the generic
-    constructions do not need decidable equality on shapes. *)
+(** A pointed container designates a nullary shape as the least approximation
+    hole of a partial carrier.  Nullarity is supplied as data so that the
+    generic constructions do not need decidable equality on shapes.  A
+    semantic signature can acquire this structure through an explicit lift. *)
 Record pointed_container : Type :=
   { pc_container : container
   ; bottom_shape : shape pc_container
@@ -157,8 +158,8 @@ Fixpoint incl_mu {C : pointed_container} (x : mu (pc_container C)) :
   | in_mu s children => in_nu s (fun p => incl_mu (children p))
   end.
 
-(** Observe at most [n] layers.  Depth zero is the distinguished semantic
-    bottom, rather than an additional operational pending state. *)
+(** Observe at most [n] layers.  Depth zero is the descriptor's distinguished
+    approximation hole. *)
 Fixpoint truncate_nu {C : pointed_container} (n : nat)
   (x : nu (pc_container C)) : mu (pc_container C) :=
   match n with

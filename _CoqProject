@@ -13,6 +13,7 @@ theories/generic/scott_container.v
 theories/generic/algebraic_container.v
 theories/generic/indexed_container.v
 theories/generic/indexed_container_combinators.v
+theories/generic/partial_completion.v
 theories/generic/indexed_fold.v
 theories/generic/container_combinator_examples.v
 theories/generic/canonical_colist.v

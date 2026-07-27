@@ -178,8 +178,8 @@ Qed.
 
 (** Every included finite basis element is compact in the standard
     arbitrary-directed sense.  This is the compactness theorem needed to view
-    [mu C] as a basis of the semantic domain [nu C], rather than merely as a
-    compact ordered type in isolation. *)
+    [mu C] as a basis of the pointed partial domain [nu C], rather than merely
+    as a compact ordered type in isolation. *)
 Theorem incl_mu_scott_compact (C : finitary_pointed_container)
   (b : mu (pc_container (fpc_pointed C))) :
   @scott_compact

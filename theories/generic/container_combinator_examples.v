@@ -23,6 +23,7 @@ From algco.generic Require Import
   indexed_container
   indexed_container_combinators
   indexed_fold
+  partial_completion
   pointed_container
 .
 
@@ -33,22 +34,42 @@ Local Open Scope program_scope.
 (** ** Linear example *)
 
 Definition composed_colist_signature (A : Type) : finitary_container :=
-  finitary_product
-    (finitary_constant A)
-    (finitary_recursive unit_index).
+  finitary_sum
+    (finitary_constant unit)
+    (finitary_product
+      (finitary_constant A)
+      (finitary_recursive unit_index)).
 
 Definition composed_colist_descriptor (A : Type) : pointed_container :=
   finitary_point (composed_colist_signature A).
 
-Definition composed_colist_bottom_shape (A : Type) :
+(** The unlifted signature has exact nil and cons shapes. *)
+Definition composed_colist_semantic_nil_shape (A : Type) :
+  shape (fc_container (composed_colist_signature A)) :=
+  inl tt.
+
+Arguments composed_colist_semantic_nil_shape A : clear implicits.
+
+Definition composed_colist_semantic_cons_shape {A : Type} (a : A) :
+  shape (fc_container (composed_colist_signature A)) :=
+  inr (a, tt).
+
+(** Pointing the semantic signature adds a distinct partial hole. *)
+Definition composed_colist_pending_shape (A : Type) :
   shape (pc_container (composed_colist_descriptor A)) :=
   inl tt.
 
-Arguments composed_colist_bottom_shape A : clear implicits.
+Arguments composed_colist_pending_shape A : clear implicits.
+
+Definition composed_colist_nil_shape (A : Type) :
+  shape (pc_container (composed_colist_descriptor A)) :=
+  returned_shape (composed_colist_semantic_nil_shape A).
+
+Arguments composed_colist_nil_shape A : clear implicits.
 
 Definition composed_colist_cons_shape {A : Type} (a : A) :
   shape (pc_container (composed_colist_descriptor A)) :=
-  inr (a, tt).
+  returned_shape (composed_colist_semantic_cons_shape a).
 
 Definition composed_colist_tail_position {A : Type} (a : A) :
   position (pc_container (composed_colist_descriptor A))
@@ -69,78 +90,112 @@ Definition composed_colist_children {A X : Type} (a : A) (x : X) :
 Arguments composed_colist_children {A X} a x.
 
 Definition composed_colist_algebra {A B : Type}
-  (z : B) (step : A -> B -> B) :
+  (pending nil : B) (step : A -> B -> B) :
   indexed_algebra (composed_colist_descriptor A) B.
 Proof.
-  intros [u | [a u]] children.
-  - exact z.
+  intros [u | [u | [a u]]] children.
+  - exact pending.
+  - exact nil.
   - exact (step a (children (inr tt))).
 Defined.
 
 Definition composed_colist_value_fold {A B : Type} `{OType B}
-  (z : B) (step : A -> B -> B) :
+  (pending nil : B) (step : A -> B -> B) :
   Value (composed_colist_descriptor A) -> B :=
-  value_fold (composed_colist_algebra z step).
+  value_fold (composed_colist_algebra pending nil step).
 
-Lemma composed_colist_basis_fold_bottom {A B : Type}
-  (z : B) (step : A -> B -> B)
+Lemma composed_colist_basis_fold_pending {A B : Type}
+  (pending nil : B) (step : A -> B -> B)
   (children : position
     (pc_container (composed_colist_descriptor A))
-    (composed_colist_bottom_shape A) ->
+    (composed_colist_pending_shape A) ->
     Basis (composed_colist_descriptor A)) :
-  basis_fold (composed_colist_algebra z step)
-    (in_basis (composed_colist_bottom_shape A) children) = z.
+  basis_fold (composed_colist_algebra pending nil step)
+    (in_basis (composed_colist_pending_shape A) children) = pending.
+Proof. reflexivity. Qed.
+
+Lemma composed_colist_basis_fold_nil {A B : Type}
+  (pending nil : B) (step : A -> B -> B)
+  (children : position
+    (pc_container (composed_colist_descriptor A))
+    (composed_colist_nil_shape A) ->
+    Basis (composed_colist_descriptor A)) :
+  basis_fold (composed_colist_algebra pending nil step)
+    (in_basis (composed_colist_nil_shape A) children) = nil.
 Proof. reflexivity. Qed.
 
 Lemma composed_colist_basis_fold_cons {A B : Type}
-  (z : B) (step : A -> B -> B) (a : A)
+  (pending nil : B) (step : A -> B -> B) (a : A)
   (children : position
     (pc_container (composed_colist_descriptor A))
     (composed_colist_cons_shape a) ->
     Basis (composed_colist_descriptor A)) :
-  basis_fold (composed_colist_algebra z step)
+  basis_fold (composed_colist_algebra pending nil step)
     (in_basis (composed_colist_cons_shape a) children) =
   step a
-    (basis_fold (composed_colist_algebra z step)
+    (basis_fold (composed_colist_algebra pending nil step)
       (children (composed_colist_tail_position a))).
 Proof. reflexivity. Qed.
 
-Lemma composed_colist_value_fold_bottom {A B : Type} `{CPO B}
-  (z : B) (step : A -> B -> B)
+Lemma composed_colist_value_fold_pending {A B : Type} `{CPO B}
+  (pending nil : B) (step : A -> B -> B)
   (children : position
     (pc_container (composed_colist_descriptor A))
-    (composed_colist_bottom_shape A) ->
+    (composed_colist_pending_shape A) ->
     Value (composed_colist_descriptor A)) :
-  composed_colist_value_fold z step
-    (in_value (composed_colist_bottom_shape A) children) === z.
+  composed_colist_value_fold pending nil step
+    (in_value (composed_colist_pending_shape A) children) === pending.
 Proof.
   unfold composed_colist_value_fold.
   apply (@value_fold_bottom
-    (composed_colist_descriptor A) B _ _ _ _ z
-    (composed_colist_algebra z step) children).
+    (composed_colist_descriptor A) B _ _ _ _ pending
+    (composed_colist_algebra pending nil step) children).
   intros bottom_children; reflexivity.
 Qed.
 
+Lemma composed_colist_value_fold_nil {A B : Type} `{CPO B}
+  (pending nil : B) (step : A -> B -> B)
+  (children : position
+    (pc_container (composed_colist_descriptor A))
+    (composed_colist_nil_shape A) ->
+    Value (composed_colist_descriptor A)) :
+  pending ⊑ nil ->
+  composed_colist_value_fold pending nil step
+    (in_value (composed_colist_nil_shape A) children) === nil.
+Proof.
+  intro Hbase.
+  unfold composed_colist_value_fold.
+  apply (@value_fold_nullary
+    (composed_colist_descriptor A) B _ _ _ _ pending
+    (composed_colist_algebra pending nil step)
+    (composed_colist_nil_shape A) children (fun p => match p with end)).
+  - intros bottom_children; reflexivity.
+  - exact Hbase.
+  - intros x y Hxy; reflexivity.
+Qed.
+
 Lemma composed_colist_value_fold_cons {A B : Type} `{CPO B}
-  (z : B) (step : A -> B -> B) (a : A)
+  (pending nil : B) (step : A -> B -> B) (a : A)
   (tail : Value (composed_colist_descriptor A)) :
   (forall b : Basis (composed_colist_descriptor A),
-    z ⊑ basis_fold (composed_colist_algebra z step) b) ->
+    pending ⊑ basis_fold (composed_colist_algebra pending nil step) b) ->
   (forall x, continuous (step x)) ->
-  composed_colist_value_fold z step
+  composed_colist_value_fold pending nil step
     (in_value (composed_colist_cons_shape a)
       (composed_colist_children a tail)) ===
-  step a (composed_colist_value_fold z step tail).
+  step a (composed_colist_value_fold pending nil step tail).
 Proof.
   intros Hbase Hstep.
   unfold composed_colist_value_fold.
   apply (@value_fold_layer
-    (composed_colist_descriptor A) B _ _ _ _ z
-    (composed_colist_algebra z step) (composed_colist_cons_shape a)
+    (composed_colist_descriptor A) B _ _ _ _ pending
+    (composed_colist_algebra pending nil step)
+    (composed_colist_cons_shape a)
     (composed_colist_children a tail)).
   - intros bottom_children; reflexivity.
   - exact Hbase.
-  - intros [u | [x u]]; simpl.
+  - intros [u | [u | [x u]]]; simpl.
+    + apply continuous_wcontinuous, continuous_const.
     + apply continuous_wcontinuous, continuous_const.
     + intros ch Hch limit Hsup.
       apply (Hstep x).
@@ -148,6 +203,14 @@ Proof.
         apply Hch.
       * apply apply_supremum; exact Hsup.
 Qed.
+
+Example composed_colist_pending_position_count {A : Type} :
+  length (enumerate_positions (composed_colist_pending_shape A)) = 0.
+Proof. reflexivity. Qed.
+
+Example composed_colist_nil_position_count {A : Type} :
+  length (enumerate_positions (composed_colist_nil_shape A)) = 0.
+Proof. reflexivity. Qed.
 
 Example composed_colist_cons_position_count {A : Type} (a : A) :
   length (enumerate_positions (composed_colist_cons_shape a)) = 1.

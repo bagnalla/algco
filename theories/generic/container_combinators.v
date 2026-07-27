@@ -167,10 +167,10 @@ Proof.
   - right; apply in_map, fc_position_enumeration_complete.
 Defined.
 
-(** Pointing is the only place where bottom structure enters.  Keeping the
-    finitary input as an argument in the descriptor head lets the two generic
-    capability instances resolve without reconstructing a bundle from a
-    projected carrier. *)
+(** Pointing adds the fresh approximation hole used by the partial completion.
+    Keeping the finitary input as an argument in the descriptor head lets the
+    two generic capability instances resolve without reconstructing a bundle
+    from a projected carrier. *)
 Definition finitary_point (C : finitary_container) : pointed_container :=
   point_container (fc_container C).
 

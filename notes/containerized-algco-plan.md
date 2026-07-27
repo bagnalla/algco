@@ -1630,6 +1630,77 @@ enough of a real public API to measure proof use, so their declaration count is
 not itself evidence for reified syntax.  Factoring the point through `Lift C`
 is now the next test of whether direct container combinators remain sufficient.
 
+The colist half of this checkpoint is historical after Milestone 2M: commit
+`d0fbc17` retains the two-case partial-stream façade used for the ergonomic
+measurement.  The active canonical colist module now implements the
+semantic/partial split described below rather than preserving that API.
+
+## Milestone 2M checkpoint: semantic and partial carriers
+
+Status on July 27, 2026: **the carrier-and-embedding checkpoint passes;
+realization and totality remain**.
+
+[`theories/generic/partial_completion.v`](../theories/generic/partial_completion.v)
+now separates three constructions:
+
+```text
+Semantic C      = ν C                     for any container C
+FinitePartial F = Basis (finitary_point F)
+Partial F       = Value (finitary_point F)
+```
+
+The semantic carrier and raw `embed_carrier` do not require pointedness or
+finite positions.  Only the compact-basis presentation retains the finitary
+bundle `F`.  This is deliberate: erasing `F` from the indexed `Partial` type
+would reproduce the descriptor-identity/typeclass problem from Milestone 2E.
+The existing `finitary_point` is definitionally the required structural
+`Lift`; no reified code or new fixed-point construction was needed.
+
+The generic corecursive embedding returns every semantic shape and recursively
+embeds its children.  Its one-layer equation `embed_in` is closed under the
+global context.  The composed colist signature is now the unpointed functor
+
+```text
+1 + A × X
+```
+
+with exact nil and cons shapes.  Applying `finitary_point` produces the three
+partial shapes:
+
+```text
+pending
+returned_nil
+returned_cons
+```
+
+[`theories/generic/canonical_colist.v`](../theories/generic/canonical_colist.v)
+was refactored in place rather than retaining a compatibility façade.  Its
+`colist` is the hole-free semantic final coalgebra; `colist_basis` and
+`partial_colist` are the lifted algebraic carriers.  It provides separate
+semantic and partial observations, embedding equations for nil and cons, a
+three-case basis induction principle, prefix operations on partial values,
+three-case basis/value folds, and a continuous partial map.
+
+The split reuses the existing fold API cleanly.  Pending uses
+`value_fold_bottom`, exact nil uses the weaker nonbottom-nullary
+`value_fold_nullary`, and cons uses `value_fold_layer`.  Thus the previously
+introduced nullary theorem was already exactly the rule needed to distinguish
+termination from lack of information.
+
+### Assumption and build audit
+
+| Result | Assumptions |
+|---|---|
+| Generic `embed_in` | none |
+| Specialized nil/cons embedding equations | functional extensionality |
+| Three-case colist basis induction and `basis_map_id` | functional extensionality and `Eq_rect_eq.eq_rect_eq` |
+| Continuous partial map | `Eq_rect_eq.eq_rect_eq`, classical logic, and constructive indefinite description |
+
+No native colist type or native coinductive extensionality is involved.  A
+full forced rebuild and `coqchk` over the new generic and canonical modules
+pass.  The next checkpoint should add generic realization and totality before
+any cotree or interaction-tree work.
+
 ## Motivation
 
 AlgCo already follows the initial-algebra/final-coalgebra pattern
@@ -2185,10 +2256,10 @@ historical carrier types or theorem statements was not a criterion.
 
 ### Milestone 2M: semantic/partial factorization
 
-Define `Semantic C = ν C`, structural `Lift C`,
-`FinitePartial C = μ (Lift C)`, and `Partial C = ν (Lift C)`.  Reuse the
-existing pointed order, truncation, compactness, and fixed-point façade by
-instantiating its descriptor with `Lift C`; do not copy those proofs.
+Carrier-and-embedding submilestone completed on July 27, 2026.  The prototype
+defines `Semantic C = ν C`, reuses `finitary_point` as structural `Lift`, and
+obtains `FinitePartial` and `Partial` from the existing pointed fixed-point
+façade without copying its order, truncation, or compactness proofs.
 
 For colists, demonstrate the three distinct partial forms:
 
@@ -2198,12 +2269,12 @@ returned_nil
 returned_cons
 ```
 
-Define the semantic embedding, realization, finite requests, and totality.
-Prove at least that embedded values are total and realized, that exact finite
-`returned_nil` is total, and that realization is downward closed under the
-partial order.  Recover the flat atomic lifting as the nonrecursive special
-case if doing so is natural; it is not necessary to force both APIs into one
-encoding if that harms proof ergonomics.
+The three forms and semantic embedding now compile.  The remaining submilestone
+is to define realization, finite requests, and totality; prove that embedded
+values are total and realized, exact `returned_nil` is total, and realization
+is downward closed under the partial order.  Recover the flat atomic lifting
+as the nonrecursive special case if doing so is natural; it is not necessary
+to force both APIs into one encoding if that harms proof ergonomics.
 
 ### Milestone 3: operational program instances
 
@@ -2395,27 +2466,22 @@ If the review favors AlgCo 2:
 
 ## Immediate next experiment
 
-Milestone 2L completes the canonical generic-first specialization and removes
-the rejected native-presentation adapter.  The next task is Milestone 2M's
-semantic/partial factorization:
+Milestone 2M's carriers, three-shape colist, and structural embedding now pass.
+The next task is its realization-and-totality submilestone:
 
-1. Define an unpointed semantic colist descriptor
-   `C X = nil + cons A X`, its `Semantic C = ν C`, and structural `Lift C`.
-2. Reuse the current pointed generic infrastructure to obtain
-   `FinitePartial C` and `Partial C`, with the three named layers `pending`,
-   `returned_nil`, and `returned_cons`.
-3. Define `embed`, realization, requests, totality, and coverage.  Prove
-   embedded values total and realized, exact `nil` total, and realization
-   downward closed; prove evaluator-stage soundness separately.  Compare
-   direct `ν C` semantic values with the total subtype before fixing the public
-   representation.
-4. Repeat the observation test for Boolean cotrees so the request frontier is
+1. Define generic coinductive `Total` on `ν (Lift C)` and `Realizes` between
+   `ν (Lift C)` and `ν C`, keeping their raw definitions independent of
+   finiteness.
+2. Prove `Total (embed v)`, `embed v Realizes v`, and downward closure of
+   realization under the partial approximation order.
+3. Specialize the definitions to colists and prove exact `returned_nil` total,
+   then define finite requests, coverage, and evaluator-stage soundness.
+4. Compare direct `ν C` semantic values with the total subtype before fixing
+   the final public representation.
+5. Repeat the observation test for Boolean cotrees so the request frontier is
    genuinely branching rather than a disguised depth counter.
-5. Instantiate `zar`'s Boolean interaction-tree event container and reproduce
+6. Instantiate `zar`'s Boolean interaction-tree event container and reproduce
    one continuous-WP/basis-induction proof, including `Tau`/`eutt`
    compatibility and a precise audit of event finiteness.
-6. Determine from these concrete constructions whether `Lift` needs induction
-   over signature syntax.  Introduce a reified code only if direct containers
-   cannot express the operation or its proofs.
 7. Keep extraction-specific erasure separate until an intrinsic runtime issue
    is measured; it must not become a compatibility API.

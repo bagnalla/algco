@@ -36,6 +36,15 @@ pointed descriptor; it does not decide that the point belongs in `C` rather
 than in `Lift C`.  The `zar` interaction-tree use case is the first required
 branching acceptance test for this separation.
 
+Milestone 2M's first implementation checkpoint now validates the carrier half
+of this design.  `Semantic C` is defined for an arbitrary container, while
+`FinitePartial C` and the algebraic `Partial C` retain a finitary presentation
+for compactness and typeclass identity.  The existing `finitary_point` is the
+required structural lift.  The canonical colist slice now has exact semantic
+`nil`/`cons`, distinct partial `pending`/`returned_nil`/`returned_cons`, a
+generic structural embedding, three-case basis induction, and a continuous
+partial map.  Realization and totality remain the next checkpoint.
+
 ## Clean-slate constraint
 
 Backward compatibility is not an AlgCo 2 goal.  In particular:
@@ -895,18 +904,17 @@ excluded from them.
 
 ## Next experiments
 
-Milestone 2L completes the generic-first façade test and removes the
-native-presentation implementation.  The remaining experiments are:
+Milestone 2M's carrier split and colist embedding now pass.  The remaining
+experiments are:
 
-1. Define an unpointed semantic descriptor `C` and structural `Lift C`; reuse
-   the current point combinator and pointed fixed-point theorems as the backend
-   for `FinitePartial C` and `Partial C`.
-2. Build the colist slice with exact `nil`, `cons`, and a distinct partial
-   `pending`; define `embed`, realization, and totality, and show that an exact
-   finite `nil` is total.  Compare a direct `ν C` semantic carrier with the
-   total subtype of `Partial C` before fixing the public representation.
-3. Correct the generic realization laws to downward closure and prove stage
-   soundness separately for evaluation chains.
+1. Define generic realization and totality on the lifted carrier.  Prove that
+   embeddings are realized and total, that realization is downward closed,
+   and that exact `returned_nil` is total.
+2. Define colist requests and coverage, keeping totality distinct from
+   “produces at least `k` cons cells,” and prove evaluator-stage soundness
+   separately from monotonicity.
+3. Compare direct `ν C` semantic values with the total subtype of `Partial C`
+   before fixing the final public representation.
 4. Repeat the observation account for Boolean cotrees, where a request is a
    finite prefix-closed frontier rather than merely a scalar depth.
 5. Instantiate the event container for `zar`'s Boolean interaction trees and
