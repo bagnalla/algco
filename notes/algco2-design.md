@@ -23,9 +23,10 @@ Milestone 2J shows that direct semantic container combinators derive bottom and
 finiteness capabilities without reified syntax.  Milestone 2K proves that a
 native/generic presentation boundary can be made sound and
 assumption-disciplined, but also measures the considerable machinery required
-solely because two representations coexist.  The next question is whether the
-same proof ergonomics can be obtained with generic fixed points as the only
-representation.
+solely because two representations coexist.  Milestone 2L obtains the same
+proof ergonomics with generic fixed points as the only representation and
+removes that experimental boundary.  Operational lifting is now the next
+architectural test.
 
 ## Clean-slate constraint
 
@@ -596,13 +597,14 @@ derives both-direction monotonicity, mixed below laws, arbitrary-supremum
 preservation, sequence continuity, and Scott-compactness transport.  The exact
 layer derives native truncation chains and compact native inclusions.
 
-The colist and Boolean-cotree operation modules now consume these derived
-monotonicity and continuity facts without changing their native definitions or
-constructor proofs.  The old and new value-continuity results have identical
-assumption profiles: only dependent equality, with no functional or native
-coinductive extensionality.  Functional extensionality remains localized to
-exact branching-basis and operation results where function equality is
-actually used.
+During Milestone 2K, the colist and Boolean-cotree comparison modules consumed
+these derived monotonicity and continuity facts without changing their native
+definitions or constructor proofs.  The old and new value-continuity results
+had identical assumption profiles: only dependent equality, with no functional
+or native coinductive extensionality.  Functional extensionality remained
+localized to exact branching-basis and operation results where function
+equality was actually used.  Milestone 2L subsequently removed this
+experimental presentation layer.
 
 The clean-slate conclusion is negative: the presentation layer solves a
 problem created by choosing two representations.  Its generic module is
@@ -613,10 +615,28 @@ obligation.
 
 Consequently, `NativeBasisPresentation`, `NativeValuePresentation`, and
 `NativeApproximation` are experimental evidence, not proposed AlgCo 2
-infrastructure.  The next prototype must use `Basis S` and `Value S` directly
-and determine whether specialized names and proof principles provide the same
-low-friction experience.  If they do, the presentation modules should be
-removed rather than carried as dormant adapters.
+infrastructure.  Milestone 2L confirms that `Basis S` and `Value S` directly
+support specialized names and proof principles with the desired low-friction
+experience.  The presentation modules have therefore been removed rather than
+carried as dormant adapters; their implementation remains available in Git
+commit `038393d` as experimental evidence.
+
+Milestone 2L also identifies one genuine container-specific cost.  A layer's
+children are represented by a function `position s → μ C`; in intensional Coq,
+arbitrary functions out of empty or singleton position types are not equal by
+computation to the canonical functions used by named constructors.  The
+specialized colist and cotree induction principles therefore use functional
+extensionality internally.  The generic structural induction theorem is
+constructive, and client proofs see only the familiar constructor cases.
+Direct coinductive map continuity and equations do not inherit functional or
+native coinductive extensionality.
+
+This localized axiom does not outweigh the removal of the entire conversion
+boundary, but it is now a concrete comparison criterion for functor codes.  A
+direct sum/product interpretation would be preferable if it removes the ghost
+function equality while retaining accepted positivity, instance resolution,
+and client proof ergonomics.  Reification still lacks an independent use, so
+the operational lifting should first be attempted over semantic containers.
 
 ## Provisional decisions
 
@@ -660,8 +680,9 @@ removed rather than carried as dormant adapters.
     weaker sequential-extension interface separately after the current
     finitary experiments.
 17. Treat the native-presentation implementation as a completed cost
-    experiment.  Do not retain it in AlgCo 2 unless a new intrinsic requirement
-    independently forces a second representation.
+    experiment, preserved in notes and Git history but removed from the active
+    design.  Do not restore it unless a new intrinsic requirement independently
+    forces a second representation.
 18. Do not preserve historical names, wrappers, theorem statements, module
     structure, or runtime representations for compatibility.
 19. Judge AlgCo 2 against AlgCo's purpose and benefits—especially low-friction
@@ -692,28 +713,29 @@ excluded from them.
 - Which structure should contain ordered nonrecursive payload fields?
 - How much of the semantic layer can remain constructive if operational
   productivity is treated separately?
+- Can a direct sum/product fixed-point interpretation remove the functional
+  extensionality needed to canonicalize empty and singleton container-child
+  functions without making positivity or specialization ergonomics worse?
 - What is the weakest sequential-presentation interface sufficient to define
   `value_fold` and prove its layer equation without importing compactness of
   the basis, and does it support a useful infinitely branching example?
 
 ## Next experiments
 
-Milestone 2K completes the native-presentation cost experiment.  The remaining
-experiments are:
+Milestone 2L completes the generic-first façade test and removes the
+native-presentation implementation.  The remaining experiments are:
 
-1. Build generic-first colist and Boolean-cotree façades whose carriers are
-   directly `Basis S` and `Value S` for their descriptors.
-2. Supply named constructors, destructors, structural induction principles,
-   truncations, folds, and simplification lemmas without introducing another
-   datatype or conversion boundary.
-3. Define `comap` and branching `cotree_map` directly over those carriers and
-   evaluate whether routine proofs retain AlgCo's low-friction structural
-   character.
-4. If that test succeeds, remove the native-presentation modules from the
-   proposed architecture and define operational `Lift C` over the same
-   canonical representation.
-5. Derive lifting capabilities, realization, finite observations, and
-   coverage/productivity first for colists and then for Boolean cotrees.
-6. Reconsider a reified code or extraction-specific representation only if an
-   intrinsic operational or runtime requirement demands it; neither may create
-   a compatibility API.
+1. Define operational `Lift C` over the same descriptor family, with a fresh
+   `pending` constructor distinct from returned semantic bottom.
+2. Derive finite operational approximants, the operational carrier,
+   realization, observations, and coverage/productivity first for colists.
+3. Repeat the finite-observation account for Boolean cotrees, where a frontier
+   is a finite prefix-closed set of paths rather than a scalar depth.
+4. Use that construction to decide whether lifting needs structural recursion
+   over a reified signature or only the capabilities already carried by
+   semantic containers.
+5. Reconsider a direct sum/product fixed-point backend if its treatment of
+   nullary and singleton recursive fields materially improves the localized
+   functional-extensionality cost.
+6. Reconsider extraction-specific representation only if an intrinsic runtime
+   requirement demands it; it must not create a compatibility API.

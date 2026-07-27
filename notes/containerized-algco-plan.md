@@ -37,9 +37,10 @@ factors their fold/cofold layer theorem.  Milestone 2J then shows that semantic
 container combinators derive the required descriptor capabilities without a
 reified code language.  Milestone 2K validates a generic native-presentation
 boundary without worsening assumptions, but also exposes that boundary as
-machinery required only because two representations coexist.  The next design
-gate is a generic-first vertical slice with no native/generic conversion layer,
-followed by the operational lifting.
+machinery required only because two representations coexist.  Milestone 2L
+then passes the generic-first design gate for both colists and Boolean cotrees
+and removes the rejected presentation adapter.  The next design gate is the
+operational lifting over those canonical carriers.
 
 This plan grew out of the investigation in
 [`cofold-extraction-productivity.md`](cofold-extraction-productivity.md). That
@@ -1376,14 +1377,15 @@ recursion over signature syntax.
 Status on July 26, 2026: **the boundary works technically, but the clean-slate
 design rejects the dual representation that makes it necessary**.
 
-The experiment adds three modules:
+The experiment added three modules, preserved in Git commit `038393d` and
+subsequently removed from the active tree after Milestone 2L passed:
 
-- [`theories/generic/native_presentation.v`](../theories/generic/native_presentation.v)
-  defines the generic boundary and its order-theoretic consequences;
-- [`theories/generic/native_colist_presentation.v`](../theories/generic/native_colist_presentation.v)
-  supplies the existing list/colist presentation; and
-- [`theories/generic/native_cotree_presentation.v`](../theories/generic/native_cotree_presentation.v)
-  supplies the existing `atree bool`/`cotree bool` presentation.
+- `theories/generic/native_presentation.v` defined the generic boundary and
+  its order-theoretic consequences;
+- `theories/generic/native_colist_presentation.v` supplied the existing
+  list/colist presentation; and
+- `theories/generic/native_cotree_presentation.v` supplied the existing
+  `atree bool`/`cotree bool` presentation.
 
 The raw conversions, inverse theorems, and order-correspondence theorems were
 kept during the experiment so the result could be measured.  Their presence in
@@ -1443,14 +1445,13 @@ correspondence, and the two exact approximation equations.  Their exported
 corollaries have the same types as the old wrapper theorems, which made the
 comparison controlled.
 
-The existing `indexed_colist_comap.v` and `indexed_cotree_map.v` modules now
-consume the presentation-derived basis monotonicity and value continuity
+During the experiment, `indexed_colist_comap.v` and `indexed_cotree_map.v`
+consumed the presentation-derived basis monotonicity and value continuity
 corollaries.  Their public operation definitions, constructor equations, and
-continuity proof shapes did not change.  This demonstrates that the new
-boundary composes with both the linear and function-branching vertical slices;
-it is not merely an unused packaging record.  Extraction is unaffected because
-the new material is proof and conversion-boundary structure, not a new runtime
-representation.
+continuity proof shapes did not change.  This demonstrated that the boundary
+composed with both the linear and function-branching vertical slices rather
+than merely packaging unused records.  After removal, those comparison modules
+again use their direct per-type facts.
 
 One small Coq API detail surfaced: importing a presentation module does not
 re-export the indexed aliases that it imports.  The operation modules retain
@@ -1496,8 +1497,103 @@ Accordingly, `NativeBasisPresentation`, `NativeValuePresentation`, and
 `NativeApproximation` are not proposed infrastructure.  Keep their result in
 this milestone record, but remove the implementation rather than carrying it as
 a dormant adapter once the generic-first slice confirms acceptable ergonomics.
-The next discriminating experiment is that generic-first colist/cotree slice;
-operational lifting follows over the same canonical carriers.
+Milestone 2L records that subsequent discriminating experiment; operational
+lifting follows over the same canonical carriers.
+
+## Milestone 2L checkpoint: canonical generic-first carriers
+
+Status on July 26, 2026: **the proof-ergonomics gate passes, with one localized
+extensionality caveat**.
+
+The active generic-first specializations are:
+
+- [`theories/generic/canonical_colist.v`](../theories/generic/canonical_colist.v),
+  whose public carriers are transparent aliases of `Basis S` and `Value S`
+  for the composed colist descriptor; and
+- [`theories/generic/canonical_cotree.v`](../theories/generic/canonical_cotree.v),
+  which does the same for the composed Boolean-cotree descriptor.
+
+Neither module imports the old `colist`, `cotree`, indexed conversion, or
+native-presentation modules.  They introduce no conversion functions or
+parallel recursive carrier.  The specialization modules expose named compact
+and coinductive constructors, one-layer observations, inclusion and depth
+prefixes, structural basis induction, basis and value folds, constructor
+equations, constructor continuity, and direct `map`/`comap` operations.
+
+### Generic infrastructure factored by the slice
+
+[`theories/generic/indexed_container.v`](../theories/generic/indexed_container.v)
+now proves four representation-level facts once:
+
+- structural induction over `Basis S`;
+- monotonicity of a fixed `in_basis` or `in_value` layer;
+- preservation by a fixed nonbottom `in_value` layer of any inhabited family
+  having pointwise child suprema; and
+- the current natural-number-indexed continuity corollary.
+
+The arbitrary-family supremum theorem needs only dependent equality.  Its
+sequence-continuity corollary additionally inherits classical logic and
+constructive indefinite description from the existing theorem that projects a
+supremum of a function space to one coordinate.  This is an interface property
+of the current pointwise function order, not a use of finite-position
+enumeration in the layer proof.
+
+### Client proof shape
+
+The named induction rules present exactly two colist cases and three cotree
+cases.  A representative colist law is now proved in the intended style:
+
+```coq
+induction x using colist_basis_ind.
+- reflexivity.
+- rewrite basis_map_cons, IHx; reflexivity.
+```
+
+No shape, position injection, descriptor, conversion, or order isomorphism
+appears in this client proof.  The branching version differs only where the
+mathematical result is equality of Boolean-indexed child functions, where
+functional extensionality is expected.  The direct coinductive maps are
+defined by the generic value fold; their continuity and bottom/leaf/cons/node
+equations also avoid all conversion transport and native coinductive
+extensionality axioms.
+
+### The localized container caveat
+
+A raw container layer stores children as a function `position s → μ C`.
+Consequently, even a nullary position type has many intensionally distinct
+functions in Coq, and a singleton child function is not propositionally equal
+to its canonical eta-expansion without functional extensionality.  The
+descriptor-specific induction facades use functional extensionality once to
+turn those raw layers into conventional named bottom, nil, leaf, and cons
+cases.  The generic `basis_induction` theorem itself is constructive; the
+extensionality enters only when imposing the familiar constructor syntax.
+
+This is a real property of the container encoding, not a remnant of native
+compatibility.  It does not leak raw plumbing into routine proofs, so it does
+not fail the current ergonomic gate.  It remains a criterion for comparing a
+future direct sum/product functor interpretation: such a representation would
+be preferable if it removes this axiom without reintroducing positivity,
+elaboration, or automation costs.
+
+### Assumption audit
+
+| Result | Assumptions |
+|---|---|
+| Generic `basis_induction` | none |
+| Generic nonbottom-layer arbitrary supremum preservation | `Eq_rect_eq.eq_rect_eq` |
+| Named colist/cotree basis induction and `basis_map_id` | functional extensionality and `Eq_rect_eq.eq_rect_eq` |
+| Colist/cotree constructor continuity | `Eq_rect_eq.eq_rect_eq`, classical logic, and constructive indefinite description |
+| Direct colist/cotree `comap` continuity and constructor equations | the same three inherited assumptions, with no functional or native coinductive extensionality |
+| Colist cons observation equation | none |
+| Cotree node observation equation | functional extensionality |
+
+The presentation experiment has therefore served its purpose and its three
+modules are deleted from `_CoqProject` and the working tree.  Git history and
+Milestone 2K retain the evidence.  The generic-first gate does not justify a
+frontend generator yet—the two specialization modules deliberately implement
+enough of a real public API to measure proof use, so their declaration count is
+not itself evidence for reified syntax.  Operational lifting is now the next
+test of whether semantic container combinators remain sufficient.
 
 ## Motivation
 
@@ -1909,16 +2005,18 @@ costs of dual carriers rather than necessary parts of the generic semantics.
 
 ### Milestone 2L: generic-first specialization
 
-Define colist and Boolean-cotree APIs directly over their descriptor-indexed
-`Basis` and `Value` carriers.  Provide named constructors, destructors,
-induction principles, folds, truncations, and simplification rules, then define
-`comap` and branching `cotree_map` without any conversion boundary.
+Completed on July 26, 2026.  Colist and Boolean-cotree APIs are defined directly
+over their descriptor-indexed `Basis` and `Value` carriers.  They provide named
+constructors, observations, induction principles, folds, truncations, and
+simplification rules, plus direct `comap` operations without any conversion
+boundary.
 
-This milestone succeeds when routine operation proofs retain AlgCo's central
-ergonomic benefit—ordinary structural induction over compact basis
-elements—without exposing raw shapes, position injections, transports, or
-descriptor plumbing.  Matching historical carrier types or theorem statements
-is not a criterion.
+Routine operation proofs retain AlgCo's central ergonomic benefit—ordinary
+structural induction over compact basis elements—without exposing raw shapes,
+position injections, transports, or descriptor plumbing.  Functional
+extensionality is localized in the named induction facade because container
+children are functions, as recorded in the checkpoint above.  Matching
+historical carrier types or theorem statements was not a criterion.
 
 ### Milestone 3: lifted operational fixed point
 
@@ -2095,22 +2193,20 @@ If the review favors AlgCo 2:
 
 ## Immediate next experiment
 
-Milestone 2K completes the native-presentation cost experiment.  The next task
-is Milestone 2L's generic-first specialization:
+Milestone 2L completes the canonical generic-first specialization and removes
+the rejected native-presentation adapter.  The next task is Milestone 2M's
+operational lifting:
 
-1. Define canonical colist basis/value aliases directly from a semantic
-   descriptor and give them named constructors, observations, truncations, and
-   structural induction/fold principles.
-2. Define `comap` entirely over those carriers and prove its equations without
-   native conversions or order-isomorphism transport.
-3. Repeat the test for Boolean cotrees, paying particular attention to whether
-   branching basis induction exposes function extensionality or container
-   plumbing to routine proofs.
-4. Judge the result by proof clarity and architectural size, not by agreement
-   with historical AlgCo types or APIs.  If it succeeds, remove the
-   native-presentation modules from the proposed architecture.
-5. Then define `Lift C` over the same canonical representation, with a fresh
-   `pending` shape distinct from returned semantic bottom, and proceed to
-   realization, finite observations, and coverage.
-6. Introduce reified syntax or extraction-specific erasure only if an intrinsic
-   requirement demonstrates the need; neither may become a compatibility API.
+1. Define `Lift C` from a semantic descriptor with a fresh `pending` shape
+   distinct from a returned semantic-bottom shape.
+2. Define finite operational approximants and the operational carrier without
+   introducing a second semantic colist or cotree representation.
+3. Define realization from operational results to `Value C`, then finite
+   observations and coverage/productivity for the lifted colist descriptor.
+4. Repeat the observation test for Boolean cotrees so the request frontier is
+   genuinely branching rather than a disguised depth counter.
+5. Determine whether this construction needs induction over signature syntax.
+   Introduce a reified code only if direct semantic containers cannot express
+   a concrete lifting operation or proof.
+6. Keep extraction-specific erasure separate until an intrinsic runtime issue
+   is measured; it must not become a compatibility API.

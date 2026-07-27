@@ -23,7 +23,6 @@ From algco.generic Require Import
   indexed_container
   indexed_colist_instance
   indexed_fold
-  native_colist_presentation
 .
 
 Local Open Scope order_scope.
@@ -87,7 +86,7 @@ Instance monotone_indexed_amap {A B : Type} (f : A -> B) :
   Proper (leq ==> leq) (indexed_amap f).
 Proof.
   intros x y Hxy; apply monotone_amap.
-  apply presented_monotone_indexed_basis_to_list; exact Hxy.
+  apply monotone_indexed_basis_to_list; exact Hxy.
 Qed.
 
 Definition indexed_co_fold {A B : Type} `{OType B}
@@ -124,7 +123,7 @@ Proof.
     (continuous
       (compose (indexed_comap_value f) (@colist_to_indexed_value A))).
   apply continuous_compose.
-  - apply presented_continuous_colist_to_indexed_value.
+  - apply continuous_colist_to_indexed_value.
   - apply continuous_indexed_comap_value.
 Qed.
 

@@ -7,6 +7,7 @@ Set Universe Polymorphism.
 From Coq Require Import
   Basics
   List
+  Program.Equality
 .
 
 From algco Require Import
@@ -76,6 +77,22 @@ Definition in_value {S : pointed_container}
   (children : position (pc_container S) s -> Value S) : Value S :=
   {| value_carrier := in_nu s (fun p => value_carrier (children p)) |}.
 
+(** Structural induction remains available directly on the canonical basis
+    carrier.  Descriptor-specific facades can specialize this theorem to
+    named constructor cases without introducing a second inductive type. *)
+Theorem basis_induction {S : pointed_container} (P : Basis S -> Prop) :
+  (forall s children,
+    (forall p, P (children p)) ->
+    P (in_basis s children)) ->
+  forall x, P x.
+Proof.
+  intros Hstep [x].
+  induction x as [s children IH].
+  apply Hstep with
+    (children := fun p => {| basis_carrier := children p |}).
+  exact IH.
+Qed.
+
 Definition basis_le (S : pointed_container) : Basis S -> Basis S -> Prop :=
   fun x y => mu_le S (basis_carrier x) (basis_carrier y).
 
@@ -115,6 +132,22 @@ Proof.
   intros [x]; change (nu_le S (nu_bottom S) x).
   unfold nu_bottom; constructor.
 Defined.
+
+Lemma monotone_in_basis {S : pointed_container}
+  (s : shape (pc_container S)) :
+  monotone (@in_basis S s).
+Proof.
+  intros children1 children2 Hchildren.
+  constructor; exact Hchildren.
+Qed.
+
+Lemma monotone_in_value {S : pointed_container}
+  (s : shape (pc_container S)) :
+  monotone (@in_value S s).
+Proof.
+  intros children1 children2 Hchildren.
+  constructor; exact Hchildren.
+Qed.
 
 (** Inclusion and canonical finite approximation on the indexed carriers. *)
 Definition basis_incl {S : pointed_container} (x : Basis S) : Value S :=
@@ -176,6 +209,58 @@ Proof.
   - intros [ub] Hub_wrapped.
     change (nu_le S (value_carrier x) ub).
     apply Hleast; exact Hub_wrapped.
+Qed.
+
+(** A fixed nonbottom layer preserves every inhabited pointwise supremum.
+    This is the constructor-continuity fact needed by direct specializations;
+    it is independent of a native presentation or a particular signature. *)
+Lemma supremum_in_value {S : pointed_container} `{DB : DecidableBottom S}
+  {I : Type} (s : shape (pc_container S))
+  (Hs : s <> bottom_shape S)
+  (children : position (pc_container S) s -> Value S)
+  (d : I -> position (pc_container S) s -> Value S) :
+  inhabited I ->
+  (forall p, supremum (children p) (fun i => d i p)) ->
+  supremum (in_value s children) (fun i => in_value s (d i)).
+Proof.
+  intros [i0] Hchildren; split.
+  - intro i; apply monotone_in_value; intro p.
+    apply (proj1 (Hchildren p)).
+  - intros [ub] Hall.
+    pose proof (Hall i0) as Hub.
+    change
+      (nu_le S
+        (in_nu s (fun p => value_carrier (d i0 p))) ub) in Hub.
+    destruct
+      (@nu_le_exposed_inv (@decidable_container_of S DB) s
+        (fun p => value_carrier (d i0 p)) ub Hs Hub)
+      as [ub_children [Hub_shape Hub_children]].
+    subst ub.
+    constructor; intro p.
+    change (leq (children p) {| value_carrier := ub_children p |}).
+    apply (proj2 (Hchildren p)); intro i.
+    pose proof (Hall i) as Hi.
+    change
+      (nu_le S
+        (in_nu s (fun q => value_carrier (d i q)))
+        (in_nu s ub_children)) in Hi.
+    dependent destruction Hi.
+    + exfalso; apply Hs; reflexivity.
+    + apply H.
+Qed.
+
+Corollary continuous_in_value {S : pointed_container}
+  `{DB : DecidableBottom S}
+  (s : shape (pc_container S))
+  (Hs : s <> bottom_shape S) :
+  continuous (@in_value S s).
+Proof.
+  intros d Hdirected limit Hsup.
+  change
+    (supremum (in_value s limit) (fun i => in_value s (d i))).
+  eapply (@supremum_in_value S DB nat s Hs limit d).
+  - exact (inhabits 0).
+  - intro p; apply apply_supremum; exact Hsup.
 Qed.
 
 (** Compactness and completeness are transported once at the generic wrapper
