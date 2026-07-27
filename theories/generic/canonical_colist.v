@@ -92,7 +92,7 @@ Proof. reflexivity. Qed.
 (** ** Finite partial approximants and partial colists *)
 
 Definition bpending {A : Type} : colist_basis A :=
-  (bot : colist_basis A).
+  {| basis_carrier := mu_bottom (composed_colist_descriptor A) |}.
 
 Definition bnil {A : Type} : colist_basis A :=
   in_basis (composed_colist_nil_shape A)
@@ -104,7 +104,7 @@ Definition bcons {A : Type} (a : A) (tail : colist_basis A) :
     (composed_colist_children a tail).
 
 Definition pending {A : Type} : partial_colist A :=
-  (bot : partial_colist A).
+  {| value_carrier := nu_bottom (composed_colist_descriptor A) |}.
 
 Definition returned_nil {A : Type} : partial_colist A :=
   in_value (composed_colist_nil_shape A)
@@ -289,6 +289,108 @@ Proof.
   destruct p as [p | u].
   - destruct p.
   - destruct u; reflexivity.
+Qed.
+
+(** ** Totality and realization *)
+
+Definition colist_total {A : Type} (d : partial_colist A) : Prop :=
+  Total d.
+
+Definition colist_realizes {A : Type}
+  (d : partial_colist A) (v : colist A) : Prop :=
+  Realizes d v.
+
+Lemma colist_pending_not_total {A : Type} :
+  ~ colist_total (@pending A).
+Proof.
+  unfold colist_total, Total, pending.
+  cbn; unfold nu_bottom; apply total_carrier_pending_absurd.
+Qed.
+
+Lemma colist_total_returned_nil {A : Type} :
+  colist_total (@returned_nil A).
+Proof.
+  unfold colist_total, Total, returned_nil, in_value.
+  cbn; unfold composed_colist_nil_shape.
+  eapply total_returned with
+    (s := composed_colist_semantic_nil_shape A).
+  - reflexivity.
+  - intro p; destruct p.
+Qed.
+
+Lemma colist_total_returned_cons {A : Type}
+  (a : A) (tail : partial_colist A) :
+  colist_total tail -> colist_total (returned_cons a tail).
+Proof.
+  unfold colist_total, Total, returned_cons, in_value.
+  cbn; unfold composed_colist_cons_shape.
+  intro Htail.
+  eapply total_returned with
+    (s := composed_colist_semantic_cons_shape a).
+  - reflexivity.
+  - intro p; destruct p as [impossible | u].
+    + destruct impossible.
+    + destruct u; exact Htail.
+Qed.
+
+Lemma colist_total_returned_cons_iff {A : Type}
+  (a : A) (tail : partial_colist A) :
+  colist_total (returned_cons a tail) <-> colist_total tail.
+Proof.
+  unfold colist_total, Total, returned_cons, in_value.
+  cbn.
+  unfold composed_colist_cons_shape.
+  rewrite total_carrier_returned_iff.
+  split.
+  - intro Hchildren; exact (Hchildren (composed_colist_tail_position a)).
+  - intros Htail p.
+    destruct p as [impossible | u].
+    + destruct impossible.
+    + destruct u; exact Htail.
+Qed.
+
+Lemma colist_embed_total {A : Type} (v : colist A) :
+  colist_total (colist_embed v).
+Proof. unfold colist_total, colist_embed; apply total_embed. Qed.
+
+Lemma colist_realizes_pending {A : Type} (v : colist A) :
+  colist_realizes (@pending A) v.
+Proof.
+  unfold colist_realizes, Realizes, pending.
+  cbn; unfold nu_bottom; apply realizes_carrier_pending.
+Qed.
+
+Lemma colist_realizes_returned_nil {A : Type} :
+  colist_realizes (@returned_nil A) (@conil A).
+Proof.
+  unfold colist_realizes, Realizes, returned_nil, conil, in_value.
+  apply realizes_carrier_returned; intro p; destruct p.
+Qed.
+
+Lemma colist_realizes_returned_cons {A : Type}
+  (a : A) (partial_tail : partial_colist A) (semantic_tail : colist A) :
+  colist_realizes partial_tail semantic_tail ->
+  colist_realizes
+    (returned_cons a partial_tail) (cocons a semantic_tail).
+Proof.
+  unfold colist_realizes, Realizes, returned_cons, cocons, in_value.
+  intro Htail; apply realizes_carrier_returned; intro p.
+  destruct p as [impossible | u].
+  - destruct impossible.
+  - destruct u; exact Htail.
+Qed.
+
+Lemma colist_embed_realizes {A : Type} (v : colist A) :
+  colist_realizes (colist_embed v) v.
+Proof. unfold colist_realizes, colist_embed; apply realizes_embed. Qed.
+
+Lemma colist_realizes_downward {A : Type}
+  (d1 d2 : partial_colist A) (v : colist A) :
+  d1 ⊑ d2 ->
+  colist_realizes d2 v ->
+  colist_realizes d1 v.
+Proof.
+  unfold colist_realizes; apply realizes_downward.
 Qed.
 
 (** ** Prefixes and continuous folds on the partial carrier *)
